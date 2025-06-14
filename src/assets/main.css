@@ -1,12 +1,23 @@
 @import './base.css';
 
+/* Assure que le body et html prennent tout l’espace */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Supprime les limites et centrages sur #app */
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
   font-weight: normal;
 }
 
+/* Liens stylisés */
 a,
 .green {
   text-decoration: none;
@@ -21,15 +32,14 @@ a,
   }
 }
 
+/* Retirer les règles de centrage inutiles */
 @media (min-width: 1024px) {
   body {
-    display: flex;
-    place-items: center;
+    display: block; /* ← pas de centrage */
   }
 
   #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+    display: block; /* ← plus de grille forcée */
+    padding: 0;
   }
 }
