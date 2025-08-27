@@ -18,6 +18,8 @@
     "@fortawesome/vue-fontawesome": "^3.0.8",
     "axios": "^1.9.0",
     "bulma": "^1.0.4",
+    "debounce": "^2.2.0",
+    "lodash": "^4.17.21",
     "lucide-vue-next": "^0.510.0",
     "npx": "^3.0.0",
     "pinia": "^3.0.1",
@@ -25,11 +27,11 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@cypress/vue": "^6.0.2",
     "@eslint/js": "^9.22.0",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/eslint-config-prettier": "^10.2.0",
     "cypress": "^12.17.1",
-    "@cypress/vue": "^6.0.2",
     "eslint": "^9.22.0",
     "eslint-plugin-oxlint": "^0.16.0",
     "eslint-plugin-vue": "~10.0.0",

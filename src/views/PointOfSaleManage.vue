@@ -12,14 +12,14 @@
       <table class="pos-table">
         <thead>
           <tr>
-            <th>Nom</th>
-            <th>Actions</th>
+            <th class="has-text-black">Nom</th>
+            <th class="has-text-black">Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="pos in pointsOfSale" :key="pos.id">
-            <td>{{ pos.name }}</td>
-            <td>
+            <td class="has-text-black">{{ pos.name }}</td>
+            <td class="has-text-black">
               <button @click="editPointOfSale(pos)">Éditer</button>
               <button @click="deletePointOfSale(pos.id)">Supprimer</button>
             </td>

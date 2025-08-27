@@ -20,19 +20,42 @@
         <button class="menu-button" @click="navigateTo('ventes')">Ventes</button>
         <button class="menu-button" @click="navigateTo('user-sales')">Mes ventes</button>
         <button class="menu-button" @click="navigateTo('retour')">Retour</button>
+
+        <!-- Admin sections - only visible to admin users -->
+        <template v-if="isAdmin">
+          <hr class="menu-divider">
+
+          <h4 class="admin-title">Administration</h4>
+          <button class="menu-button admin-button" @click="navigateTo('roles')">
+            Gestion des Rôles
+          </button>
+          <button class="menu-button admin-button" @click="navigateTo('permissions')">
+            Gestion des Permissions
+          </button>
+          <button class="menu-button admin-button" @click="navigateTo('users')">
+            Gestion des Utilisateurs
+          </button>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faBars } from '@fortawesome/free-solid-svg-icons'
+import { useAuth } from '@/composables/useAuth'
 
 const isOpen = ref(false)
 const router = useRouter()
+const { isAdmin, loadUserData } = useAuth()
+
+// Load user data on component mount
+onMounted(async () => {
+  await loadUserData()
+})
 
 function toggleMenu() {
   isOpen.value = !isOpen.value

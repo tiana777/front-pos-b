@@ -8,23 +8,39 @@
       </header>
       <section class="modal-body">
         <div class="field">
-          <label class="label">Montant</label>
+          <label class="label">Montant du fond de caisse</label>
           <div class="control">
-            <input class="input" type="number" v-model.number="amount" min="0" step="0.01"
-              placeholder="Entrez le montant du fond de caisse" @input="validateAmount" />
+            <input class="input" type="number" v-model.number="amount" min="0" step="0.01" placeholder="Montant"
+              @input="validateAmount" />
           </div>
           <p v-if="amountError" class="help is-danger">{{ amountError }}</p>
         </div>
+
+        <div class="field">
+          <label class="label">Numéro de ticket initial</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select v-model.number="ticketNumber" @change="validateTicketNumber">
+                <option value="">-- Sélectionnez un numéro --</option>
+                <option v-for="num in ticketNumbers" :key="num" :value="num">
+                  {{ num }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <p v-if="ticketError" class="help is-danger">{{ ticketError }}</p>
+        </div>
+
         <div class="field">
           <label class="label">Note</label>
           <div class="control">
-            <input class="input" type="text" v-model="note" placeholder="Entrez une note (optionnel)" />
+            <input class="input" type="text" v-model="note" maxlength="50" placeholder="Note (max 50 caractères)" />
           </div>
         </div>
       </section>
       <footer class="modal-footer">
         <button class="button button-success" :class="{ 'is-loading': isSending }" @click="sendAmount"
-          :disabled="isSending || !!amountError || amount === null">
+          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === ''">
           Envoyer
         </button>
         <button class="button button-cancel" @click="closeModal" :disabled="isSending">
@@ -36,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 
 const props = defineProps({
   isOpen: Boolean
@@ -44,22 +60,13 @@ const props = defineProps({
 
 const emits = defineEmits(['close', 'send'])
 
+const ticketNumbers = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 7300]
 const amount = ref(null)
+const ticketNumber = ref('')
 const note = ref('')
 const amountError = ref('')
+const ticketError = ref('')
 const isSending = ref(false)
-
-watch(
-  () => props.isOpen,
-  (newVal) => {
-    if (newVal) {
-      amount.value = null
-      note.value = ''
-      amountError.value = ''
-      isSending.value = false
-    }
-  }
-)
 
 const validateAmount = () => {
   if (amount.value === null || amount.value === '') {
@@ -71,12 +78,32 @@ const validateAmount = () => {
   }
 }
 
+const validateTicketNumber = () => {
+  if (ticketNumber.value === '') {
+    ticketError.value = 'Le numéro de ticket est requis.'
+  } else if (ticketNumber.value < 1000) {
+    ticketError.value = 'Le numéro doit être au moins 1000.'
+  } else {
+    ticketError.value = ''
+  }
+}
+
 const sendAmount = () => {
   validateAmount()
-  if (amountError.value) return
+  validateTicketNumber()
+  if (amountError.value || ticketError.value) return
+
   isSending.value = true
-  emits('send', { amount: amount.value, note: note.value })
-  // Simulate async operation, then close modal
+
+  // Save to cache
+  const data = {
+    amount: amount.value,
+    ticketNumber: ticketNumber.value,
+    note: note.value
+  }
+
+  emits('send', data)
+
   setTimeout(() => {
     isSending.value = false
     emits('close')
@@ -86,6 +113,26 @@ const sendAmount = () => {
 const closeModal = () => {
   emits('close')
 }
+
+watch(
+  () => props.isOpen,
+  (newVal) => {
+    if (newVal) {
+      loadFromCache()
+    } else {
+      // Reset when modal closes
+      amount.value = null
+      ticketNumber.value = ''
+      note.value = ''
+      amountError.value = ''
+      ticketError.value = ''
+      isSending.value = false
+    }
+  }
+)
+
+
+
 </script>
 
 <style scoped>
@@ -157,5 +204,25 @@ const closeModal = () => {
   padding: 0.5rem 1rem;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.select.is-fullwidth {
+  width: 100%;
+}
+
+.select select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
 }
 </style>

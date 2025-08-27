@@ -213,7 +213,7 @@ const saveProduct = async () => {
       ...response_1.data.product,
       price: localProduct.price // Ajoutez le prix depuis le state local
     };
-    emits('save', response_1.data.product)
+    emits('save', updatedProductData)
     emits('close')
   } catch (error) {
     console.error('Erreur:', error.response?.data || error)
@@ -231,32 +231,194 @@ const convertFileToBase64 = (file) => {
 
 const closeModal = () => emits('close')
 </script>
-
 <style scoped>
-:root {
-  --primary-red: #d32f2f;
-  --primary-gray: #757575;
-  --primary-white: #ffffff;
-  --background-light: #a83232;
-  --border-color: #e0e0e0;
+/* Import Bulma for core styling */
+@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+
+/* * Modal container styling to center it perfectly on the screen.
+ * This is the key part to fix the centering issue.
+ */
+.modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Modal background overlay */
+.modal-background {
+  background-color: rgba(10, 10, 10, 0.86);
+}
+
+/* Modal card layout */
 .modal-card {
-  max-width: 600px;
+  margin: 0;
   width: 100%;
-  background-color: var(--primary-white);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(235, 229, 229, 0.2);
+  max-width: 640px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  /* Added for a modern look */
 }
 
+/* Modal header */
 .modal-header {
-  padding: 2rem;
-  background: var(--background-light);
-  border-bottom: 1px solid #eee;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-bottom: 1px solid #dbdbdb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  color: #888;
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+}
+
+/* Modal body (form content) */
+.modal-body {
+  flex-grow: 1;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+  padding: 1.5rem;
+}
+
+.field {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  font-weight: bold;
+  color: #4a4a4a;
+  margin-bottom: 0.5rem;
+}
+
+.input,
+.select select {
+  width: 100%;
+  border-radius: 4px;
+  border: 1px solid #dbdbdb;
+  box-shadow: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus,
+.select select:focus {
+  border-color: #00d1b2;
+  box-shadow: 0 0 0 0.125em rgba(0, 209, 178, 0.25);
+}
+
+.select {
+  width: 100%;
+}
+
+.checkbox {
+  font-weight: normal;
+  color: #4a4a4a;
+}
+
+/* Image preview section */
+.image-preview {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.product-image {
+  max-width: 200px;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  object-fit: contain;
+}
+
+.help.is-danger {
+  color: #ff3860;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Modal footer (buttons) */
+.modal-footer {
+  background-color: #fff;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #dbdbdb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .button-success {
-  background-color: var(--primary-red);
-  color: var(--primary-white);
+  background-color: #00d1b2;
+  color: white;
+  border: none;
+}
+
+.button-success:hover {
+  background-color: #00b89c;
+}
+
+.button-cancel {
+  background-color: #f5f5f5;
+  color: #4a4a4a;
+  border: 1px solid #dbdbdb;
+}
+
+.button-cancel:hover {
+  background-color: #e0e0e0;
+}
+
+/* Loading spinner animation */
+.button.is-loading::after {
+  animation: spinAround 0.5s infinite linear;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  content: "";
+  display: block;
+  height: 1em;
+  width: 1em;
+  position: relative;
+  top: 0;
+  left: 0;
+}
+
+.save-error {
+  color: #ff3860;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+@keyframes spinAround {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

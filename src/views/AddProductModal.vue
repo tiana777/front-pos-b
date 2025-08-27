@@ -18,8 +18,8 @@
           <div class="field">
             <label class="label">Réference du produit</label>
             <div class="control">
-              <input class="input" type="text" v-model="localProduct.name" maxlength="4" required
-                placeholder="Nom du produit" />
+              <input class="input" type="text" v-model="localProduct.ref" maxlength="4" required
+                placeholder="Référence du produit" />
             </div>
           </div>
 
@@ -90,6 +90,7 @@ const emits = defineEmits(['close', 'added'])
 
 const localProduct = reactive({
   name: '',
+  ref: '',
   price: 0,
   status: false,
   category_id: null,
@@ -159,6 +160,7 @@ const addProduct = async () => {
     const token = localStorage.getItem('token')
     const payload = {
       name: localProduct.name,
+      ref: localProduct.ref,
       price: localProduct.price,
       status: localProduct.status,
       category_id: localProduct.category_id,
