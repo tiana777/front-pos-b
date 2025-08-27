@@ -209,6 +209,7 @@ const handlePaymentConfirmation = async (paymentData) => {
       })
     }
 
+
     saleData.value = {
       ...response.data,
       items: [...cart.value],
