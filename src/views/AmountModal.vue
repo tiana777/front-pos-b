@@ -114,22 +114,7 @@ const closeModal = () => {
   emits('close')
 }
 
-watch(
-  () => props.isOpen,
-  (newVal) => {
-    if (newVal) {
-      loadFromCache()
-    } else {
-      // Reset when modal closes
-      amount.value = null
-      ticketNumber.value = ''
-      note.value = ''
-      amountError.value = ''
-      ticketError.value = ''
-      isSending.value = false
-    }
-  }
-)
+
 
 
 

@@ -19,13 +19,45 @@
         <font-awesome-icon icon="home" />
         <span>Home</span>
       </router-link>
+
+      <!-- POS Selector for Admins -->
+      <div v-if="true" class="pos-selector">
+        <select v-model="selectedPOS" @change="onPOSChange" class="pos-select" required>
+          <option :value="null" disabled>Sélectionner un POS</option>
+          <option v-for="pos in pointOfSales" :key="pos.id" :value="pos">
+            {{ pos.name }}
+          </option>
+        </select>
+      </div>
     </div>
   </nav>
 </template>
 
-<script>
-export default {
-  name: 'Navigation'
+<script setup>
+import { ref, onMounted } from 'vue'
+import { usePosStore } from '../stores/posStore.js'
+import { useAuth } from '../composables/useAuth.js'
+
+const posStore = usePosStore()
+const { isAdmin, loadUserData } = useAuth()
+
+const selectedPOS = ref(null)
+const pointOfSales = ref([])
+
+onMounted(async () => {
+  // Load user data to determine if admin
+  await loadUserData()
+
+  if (isAdmin.value) {
+    await posStore.fetchPointOfSales()
+    pointOfSales.value = posStore.pointOfSales
+    posStore.loadSelectedPOS()
+    selectedPOS.value = posStore.selectedPOS
+  }
+})
+
+const onPOSChange = () => {
+  posStore.setSelectedPOS(selectedPOS.value)
 }
 </script>
 
@@ -66,6 +98,26 @@ export default {
 
 .pos-link:hover {
   background-color: #c0392b;
+}
+
+.pos-selector {
+  display: flex;
+  align-items: center;
+}
+
+.pos-select {
+  background-color: #34495e;
+  color: white;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.pos-select:focus {
+  outline: none;
+  border-color: #e74c3c;
 }
 
 .nav-link span {

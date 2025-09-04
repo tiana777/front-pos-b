@@ -14,6 +14,7 @@ import PermissionList from '@/views/permissions/PermissionList.vue'
 import PermissionCreate from '@/views/permissions/PermissionCreate.vue'
 import UserList from '@/views/users/UserList.vue'
 import UserRoleManagement from '@/views/users/UserRoleManagement.vue'
+import Printer from '../views/Printer.vue'
 
 import Table from '../views/Table.vue'
 
@@ -118,6 +119,11 @@ const router = createRouter({
       name: 'users-roles',
       component: UserRoleManagement,
       props: true,
+    },
+    {
+      path: '/printers',
+      name: 'printers',
+      component: Printer,
     },
   ],
 })

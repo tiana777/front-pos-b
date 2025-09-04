@@ -104,7 +104,7 @@ const handleAmountModalSend = (payload) => {
 
 // Computed
 const filteredCashRegisters = computed(() => {
-  if (!cashRegisters.value.length) return []
+  if (!Array.isArray(cashRegisters.value) || !cashRegisters.value.length) return []
 
   if (isConnected.value && connectedUserId.value === currentUserId.value) {
     return cashRegisters.value.filter(register => register.id === selectedCashRegister.value)
@@ -137,7 +137,7 @@ const fetchCashRegisters = async () => {
     const response = await axios.get('http://127.0.0.1:8000/api/cash-registers', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    cashRegisters.value = response.data
+    cashRegisters.value = response.data.data ? response.data.data : response.data
   } catch (error) {
     console.error('Erreur lors du chargement des caisses:', error)
     alert('Impossible de charger les caisses')
@@ -166,9 +166,13 @@ const checkSessionStatus = async (cashRegisterId) => {
 }
 
 const initializeSessions = async () => {
-  await Promise.all(
-    cashRegisters.value.map(register => checkSessionStatus(register.id))
-  )
+  if (Array.isArray(cashRegisters.value)) {
+    await Promise.all(
+      cashRegisters.value.map(register => checkSessionStatus(register.id))
+    )
+  } else {
+    console.error('cashRegisters is not an array:', cashRegisters.value)
+  }
 }
 
 const sendFondDeCaisse = async ({ amount, note, startTicketNumber }) => {
