@@ -1,7 +1,7 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-background absolute inset-0 bg-black/80" @click="closeModal"></div>
+    <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
       <header class="modal-header">
         <h2 class="modal-title">Ajouter une imprimante</h2>
         <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
@@ -238,7 +238,7 @@ const closeModal = () => {
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+/* Bulma removed; using Tailwind utilities in template */
 
 .modal {
   display: flex;

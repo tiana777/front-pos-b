@@ -1,30 +1,22 @@
 <template>
 
-  <nav class="navbar">
-    <div class="navbar-end">
-
-      <div class="navbar-item has-dropdown is-hoverable">
-
-        <a class="navbar-link">
-          <span class="icon">
-
-            <i class="fas fa-user-circle"></i>
-          </span>
-          {{ user.name }}
+  <nav class="fixed inset-x-0 top-0 z-50 flex justify-end bg-gray-100 px-4 py-2 shadow">
+    <div class="relative group">
+      <a class="inline-flex cursor-default items-center gap-2 px-2 py-1 font-semibold text-gray-800">
+        <i class="fas fa-user-circle"></i>
+        {{ user.name }}
+      </a>
+      <div class="absolute right-0 mt-2 hidden w-48 rounded border bg-white shadow group-hover:block">
+        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <i class="fas fa-user mr-2"></i> Profil
         </a>
-
-        <div class="navbar-dropdown is-right">
-          <a class="navbar-item">
-            <i class="fas fa-user"></i> Profil
-          </a>
-          <a class="navbar-item">
-            <i class="fas fa-cog"></i> Paramètres
-          </a>
-          <hr class="navbar-divider">
-          <a class="navbar-item has-text-danger" @click="logout">
-            <i class="fas fa-sign-out-alt"></i> Déconnexion
-          </a>
-        </div>
+        <a class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <i class="fas fa-cog mr-2"></i> Paramètres
+        </a>
+        <div class="my-1 border-t"></div>
+        <a class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50" @click="logout">
+          <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+        </a>
       </div>
     </div>
   </nav>
@@ -59,34 +51,4 @@ onMounted(fetchUserProfile)
 </script>
 
 <style scoped>
-.navbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px;
-  background: #f5f5f5;
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.navbar-link {
-  font-size: 16px;
-  font-weight: bold;
-  padding: 10px;
-}
-
-.icon {
-  margin-right: 5px;
-}
-
-.has-dropdown:hover .navbar-dropdown {
-  display: block;
-}
-
-.navbar-item.has-text-danger {
-  color: red;
-}
 </style>

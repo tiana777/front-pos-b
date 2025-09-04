@@ -1,84 +1,77 @@
 <template>
 
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
-      <header class="modal-header">
-        <h2 class="modal-title">Éditer le produit</h2>
-        <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/80" @click="closeModal"></div>
+    <div class="relative z-10 flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+      <header class="flex items-center justify-between border-b px-6 py-4">
+        <h2 class="text-xl font-bold text-gray-800">Éditer le produit</h2>
+        <button class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Fermer" @click="closeModal">&times;</button>
       </header>
-      <section class="modal-body">
+      <section class="flex-1 overflow-y-auto bg-gray-50 px-6 py-4">
         <!-- Nom du produit -->
-        <div class="field">
-          <label class="label">Nom du produit</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localProduct.name" maxlength="255" required
-              placeholder="Nom du produit" />
-          </div>
+        <div class="mb-6">
+          <label class="mb-2 block font-semibold text-gray-700">Nom du produit</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="text" v-model="localProduct.name" maxlength="255" required placeholder="Nom du produit" />
         </div>
         <!-- Ref du produit -->
-        <div class="field">
-          <label class="label">Réference du produit</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localProduct.ref" maxlength="255" required
-              placeholder="Nom du produit" />
-          </div>
+        <div class="mb-6">
+          <label class="mb-2 block font-semibold text-gray-700">Réference du produit</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="text" v-model="localProduct.ref" maxlength="255" required placeholder="Nom du produit" />
         </div>
 
         <!-- Prix -->
-        <div class="field">
-          <label class="label">Prix</label>
-          <div class="control">
-            <input class="input" type="number" v-model.number="localProduct.price" min="0" step="0.01" required
-              placeholder="Prix" />
-          </div>
+        <div class="mb-6">
+          <label class="mb-2 block font-semibold text-gray-700">Prix</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="number" v-model.number="localProduct.price" min="0" step="0.01" required placeholder="Prix" />
         </div>
 
         <!-- Statut actif -->
-        <div class="field">
-          <label class="checkbox">
-            <input type="checkbox" v-model="localProduct.status" />
+        <div class="mb-6">
+          <label class="inline-flex items-center gap-2 text-gray-700">
+            <input type="checkbox" v-model="localProduct.status" class="size-4 rounded border-gray-300 text-teal-600 focus:ring-0" />
             Actif
           </label>
         </div>
 
         <!-- Catégorie -->
-        <div class="field">
-          <label class="label">Catégorie</label>
-          <div class="control">
-            <div class="select">
-              <select v-model="localProduct.category_id">
-                <option :value="null" disabled>Choisir une catégorie</option>
-                <option v-for="category in categories" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </option>
-              </select>
-            </div>
-          </div>
+        <div class="mb-6">
+          <label class="mb-2 block font-semibold text-gray-700">Catégorie</label>
+          <select v-model="localProduct.category_id" class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none">
+            <option :value="null" disabled>Choisir une catégorie</option>
+            <option v-for="category in categories" :key="category.id" :value="category.id">
+              {{ category.name }}
+            </option>
+          </select>
         </div>
 
         <!-- Image -->
-        <div class="field">
-          <label class="label">Image</label>
-          <div class="control">
-            <input type="file" accept="image/*" @change="onImageChange" />
-          </div>
-          <p v-if="imageError" class="help is-danger">{{ imageError }}</p>
-          <figure class="image-preview">
-            <img :src="imageUrl" :alt="localProduct.name" class="product-image" loading="lazy" />
+        <div class="mb-6">
+          <label class="mb-2 block font-semibold text-gray-700">Image</label>
+          <input type="file" accept="image/*" @change="onImageChange" class="block w-full text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:text-white hover:file:bg-teal-700" />
+          <p v-if="imageError" class="mt-1 text-sm text-rose-500">{{ imageError }}</p>
+          <figure class="mt-4 text-center">
+            <img :src="imageUrl" :alt="localProduct.name" class="mx-auto h-auto max-w-[200px] rounded-lg shadow" loading="lazy" />
           </figure>
         </div>
       </section>
-      <footer class="modal-footer">
-        <button class="button button-success" :class="{ 'is-loading': isSaving }" @click="saveProduct"
-          :disabled="isSaving">
+      <footer class="flex items-center justify-end gap-2 border-t bg-gray-50 px-6 py-3">
+        <button
+          class="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+          :class="{ 'cursor-not-allowed': isSaving }"
+          @click="saveProduct"
+          :disabled="isSaving"
+        >
           Enregistrer
         </button>
-        <button class="button button-cancel" @click="closeModal" :disabled="isSaving">
+        <button
+          class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+          @click="closeModal"
+          :disabled="isSaving"
+        >
           Annuler
         </button>
       </footer>
-      <p v-if="saveError" class="save-error">{{ saveError }}</p>
+      <p v-if="saveError" class="px-6 pb-4 text-center text-rose-600">{{ saveError }}</p>
     </div>
   </div>
 </template>
@@ -232,193 +225,4 @@ const convertFileToBase64 = (file) => {
 const closeModal = () => emits('close')
 </script>
 <style scoped>
-/* Import Bulma for core styling */
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
-
-/* * Modal container styling to center it perfectly on the screen.
- * This is the key part to fix the centering issue.
- */
-.modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Modal background overlay */
-.modal-background {
-  background-color: rgba(10, 10, 10, 0.86);
-}
-
-/* Modal card layout */
-.modal-card {
-  margin: 0;
-  width: 100%;
-  max-width: 640px;
-  max-height: calc(100vh - 40px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 8px;
-  /* Added for a modern look */
-}
-
-/* Modal header */
-.modal-header {
-  background-color: #fff;
-  padding: 1.5rem;
-  border-bottom: 1px solid #dbdbdb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #333;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  line-height: 1;
-  color: #888;
-  position: absolute;
-  top: 1rem;
-  right: 1.5rem;
-}
-
-/* Modal body (form content) */
-.modal-body {
-  flex-grow: 1;
-  overflow-y: auto;
-  background-color: #f5f5f5;
-  padding: 1.5rem;
-}
-
-.field {
-  margin-bottom: 1.5rem;
-}
-
-.label {
-  font-weight: bold;
-  color: #4a4a4a;
-  margin-bottom: 0.5rem;
-}
-
-.input,
-.select select {
-  width: 100%;
-  border-radius: 4px;
-  border: 1px solid #dbdbdb;
-  box-shadow: none;
-  transition: border-color 0.2s;
-}
-
-.input:focus,
-.select select:focus {
-  border-color: #00d1b2;
-  box-shadow: 0 0 0 0.125em rgba(0, 209, 178, 0.25);
-}
-
-.select {
-  width: 100%;
-}
-
-.checkbox {
-  font-weight: normal;
-  color: #4a4a4a;
-}
-
-/* Image preview section */
-.image-preview {
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.product-image {
-  max-width: 200px;
-  height: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  object-fit: contain;
-}
-
-.help.is-danger {
-  color: #ff3860;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
-
-/* Modal footer (buttons) */
-.modal-footer {
-  background-color: #fff;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #dbdbdb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.button {
-  padding: 0.75rem 1.5rem;
-  font-weight: bold;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.button-success {
-  background-color: #00d1b2;
-  color: white;
-  border: none;
-}
-
-.button-success:hover {
-  background-color: #00b89c;
-}
-
-.button-cancel {
-  background-color: #f5f5f5;
-  color: #4a4a4a;
-  border: 1px solid #dbdbdb;
-}
-
-.button-cancel:hover {
-  background-color: #e0e0e0;
-}
-
-/* Loading spinner animation */
-.button.is-loading::after {
-  animation: spinAround 0.5s infinite linear;
-  border: 2px solid #fff;
-  border-right-color: transparent;
-  border-top-color: transparent;
-  content: "";
-  display: block;
-  height: 1em;
-  width: 1em;
-  position: relative;
-  top: 0;
-  left: 0;
-}
-
-.save-error {
-  color: #ff3860;
-  text-align: center;
-  margin-top: 1rem;
-}
-
-@keyframes spinAround {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
 </style>

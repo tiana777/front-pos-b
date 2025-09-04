@@ -1,12 +1,18 @@
 <template>
-  <div class="pavenum-overlay" @click.self="close">
-    <div class="pavenum-container">
-      <div class="display">{{ displayValue }}</div>
-      <div class="buttons">
-        <button v-for="n in numbers" :key="n" @click="appendNumber(n)" class="button is-medium is-primary">{{ n
-        }}</button>
-        <button @click="clear" class="button is-medium is-danger">C</button>
-        <button @click="confirm" class="button is-medium is-success">OK</button>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="close">
+    <div class="flex w-[300px] flex-col items-center rounded-xl bg-white p-4 shadow-2xl">
+      <div class="mb-4 h-12 w-full select-none rounded-lg border border-gray-300 px-4 py-2 text-right text-xl">{{ displayValue }}</div>
+      <div class="grid w-full grid-cols-3 gap-2">
+        <button
+          v-for="n in numbers"
+          :key="n"
+          @click="appendNumber(n)"
+          class="select-none rounded-lg border border-gray-300 bg-white py-2 text-lg hover:bg-gray-100 active:bg-gray-200"
+        >
+          {{ n }}
+        </button>
+        <button @click="clear" class="rounded-lg bg-red-600 py-2 text-lg font-semibold text-white hover:bg-red-700">C</button>
+        <button @click="confirm" class="rounded-lg bg-green-600 py-2 text-lg font-semibold text-white hover:bg-green-700">OK</button>
       </div>
     </div>
   </div>
@@ -53,52 +59,4 @@ const close = () => {
 </script>
 
 <style scoped>
-.pavenum-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.pavenum-container {
-  background: white;
-  border-radius: 12px;
-  padding: 1rem;
-  width: 300px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.display {
-  width: 100%;
-  height: 3rem;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  text-align: right;
-  padding: 0.5rem 1rem;
-  box-sizing: border-box;
-  user-select: none;
-}
-
-.buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.button {
-  font-size: 1.25rem;
-  user-select: none;
-}
 </style>

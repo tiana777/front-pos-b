@@ -36,6 +36,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'LoginPage' })
 import { ref } from 'vue'
 import Keyboard from '../components/tools/Keyboard.vue'
 import axios from 'axios'

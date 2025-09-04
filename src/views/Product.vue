@@ -78,9 +78,9 @@
     <ProductEditModal :isOpen="isEditModalOpen" :product="selectedProduct" @close="closeEditModal" @save="handleSave" />
     <AddProductModal :isOpen="isAddModalOpen" @close="closeAddModal" @added="handleAdd" />
 
-    <div v-if="isDeleteConfirmOpen" class="modal is-active">
-      <div class="modal-background" @click="closeDeleteConfirm"></div>
-      <div class="modal-card">
+    <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="modal-background absolute inset-0 bg-black/80" @click="closeDeleteConfirm"></div>
+      <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
         <header class="modal-header">
           <h2 class="modal-title">Confirmer la suppression</h2>
           <button class="modal-close" aria-label="Fermer" @click="closeDeleteConfirm">&times;</button>
@@ -89,8 +89,8 @@
           <p>Êtes-vous sûr de vouloir supprimer le produit <strong>{{ productToDelete?.name }}</strong> ?</p>
         </section>
         <footer class="modal-footer">
-          <button class="button is-danger" @click="deleteProduct" :disabled="isDeleting">Supprimer</button>
-          <button class="button" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
+          <button class="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60" @click="deleteProduct" :disabled="isDeleting">Supprimer</button>
+          <button class="rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
         </footer>
       </div>
     </div>
@@ -396,7 +396,7 @@ const deleteProduct = async () => {
 }
 </script>
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+/* Bulma removed; using Tailwind utilities in template */
 
 .product-list-container {
   padding: 1.5rem;

@@ -1,28 +1,46 @@
 <template>
-  <nav class="main-navigation">
-    <div class="nav-container">
-      <router-link to="/pos" class="nav-link pos-link">
+  <nav class="bg-slate-800 shadow-md px-4 py-2">
+    <div class="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+      <router-link
+        to="/pos"
+        class="inline-flex items-center gap-2 rounded-md bg-red-500 px-3 py-2 font-semibold text-white hover:bg-red-600"
+      >
         <font-awesome-icon icon="shopping-cart" />
-        <span>POS</span>
+        <span class="text-sm">POS</span>
       </router-link>
 
-      <router-link to="/roles" class="nav-link">
+      <router-link
+        to="/roles"
+        class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-white hover:bg-slate-700"
+      >
         <font-awesome-icon icon="users" />
-        <span>Roles</span>
-      </router-link>
-      <router-link to="/users" class="nav-link">
-        <font-awesome-icon icon="user" />
-        <span>Users</span>
+        <span class="text-sm">Roles</span>
       </router-link>
 
-      <router-link to="/" class="nav-link">
+      <router-link
+        to="/users"
+        class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-white hover:bg-slate-700"
+      >
+        <font-awesome-icon icon="user" />
+        <span class="text-sm">Users</span>
+      </router-link>
+
+      <router-link
+        to="/"
+        class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-white hover:bg-slate-700"
+      >
         <font-awesome-icon icon="home" />
-        <span>Home</span>
+        <span class="text-sm">Home</span>
       </router-link>
 
       <!-- POS Selector for Admins -->
-      <div v-if="true" class="pos-selector">
-        <select v-model="selectedPOS" @change="onPOSChange" class="pos-select" required>
+      <div v-if="true" class="inline-flex items-center">
+        <select
+          v-model="selectedPOS"
+          @change="onPOSChange"
+          required
+          class="rounded-md border border-slate-700 bg-slate-700 px-2 py-1 text-sm text-white outline-none focus:border-red-500"
+        >
           <option :value="null" disabled>Sélectionner un POS</option>
           <option v-for="pos in pointOfSales" :key="pos.id" :value="pos">
             {{ pos.name }}
@@ -31,6 +49,7 @@
       </div>
     </div>
   </nav>
+  
 </template>
 
 <script setup>
@@ -60,79 +79,3 @@ const onPOSChange = () => {
   posStore.setSelectedPOS(selectedPOS.value)
 }
 </script>
-
-<style scoped>
-.main-navigation {
-  background-color: #2c3e50;
-  padding: 0.5rem 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.nav-container {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.nav-link {
-  color: white;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.nav-link:hover {
-  background-color: #34495e;
-}
-
-.pos-link {
-  background-color: #e74c3c;
-  font-weight: bold;
-}
-
-.pos-link:hover {
-  background-color: #c0392b;
-}
-
-.pos-selector {
-  display: flex;
-  align-items: center;
-}
-
-.pos-select {
-  background-color: #34495e;
-  color: white;
-  border: 1px solid #34495e;
-  border-radius: 4px;
-  padding: 0.5rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.pos-select:focus {
-  outline: none;
-  border-color: #e74c3c;
-}
-
-.nav-link span {
-  font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-  .nav-container {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .nav-link {
-    width: 100%;
-    justify-content: center;
-  }
-}
-</style>

@@ -3,51 +3,54 @@
     <Pos />
     <Profile />
   </div>
-  <div class="container mt-4 role-management-page" style=" padding-top: 80px;">
-    <div class="box has-background-white">
-      <div class="columns">
-        <div class="column">
-          <h2 class="title has-text-black">Rôle</h2>
-        </div>
-        <div class="column is-narrow">
-          <router-link to="/roles/create" class="button is-primary">
-            <span class="icon">
-              <font-awesome-icon icon="plus" />
-            </span>
-            <span>Nouveau</span>
-          </router-link>
-        </div>
+  <div class="px-4 pt-20">
+    <div class="rounded-lg bg-white p-4 shadow">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-black">Rôle</h2>
+        <router-link
+          to="/roles/create"
+          class="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          <font-awesome-icon icon="plus" />
+          <span>Nouveau</span>
+        </router-link>
       </div>
 
-      <table class="table is-fullwidth is-hoverable has-background-white">
-        <thead>
-          <tr>
-            <th class="has-text-black">ID</th>
-            <th class="has-text-black">Name</th>
-            <th class="has-text-black">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="role in roles" :key="role.id">
-            <td class="has-text-black">{{ role.id }}</td>
-            <td class="has-text-black">{{ role.name }}</td>
-            <td class="has-text-black">
-              <div class="buttons are-small">
-                <router-link :to="`/roles/${role.id}/edit`" class="button is-warning">
-                  <span class="icon">
+      <div class="overflow-x-auto">
+        <table class="min-w-full border-separate border-spacing-0 bg-white text-left text-sm">
+          <thead>
+            <tr>
+              <th class="border-b px-3 py-2 text-black">ID</th>
+              <th class="border-b px-3 py-2 text-black">Name</th>
+              <th class="border-b px-3 py-2 text-black">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="role in roles" :key="role.id" class="hover:bg-slate-50">
+              <td class="px-3 py-2 text-black">{{ role.id }}</td>
+              <td class="px-3 py-2 text-black">{{ role.name }}</td>
+              <td class="px-3 py-2 text-black">
+                <div class="flex items-center gap-2">
+                  <router-link
+                    :to="`/roles/${role.id}/edit`"
+                    class="inline-flex items-center justify-center rounded-md bg-yellow-500 px-2.5 py-1.5 text-white hover:bg-yellow-600"
+                    title="Éditer"
+                  >
                     <font-awesome-icon icon="pencil" />
-                  </span>
-                </router-link>
-                <button @click="deleteRole(role.id)" class="button is-danger">
-                  <span class="icon">
+                  </router-link>
+                  <button
+                    @click="deleteRole(role.id)"
+                    class="inline-flex items-center justify-center rounded-md bg-red-600 px-2.5 py-1.5 text-white hover:bg-red-700"
+                    title="Supprimer"
+                  >
                     <font-awesome-icon icon="trash" />
-                  </span>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
