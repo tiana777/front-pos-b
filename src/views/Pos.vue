@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'PosMenu' })
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'

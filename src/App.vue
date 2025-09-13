@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen flex flex-col">
-    <router-view class="flex-1" />
+  <div>
+    <router-view />
   </div>
 </template>
 

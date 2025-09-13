@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+defineOptions({ name: 'VirtualKeyboard' })
 import { ref, onMounted } from 'vue'
 import { Move as MoveIcon } from 'lucide-vue-next'
 

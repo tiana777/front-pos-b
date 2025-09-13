@@ -1,38 +1,61 @@
 <template>
-  <section class="hero is-fullheight custom-background">
-    <div class="hero-body">
-      <div class="container">
-        <div class="box login-box">
-          <h1 class="title has-text-centered">Connexion</h1>
-
-          <div class="field">
-            <label class="label">Nom d'utilisateur</label>
-            <div class="control">
-              <input ref="emailInput" class="input" type="email" v-model="email" placeholder="Entrez votre identifiant"
-                @focus="showKeyboard('email')" />
+<div class="text-gray-900 flex justify-center">
+    <div class="max-w-screen-xl m-0 sm:m-10 bg-white shadow sm:rounded-lg flex justify-center flex-1">
+        <div class="lg:w-1/2 xl:w-5/12 p-6 sm:p-12 bg-red-500 rounded-l-lg">
+            <div>
+                <img src="../assets/new-logo.png"
+                    class="w-32 mx-auto" />
             </div>
-          </div>
+            <div class="mt-12 flex flex-col items-center">
+                <h1 class="text-2xl xl:text-3xl text-gray-100 font-extrabold">
+                    Connexion
+                </h1>
+                <div class="w-full flex-1 mt-8">
+                    <div class="mx-auto max-w-xs">
+                        <input
+                            ref="emailInput"
+                            v-model="email" placeholder="Entrez votre identifiant"
+                            class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
+                            type="email"
+                             @focus="showKeyboard('email')" />
+                        <input
+                            ref="passwordInput"
+                            type="password" v-model="password"
+                            class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
+                            placeholder="Mot de passe"
+                            @focus="showKeyboard('password')" />
+                        <button
+                            class="mt-5 tracking-wide font-semibold bg-gray-500 text-gray-100 w-full py-4 rounded-lg hover:bg-gray-700 transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
+                            @click="login">
+                            <span class="ml-3">
+                                Se connecter
+                            </span>
+                        </button>
 
-          <div class="field">
-            <label class="label">Mot de passe</label>
-            <div class="control">
-              <input ref="passwordInput" class="input" type="password" v-model="password" placeholder="Mot de passe"
-                @focus="showKeyboard('password')" />
+                        <p v-if="error" class="has-text-danger mt-3 has-text-centered">{{ error }}</p>
+                        <p class="mt-6 text-xs text-gray-600 text-center">
+                            I agree to abide by templatana's
+                            <a href="#" class="border-b border-gray-500 border-dotted">
+                                Terms of Service
+                            </a>
+                            and its
+                            <a href="#" class="border-b border-gray-500 border-dotted">
+                                Privacy Policy
+                            </a>
+                        </p>
+                    </div>
+                </div>
             </div>
-          </div>
-
-          <div class="field mt-4">
-            <button class="button is-dark is-fullwidth" @click="login">Se connecter</button>
-          </div>
-
-          <p v-if="error" class="has-text-danger mt-3 has-text-centered">{{ error }}</p>
         </div>
-      </div>
+        <div class="flex-1 text-center hidden lg:flex">
+            <div class="m-12 xl:m-16 w-full bg-[url('../assets/logoigp.jpg')] bg-cover bg-center bg-no-repeat">
+            </div>
+        </div>
     </div>
+</div>
+<Keyboard v-if="keyboardVisible" @key-pressed="handleKeyPress" />
 
-    <!-- Clavier virtuel -->
-    <Keyboard v-if="keyboardVisible" @key-pressed="handleKeyPress" />
-  </section>
+
 </template>
 
 <script setup>
@@ -142,68 +165,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.custom-background {
-  background: linear-gradient(135deg, #ff7e5f, #feb47b);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-box {
-  max-width: 400px;
-  margin: auto;
-  padding: 2rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.title {
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-}
-
-.label {
-  color: #34495e;
-  font-weight: 500;
-}
-
-.input {
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  padding: 12px 15px;
-  transition: all 0.3s;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.input:focus {
-  border-color: #4361ee;
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-}
-
-.button.is-dark {
-  background: linear-gradient(to right, #2c3e50, #4a6582);
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.button.is-dark:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.has-text-danger {
-  font-weight: 500;
-  background: rgba(239, 71, 111, 0.1);
-  padding: 10px;
-  border-radius: 8px;
+.round {
+  border-top-left-radius: 1rem;
+  border-bottom-left-radius: 1rem;
 }
 </style>

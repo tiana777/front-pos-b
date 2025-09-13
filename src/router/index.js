@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Pos from '../views/Pos.vue'
-import Direct from '../views/Direct.vue'
+import DirectSale from '../views/DirectSale.vue'
 import Product from '../views/Product.vue'
 import CashPrinter from '../views/CashPrinter.vue'
 import UserSales from '../views/UserSales.vue'
@@ -54,7 +54,7 @@ const router = createRouter({
     {
       path: '/direct',
       name: 'direct',
-      component: Direct,
+      component: DirectSale,
     },
     {
       path: '/table',
