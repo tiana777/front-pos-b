@@ -1,5 +1,4 @@
 <template>
-  <Pos />
   <Profile />
   <section class="user-sales-section">
 
@@ -61,7 +60,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Pos from './Pos.vue'
 import Profile from './Profile.vue'
 import EditSaleModal from './EditSaleModal.vue'
 

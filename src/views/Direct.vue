@@ -1,6 +1,5 @@
 <template>
   <div class="pos-container">
-    <pos />
     <Profile />
     <PaymentModal :isOpen="isPaymentModalOpen" :totalAmount="totalPrice" @close-modal="handleCloseModal"
       @confirm-payment="handlePaymentConfirmation" />
@@ -39,9 +38,9 @@
           </div>
         </div>
         <div class="products-grid">
+
           <div v-for="product in filteredProducts" :key="product.id" class="product-card" @click="addToCart(product)">
-            <img :src="`http://localhost:8000/storage/${product.image}`" class="product-image"
-              @error="handleImageError">
+            <img :src="`http://localhost:8000/storage/${product.image}`" class="product-image">
             <div class="product-info">
               <h3>{{ product.name }}</h3>
               <p class="price">{{ formatPrice(product.price) }}</p>
@@ -110,8 +109,8 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
-import Pos from './Pos.vue'
 import Profile from './Profile.vue'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -163,7 +162,6 @@ const closeInvoiceModal = () => {
 }
 
 const handlePaymentConfirmation = async (paymentData) => {
-  console.log('Paiement confirmé:', paymentData)
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user'))
   if (!user) {
@@ -171,7 +169,22 @@ const handlePaymentConfirmation = async (paymentData) => {
     return
   }
   try {
-    const ticketNumber = `TICKET-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    // Retrieve ticket number from cash register session
+    const cashRegisterSessionString = localStorage.getItem('cashRegisterSession')
+    let ticketNumber = null
+    let cashRegisterSessionObject = null
+
+    if (cashRegisterSessionString) {
+      cashRegisterSessionObject = JSON.parse(cashRegisterSessionString)
+      ticketNumber = cashRegisterSessionObject.start_ticket_number
+      ticketNumber = parseInt(ticketNumber, 10)
+    }
+
+    if (!ticketNumber) {
+      console.error('No ticket number found in cash register session')
+      return
+    }
+
     const totalAmount = cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
     const saleData = {
@@ -191,6 +204,7 @@ const handlePaymentConfirmation = async (paymentData) => {
         Authorization: `Bearer ${token}`
       }
     })
+
 
     const saleId = response.data.id
     for (const item of cart.value) {
@@ -218,6 +232,32 @@ const handlePaymentConfirmation = async (paymentData) => {
 
     currentInvoiceNumber.value = `INV-${response.data.id || Date.now()}`
     currentPaymentMethod.value = paymentData.method
+
+    // Use the existing cashRegisterSessionString from earlier
+    if (cashRegisterSessionString) {
+      // Convert the JSON string into a JavaScript object
+      const cashRegisterSessionObject = JSON.parse(cashRegisterSessionString);
+
+      // Now you can access the cash_register_id property
+      const cashRegisterId = cashRegisterSessionObject.cash_register_id;
+      await axios.post('http://127.0.0.1:8000/api/printers/invoice/' + response.data.id, cashRegisterId, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+    } else {
+      console.log("No session found in localStorage.");
+
+    }
+
+    // Increment ticket number after successful sale
+    if (cashRegisterSessionObject) {
+      ticketNumber += 1
+      cashRegisterSessionObject.start_ticket_number = ticketNumber
+      localStorage.setItem('cashRegisterSession', JSON.stringify(cashRegisterSessionObject))
+    }
 
     clearCart()
     handleCloseModal()
@@ -247,6 +287,11 @@ const filteredProducts = ref([])
 const cart = ref([])
 const activeCategory = ref(null)
 const searchQuery = ref('')
+
+function goToCategoryManage() {
+  // Navigate to the category management page
+  router.push({ name: 'categories' })
+}
 
 const formatPrice = (price) => {
   return `${parseFloat(price).toFixed(2)} Ar`
@@ -317,6 +362,7 @@ const totalPrice = computed(() => {
 onMounted(async () => {
   const user = JSON.parse(localStorage.getItem('user'))
   const token = localStorage.getItem('token')
+  const router = useRouter()
 
   if (!user?.point_of_sale_id || !token) {
     console.error('Utilisateur non authentifié ou point de vente non défini')
@@ -342,9 +388,6 @@ onMounted(async () => {
   }
 })
 
-const handleImageError = (event) => {
-  event.target.src = '/placeholder-image.png'
-}
 </script>
 <style>
 :root {
@@ -513,7 +556,7 @@ body {
 .product-image {
   width: 100%;
   height: 140px;
-  object-fit: cover;
+
   background-color: #f5f5f5;
 }
 

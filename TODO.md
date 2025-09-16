@@ -1,28 +1,18 @@
-# TODO - Vue de Gestion des Imprimantes
+# TODO: Fix ticketNumber sending from AmountModal to CashPrinter and retrieve from session in Direct.vue
 
-## ✅ Terminé
+## Completed Tasks
 
-- [x] Créer src/services/printerService.js avec méthodes CRUD
-- [x] Créer src/views/PrinterEditModal.vue pour édition
-- [x] Créer src/views/PrinterCreateModal.vue pour ajout
-- [x] Créer src/views/Printer.vue vue principale de gestion
-- [x] Ajouter route /printers dans src/router/index.js
+- [x] Analyzed AmountModal.vue and CashPrinter.vue to identify the issue
+- [x] Fixed destructuring in sendFondDeCaisse function to match emitted data from AmountModal
+- [x] Updated axios.post payload to use ticketNumber instead of startTicketNumber
+- [x] Updated localStorage.setItem for 'currentTicketNumber' to use ticketNumber
+- [x] Corrected the API URL back to 127.0.0.1
+- [x] Replace random ticket number generation with retrieval from cash register session's start_ticket_number
+- [x] Update handlePaymentConfirmation function to use the session's ticket number
+- [x] Fixed duplicate variable declaration issue
+- [x] Verified ticketNumber is correctly emitted as ticketNumber.value from AmountModal.vue
+- [x] Fixed ticketNumber type to be integer (changed from empty string to null)
 
-## 🔄 Étapes de Suivi
+## Next Steps
 
-- [ ] Tester la vue en lançant l'application
-- [ ] Vérifier que les endpoints API existent côté backend
-- [ ] Ajustements si nécessaire basés sur les tests
-
-## 📋 Fonctionnalités Implémentées
-
-- Liste des imprimantes avec filtres (type de connexion, statut)
-- Recherche par nom
-- Ajout d'imprimante
-- Édition d'imprimante
-- Suppression d'imprimante
-- Gestion des champs : nom, caisse, type connexion, chemins réseau/USB, timeout, défaut, actif
-
-## 🔗 Routes
-
-- `/printers` - Gestion des imprimantes
+- [ ] Test the complete flow: AmountModal → CashPrinter → Direct.vue ticket retrieval → Sales creation

@@ -77,7 +77,9 @@ const login = async () => {
       user.value = response.data.user;
 
       // Redirection
-      const redirectPath = localStorage.getItem('last_visited_url') || '/cash-printer';
+      const userRoles = response.data.user.roles || []
+      const isAdmin = userRoles.includes('admin')
+      const redirectPath = isAdmin ? '/direct' : (localStorage.getItem('last_visited_url') || '/cash-printer')
       window.location.href = redirectPath;
     } else {
       error.value = "Réponse du serveur invalide";

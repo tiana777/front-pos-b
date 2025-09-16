@@ -104,30 +104,50 @@
                   <span class="icon">
                     <font-awesome-icon icon="plus-circle" />
                   </span>
-                  Ajouter une permission
+                  Ajouter des permissions
                 </h3>
 
-                <div class="field has-addons">
-                  <div class="control is-expanded">
-                    <div class="select is-fullwidth">
-                      <select v-model="selectedPermission" :disabled="isAssigning">
-                        <option value="" disabled>Sélectionnez une permission</option>
-                        <option v-for="permission in availablePermissions" :key="permission.id"
-                          :value="permission.name">
+                <div v-if="availablePermissions.length > 0">
+                  <div class="permissions-checkboxes">
+                    <div v-for="permission in availablePermissions" :key="permission.id" class="field">
+                      <div class="control">
+                        <label class="checkbox permission-checkbox">
+                          <input type="checkbox" :value="permission.name" v-model="selectedPermissions"
+                            :disabled="isAssigning">
+                          <span class="checkmark"></span>
                           {{ permission.name }}
-                        </option>
-                      </select>
+                        </label>
+                      </div>
                     </div>
                   </div>
-                  <div class="control">
-                    <button @click="assignPermission" class="button is-success" :class="{ 'is-loading': isAssigning }"
-                      :disabled="!selectedPermission || isAssigning">
-                      <span class="icon">
-                        <font-awesome-icon icon="plus" />
-                      </span>
-                      <span>Ajouter</span>
-                    </button>
+
+                  <div class="field is-grouped mt-4">
+                    <div class="control">
+                      <button @click="assignPermissions" class="button is-success"
+                        :class="{ 'is-loading': isAssigning }"
+                        :disabled="selectedPermissions.length === 0 || isAssigning">
+                        <span class="icon">
+                          <font-awesome-icon icon="plus" />
+                        </span>
+                        <span>Ajouter les permissions sélectionnées</span>
+                      </button>
+                    </div>
+                    <div class="control">
+                      <button @click="clearSelection" class="button is-light" :disabled="isAssigning">
+                        <span class="icon">
+                          <font-awesome-icon icon="times" />
+                        </span>
+                        <span>Effacer la sélection</span>
+                      </button>
+                    </div>
                   </div>
+                </div>
+
+                <div v-else class="notification is-light">
+                  <span class="icon">
+                    <font-awesome-icon icon="check-circle" />
+                  </span>
+                  Toutes les permissions disponibles ont été ajoutées à ce rôle
                 </div>
               </div>
 
@@ -177,7 +197,7 @@ export default {
 
     const role = ref(null)
     const availablePermissions = ref([])
-    const selectedPermission = ref('')
+    const selectedPermissions = ref([])
     const loading = ref(true)
     const error = ref(null)
     const isSaving = ref(false)
@@ -233,25 +253,33 @@ export default {
       }
     }
 
-    const assignPermission = async () => {
-      if (!selectedPermission.value) return
+    const assignPermissions = async () => {
+      if (selectedPermissions.value.length === 0) return
 
       try {
         isAssigning.value = true
-        await roleService.assignPermission(role.value.id, selectedPermission.value)
+
+        // Assign each selected permission
+        for (const permissionName of selectedPermissions.value) {
+          await roleService.assignPermission(role.value.id, permissionName)
+        }
 
         // Refresh data
         await fetchRole()
         await fetchAvailablePermissions()
 
-        selectedPermission.value = ''
-        console.log('Permission ajoutée avec succès')
+        selectedPermissions.value = []
+        console.log('Permissions ajoutées avec succès')
       } catch (err) {
-        console.error('Erreur lors de l\'ajout de la permission:', err)
+        console.error('Erreur lors de l\'ajout des permissions:', err)
         error.value = err.response?.data?.error || 'Erreur lors de l\'ajout'
       } finally {
         isAssigning.value = false
       }
+    }
+
+    const clearSelection = () => {
+      selectedPermissions.value = []
     }
 
     const revokePermission = async (permissionId) => {
@@ -307,7 +335,7 @@ export default {
     return {
       role,
       availablePermissions,
-      selectedPermission,
+      selectedPermissions,
       loading,
       error,
       isSaving,
@@ -317,7 +345,8 @@ export default {
       fetchRole,
       fetchAvailablePermissions,
       updateRole,
-      assignPermission,
+      assignPermissions,
+      clearSelection,
       revokePermission,
       deleteRole
     }
@@ -358,6 +387,92 @@ export default {
   }
 }
 
+.permissions-checkboxes {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 1rem;
+  background-color: #fafafa;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.permissions-checkboxes .field {
+  margin-bottom: 0.75rem;
+}
+
+.permissions-checkboxes .field:last-child {
+  margin-bottom: 0;
+}
+
+.permission-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500;
+  color: #363636;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.permission-checkbox:hover {
+  background-color: #f0f0f0;
+}
+
+.permission-checkbox input[type="checkbox"] {
+  margin-right: 0.75rem;
+  transform: scale(1.2);
+}
+
+.permission-checkbox input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.permission-checkbox input[type="checkbox"]:disabled+span+span {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media screen and (max-width: 768px) {
+  .container {
+    padding: 0.5rem;
+  }
+
+  .card-content {
+    padding: 1rem;
+  }
+
+  .box {
+    padding: 1.5rem;
+  }
+
+  .field.has-addons {
+    flex-direction: column;
+  }
+
+  .field.has-addons .control {
+    width: 100%;
+  }
+
+  .field.is-grouped {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .field.is-grouped .control {
+    width: 100%;
+  }
+
+  .permissions-checkboxes {
+    max-height: 250px;
+    padding: 0.75rem;
+  }
+}
+
 @media screen and (max-width: 480px) {
   .tags {
     justify-content: center;
@@ -365,6 +480,16 @@ export default {
 
   .tag {
     font-size: 0.8rem;
+  }
+
+  .permissions-checkboxes {
+    max-height: 200px;
+    padding: 0.5rem;
+  }
+
+  .permission-checkbox {
+    padding: 0.4rem;
+    font-size: 0.9rem;
   }
 }
 </style>

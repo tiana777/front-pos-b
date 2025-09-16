@@ -1,5 +1,4 @@
 <template>
-  <Pos />
   <Profile />
   <section class="section">
     <div class="container">
@@ -7,7 +6,7 @@
         <div class="card-content">
 
           <!-- Sélection de la caisse -->
-          <div class="field">
+          <div v-if="!isAdmin" class="field">
             <label class="label">Choisir une caisse</label>
             <div class="control">
               <div class="cash-register-grid">
@@ -37,14 +36,13 @@
           </div>
 
           <!-- Bouton de connexion -->
-          <button class="button is-primary is-fullwidth mt-4" :disabled="!selectedCashRegister || isProcessing"
-            @click="onConnectButtonClick">
+          <button class="button is-primary is-fullwidth mt-4" @click="onConnectButtonClick">
             <span class="icon"><i class="fas fa-link"></i></span>
             <span>{{ getConnectButtonText() }}</span>
           </button>
 
           <!-- Boutons RAZ & Billetage après connexion -->
-          <div v-if="isConnected && connectedUserId === currentUserId" class="buttons-container">
+          <div v-if="isConnected && connectedUserId === currentUserId && !isAdmin" class="buttons-container">
             <button class="button is-warning is-light" @click="resetCashRegister">
               <i class="fas fa-sync-alt"></i> Remise à zéro
             </button>
@@ -58,7 +56,7 @@
 
           <!-- Indicateur de connexion -->
           <p v-if="isConnected && connectedUserId === currentUserId" class="has-text-success has-text-centered mt-3">
-            ✅ Caisse connectée : {{ connectedCashRegisterName }}
+            ✅ {{ isAdmin ? 'Administrateur connecté' : `Caisse connectée : ${connectedCashRegisterName}` }}
           </p>
         </div>
       </div>
@@ -73,9 +71,11 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import AmountModal from './AmountModal.vue'
-import Pos from './Pos.vue'
 import Profile from './Profile.vue'
+import { useAuth } from '@/composables/useAuth'
 const router = useRouter()
+
+const { isAdmin, currentUser, loadUserData } = useAuth()
 
 // États
 const isAmountModalOpen = ref(false)
@@ -127,6 +127,7 @@ const selectCashRegister = (registerId) => {
 }
 
 const getConnectButtonText = () => {
+  if (isAdmin.value) return 'Accéder'
   if (isConnected.value && connectedUserId.value === currentUserId.value) return 'Résumé'
   return 'Connecter'
 }
@@ -175,7 +176,7 @@ const initializeSessions = async () => {
   }
 }
 
-const sendFondDeCaisse = async ({ amount, note, startTicketNumber }) => {
+const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
   isProcessing.value = true
   try {
     const token = localStorage.getItem('token')
@@ -189,17 +190,18 @@ const sendFondDeCaisse = async ({ amount, note, startTicketNumber }) => {
         starting_amount: amount,
         note: note,
         expected_cash_amount: 0,
-        start_ticket_number: startTicketNumber
+        start_ticket_number: ticketNumber
       },
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
 
+
     if (response.data) {
       localStorage.setItem('cashRegisterSession', JSON.stringify(response.data))
 
-      if (startTicketNumber !== undefined) {
-        localStorage.setItem('currentTicketNumber', startTicketNumber.toString())
+      if (ticketNumber !== undefined) {
+        localStorage.setItem('currentTicketNumber', ticketNumber.toString())
       }
 
       isConnected.value = true
@@ -243,7 +245,9 @@ const viewSales = () => {
 }
 
 const onConnectButtonClick = () => {
-  if (isConnected.value && connectedUserId.value === currentUserId.value) {
+  if (isAdmin.value) {
+    router.push({ name: 'direct' })
+  } else if (isConnected.value && connectedUserId.value === currentUserId.value) {
     router.push({ name: 'direct' })
   } else {
     if (!selectedCashRegister.value) return alert('Sélectionnez une caisse')
@@ -253,10 +257,16 @@ const onConnectButtonClick = () => {
 
 // Lifecycle
 onMounted(async () => {
-  const user = JSON.parse(localStorage.getItem('user'))
+  await loadUserData()
+  const user = currentUser.value
   if (user) currentUserId.value = user.id
-  await fetchCashRegisters()
-  await initializeSessions()
+  if (isAdmin.value) {
+    isConnected.value = true
+    connectedUserId.value = user.id
+  } else {
+    await fetchCashRegisters()
+    await initializeSessions()
+  }
 })
 </script>
 

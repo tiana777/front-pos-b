@@ -1,6 +1,5 @@
 <template>
   <div style="position: relative;">
-    <Pos />
     <Profile />
   </div>
   <div class="container mt-4 role-management-page" style=" padding-top: 80px;">
@@ -57,7 +56,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import roleService from '@/services/roleService'
 import Profile from '../Profile.vue'
-import Pos from '../Pos.vue'
 const router = useRouter()
 const roles = ref([])
 

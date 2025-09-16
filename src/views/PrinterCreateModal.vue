@@ -31,6 +31,22 @@
             </div>
           </div>
         </div>
+
+        <!-- Type d'imprimante -->
+        <div class="field">
+          <label class="label">Type d'imprimante *</label>
+          <div class="control">
+            <div class="select">
+              <select v-model="printer.printer_type_id">
+                <option :value="null" disabled>Choisir un type d'imprimante</option>
+                <option v-for="type in printerTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Type de connexion -->
         <div class="field">
           <label class="label">Type de connexion *</label>
@@ -110,6 +126,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -124,6 +141,7 @@ const emits = defineEmits(['close', 'created'])
 const printer = reactive({
   name: '',
   cash_register_id: null,
+  printer_type_id: null,
   connection_type: 'usb',
   device_path: '',
   ip_address: '192.168.',
@@ -135,6 +153,8 @@ const printer = reactive({
 const cashRegisters = ref([])
 const isSaving = ref(false)
 const saveError = ref('')
+
+const { printerTypes, fetchPrinterTypes } = usePrinterTypes()
 
 
 
@@ -157,12 +177,16 @@ const fetchCashRegisters = async () => {
   }
 }
 
-onMounted(fetchCashRegisters)
+onMounted(() => {
+  fetchCashRegisters()
+  fetchPrinterTypes()
+})
 
 const isFormValid = computed(() => {
   const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
   return printer.name.trim() &&
     printer.cash_register_id &&
+    printer.printer_type_id &&
     printer.connection_type &&
     (printer.connection_type !== 'usb' || printer.device_path.trim()) &&
     (printer.connection_type !== 'network' || (ipRegex.test(printer.ip_address.trim()) && printer.port))
@@ -191,6 +215,7 @@ const savePrinter = async () => {
     const printerData = {
       name: printer.name,
       cash_register_id: printer.cash_register_id,
+      printer_type_id: printer.printer_type_id,
       connection_type: printer.connection_type,
       device_path: printer.device_path,
       ip_address: printer.ip_address,
@@ -221,6 +246,7 @@ const resetForm = () => {
   Object.assign(printer, {
     name: '',
     cash_register_id: null,
+    printer_type_id: null,
     connection_type: 'usb',
     device_path: '',
     ip_address: '192.168.',

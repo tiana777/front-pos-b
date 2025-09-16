@@ -1,12 +1,17 @@
 <template>
   <div class="product-list-container">
     <div class="header-section">
-      <pos />
       <Profile />
     </div>
     <div class="main-layout">
       <div class="sidebar">
-        <h3>Catégories</h3>
+        <div class="sidebar-header">
+          <h3>Catégories</h3>
+          <router-link to="/categories" class="manage-categories-btn">
+            <font-awesome-icon icon="fa-solid fa-cog" />
+            Gérer
+          </router-link>
+        </div>
         <div class="category-buttons">
           <button :class="{ active: selectedCategory === null }" @click="selectCategory(null)">
             Tous
@@ -19,14 +24,22 @@
       </div>
 
       <div class="content">
-        <div class="search-section">
-          <div class="search-box">
-            <input type="text" v-model.trim="searchQuery" placeholder="Rechercher un produit..." />
-            <button @click="openAddModal" title="Ajouter un produit">
-              <font-awesome-icon icon="fa-solid fa-plus" />
-            </button>
+        <div class="tabs-section">
+          <div class="tabs">
+            <button :class="{ active: activeTab === 'products' }" @click="activeTab = 'products'">Produits</button>
+            <button :class="{ active: activeTab === 'categories' }" @click="activeTab = 'categories'">Catégories</button>
           </div>
         </div>
+
+        <div v-if="activeTab === 'products'">
+          <div class="search-section">
+            <div class="search-box">
+              <input type="text" v-model.trim="searchQuery" placeholder="Rechercher un produit..." />
+              <button @click="openAddModal" title="Ajouter un produit">
+                <font-awesome-icon icon="fa-solid fa-plus" />
+              </button>
+            </div>
+          </div>
 
         <div v-if="loading" class="loading">
           <div class="spinner"></div>
@@ -72,11 +85,54 @@
             </div>
           </div>
         </div>
+        </div>
+
+        <div v-if="activeTab === 'categories'">
+          <div class="search-section">
+            <input type="text" v-model.trim="categorySearchQuery" placeholder="Rechercher une catégorie..." class="input" />
+          </div>
+
+          <div v-if="categoriesLoading" class="loading">
+            <div class="spinner"></div>
+            <p>Chargement en cours...</p>
+          </div>
+
+          <div v-else>
+            <div v-if="filteredCategories.length === 0" class="no-results">
+              Aucune catégorie trouvée
+            </div>
+
+            <div v-else class="categories-section">
+              <div class="categories-list">
+                <div v-for="category in filteredCategories" :key="category.id" class="category-card">
+                  <div class="category-details">
+                    <h3>{{ category.name }}</h3>
+                    <p v-if="category.description">{{ category.description }}</p>
+
+                    <p class="product-count">{{ category.products_count || 0 }} produits</p>
+                  </div>
+
+                  <div class="category-actions">
+                    <button @click.stop="openCategoryEditModal(category)" class="button is-small is-info">
+                      <font-awesome-icon icon="fa-solid fa-pencil" />
+                    </button>
+                    <button @click.stop="confirmCategoryDelete(category)" class="button is-small is-danger">
+                      <font-awesome-icon icon="fa-solid fa-trash" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <ProductEditModal :isOpen="isEditModalOpen" :product="selectedProduct" @close="closeEditModal" @save="handleSave" />
     <AddProductModal :isOpen="isAddModalOpen" @close="closeAddModal" @added="handleAdd" />
+
+    <CategoryCreateModal :isOpen="isCategoryCreateModalOpen" @close="closeCategoryCreateModal" @added="handleCategoryAdded" />
+    <CategoryEditModal :isOpen="isCategoryEditModalOpen" :categoryData="selectedCategory" @close="closeCategoryEditModal" @updated="handleCategoryUpdated" />
 
     <div v-if="isDeleteConfirmOpen" class="modal is-active">
       <div class="modal-background" @click="closeDeleteConfirm"></div>
@@ -94,6 +150,25 @@
         </footer>
       </div>
     </div>
+
+    <!-- Modal de confirmation de suppression de catégorie -->
+    <div v-if="isCategoryDeleteConfirmOpen" class="modal is-active">
+      <div class="modal-background" @click="closeCategoryDeleteConfirm"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Confirmer la suppression</p>
+          <button class="delete" @click="closeCategoryDeleteConfirm"></button>
+        </header>
+        <section class="modal-card-body">
+          <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>{{ categoryToDelete?.name }}</strong> ?</p>
+          <p class="has-text-danger">Cette action est irréversible et supprimera également tous les produits associés.</p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-danger" @click="deleteCategory" :disabled="isCategoryDeleting">Supprimer</button>
+          <button class="button" @click="closeCategoryDeleteConfirm">Annuler</button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 <script setup>
@@ -101,7 +176,8 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import ProductEditModal from './ProductEditModal.vue'
 import AddProductModal from './AddProductModal.vue'
-import Pos from './Pos.vue'
+import CategoryCreateModal from './CategoryCreateModal.vue'
+import CategoryEditModal from './CategoryEditModal.vue'
 import Profile from './Profile.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
@@ -430,11 +506,35 @@ const deleteProduct = async () => {
   height: fit-content;
 }
 
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .sidebar h3 {
   font-size: 1.25rem;
   font-weight: bold;
   color: #333;
-  margin-bottom: 1rem;
+  margin: 0;
+}
+
+.manage-categories-btn {
+  color: #00d1b2;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.manage-categories-btn:hover {
+  background-color: #f0f0f0;
 }
 
 .category-buttons {

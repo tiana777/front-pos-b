@@ -1,5 +1,5 @@
 <template>
-  <div class="keyboard box" :style="{ position: 'fixed', bottom: '20px', right: '20px' }"
+  <div class="keyboard box" :style="{ position: 'fixed', top: position.top + 'px', left: position.left + 'px' }"
     @mousedown.stop.prevent="startDrag">
     <!-- Drag header -->
     <div class="level mb-3">
@@ -52,7 +52,9 @@ const position = ref({ top: 600, left: 0 })
 
 onMounted(() => {
   const width = 600
-  position.value.left = (window.innerWidth - width) / 2
+  const height = 400 // approximate height of keyboard
+  position.value.left = window.innerWidth - width - 20
+  position.value.top = window.innerHeight - height - 20
 })
 
 let offset = { x: 0, y: 0 }

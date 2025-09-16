@@ -1,5 +1,4 @@
 <template>
-  <Pos />
   <Profile />
   <div class="sales-list-container">
     <h1 class="title has-text-black">Ventes</h1>
@@ -75,7 +74,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import Pos from './Pos.vue'
 import EditSaleModal from './EditSaleModal.vue'
 import Profile from './Profile.vue'
 

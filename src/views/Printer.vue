@@ -1,5 +1,7 @@
 /* eslint-disable vue/multi-word-component-names */
 <template>
+  <Pos />
+  <Profile />
   <div class="printer-list-container">
     <div class="header-section">
       <h1>Gestion des Imprimantes</h1>
@@ -131,6 +133,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import printerService from '../services/printerService.js'
 import { usePosStore } from '../stores/posStore.js'
 import { useAuth } from '../composables/useAuth.js'
+import Profile from './Profile.vue'
 
 const posStore = usePosStore()
 
@@ -227,12 +230,22 @@ const closeEditModal = () => {
 }
 
 const handleSave = async (updatedPrinter) => {
-  // Handle API response structure - might be nested in data.data
-  const printerData = updatedPrinter.data ? (updatedPrinter.data.data ? updatedPrinter.data.data : updatedPrinter.data) : updatedPrinter
-
-  const index = printers.value.findIndex(p => p.id === printerData.id)
-  if (index !== -1) {
-    printers.value[index] = printerData
+  try {
+    // Fetch the full printer data with relations (cash_register, point_of_sale)
+    const response = await printerService.getById(updatedPrinter.id)
+    const fullPrinter = response.data.data ? response.data.data : response.data
+    const index = printers.value.findIndex(p => p.id === fullPrinter.id)
+    if (index !== -1) {
+      printers.value[index] = fullPrinter
+    }
+  } catch (error) {
+    console.error('Error fetching updated printer:', error)
+    // Fallback to partial update if fetch fails
+    const printerData = updatedPrinter.data ? (updatedPrinter.data.data ? updatedPrinter.data.data : updatedPrinter.data) : updatedPrinter
+    const index = printers.value.findIndex(p => p.id === printerData.id)
+    if (index !== -1) {
+      printers.value[index] = { ...printers.value[index], ...printerData }
+    }
   }
   closeEditModal()
 }
@@ -247,7 +260,16 @@ const closeAddModal = () => {
 }
 
 const handleAdd = async (newPrinter) => {
-  printers.value = [newPrinter, ...printers.value]
+  try {
+    // Fetch the full printer data with relations (cash_register, point_of_sale)
+    const response = await printerService.getById(newPrinter.id)
+    const fullPrinter = response.data.data ? response.data.data : response.data
+    printers.value = [fullPrinter, ...printers.value]
+  } catch (error) {
+    console.error('Error fetching new printer:', error)
+    // Fallback to adding the provided data
+    printers.value = [newPrinter, ...printers.value]
+  }
   closeAddModal()
 }
 

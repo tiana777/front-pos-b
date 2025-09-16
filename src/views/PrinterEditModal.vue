@@ -32,6 +32,21 @@
           </div>
         </div>
 
+        <!-- Type d'imprimante -->
+        <div class="field">
+          <label class="label">Type d'imprimante</label>
+          <div class="control">
+            <div class="select">
+              <select v-model="localPrinter.printer_type_id">
+                <option :value="null" disabled>Choisir un type d'imprimante</option>
+                <option v-for="type in printerTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Type de connexion -->
         <div class="field">
           <label class="label">Type de connexion</label>
@@ -111,6 +126,7 @@
 <script setup>
 import { ref, watch, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -128,6 +144,7 @@ const localPrinter = reactive({
   id: null,
   name: '',
   cash_register_id: null,
+  printer_type_id: null,
   connection_type: 'usb',
   device_path: '',
   ip_address: '',
@@ -140,6 +157,8 @@ const localPrinter = reactive({
 const cashRegisters = ref([])
 const isSaving = ref(false)
 const saveError = ref('')
+
+const { printerTypes, fetchPrinterTypes } = usePrinterTypes()
 
 
 
@@ -162,7 +181,10 @@ const fetchCashRegisters = async () => {
   }
 }
 
-onMounted(fetchCashRegisters)
+onMounted(() => {
+  fetchCashRegisters()
+  fetchPrinterTypes()
+})
 
 watch(
   () => props.printer,
@@ -173,6 +195,7 @@ watch(
         id: newPrinter.id || null,
         name: newPrinter.name || '',
         cash_register_id: newPrinter.cash_register_id || null,
+        printer_type_id: newPrinter.printer_type_id || null,
         connection_type: newPrinter.connection_type || 'usb',
         device_path: newPrinter.device_path || '',
         ip_address: newPrinter.ip_address || '192.168.',
@@ -188,6 +211,7 @@ watch(
         id: null,
         name: '',
         cash_register_id: null,
+        printer_type_id: null,
         connection_type: 'usb',
         device_path: '',
         ip_address: '',

@@ -23,6 +23,10 @@ import {
   faShoppingCart,
   faUser,
   faHome,
+  faBars,
+  faUserCircle,
+  faSignOutAlt,
+  faCog,
 } from '@fortawesome/free-solid-svg-icons'
 
 // Ajoute les icônes dans la bibliothèque
@@ -46,6 +50,10 @@ library.add(
   faShoppingCart,
   faUser,
   faHome,
+  faBars,
+  faUserCircle,
+  faSignOutAlt,
+  faCog,
 )
 
 export { FontAwesomeIcon }

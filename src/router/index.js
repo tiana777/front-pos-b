@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
-import Pos from '../views/Pos.vue'
 import Direct from '../views/Direct.vue'
 import Product from '../views/Product.vue'
 import CashPrinter from '../views/CashPrinter.vue'
 import UserSales from '../views/UserSales.vue'
 import PointOfSaleManage from '../views/PointOfSaleManage.vue'
+import CategoryManage from '../views/CategoryManage.vue'
 
 import RoleList from '@/views/roles/RoleList.vue'
 import RoleCreate from '@/views/roles/RoleCreate.vue'
@@ -45,11 +45,6 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: Login,
-    },
-    {
-      path: '/pos',
-      name: 'pos',
-      component: Pos,
     },
     {
       path: '/direct',
@@ -124,6 +119,11 @@ const router = createRouter({
       path: '/printers',
       name: 'printers',
       component: Printer,
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: CategoryManage,
     },
   ],
 })

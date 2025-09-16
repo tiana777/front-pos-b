@@ -40,7 +40,7 @@
       </section>
       <footer class="modal-footer">
         <button class="button button-success" :class="{ 'is-loading': isSending }" @click="sendAmount"
-          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === ''">
+          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === null || ticketNumber === ''">
           Envoyer
         </button>
         <button class="button button-cancel" @click="closeModal" :disabled="isSending">
@@ -62,7 +62,7 @@ const emits = defineEmits(['close', 'send'])
 
 const ticketNumbers = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 7300]
 const amount = ref(null)
-const ticketNumber = ref('')
+const ticketNumber = ref(null)
 const note = ref('')
 const amountError = ref('')
 const ticketError = ref('')
@@ -79,7 +79,7 @@ const validateAmount = () => {
 }
 
 const validateTicketNumber = () => {
-  if (ticketNumber.value === '') {
+  if (ticketNumber.value === null || ticketNumber.value === '') {
     ticketError.value = 'Le numéro de ticket est requis.'
   } else if (ticketNumber.value < 1000) {
     ticketError.value = 'Le numéro doit être au moins 1000.'
@@ -101,6 +101,7 @@ const sendAmount = () => {
     ticketNumber: ticketNumber.value,
     note: note.value
   }
+  console.log(typeof data)
 
   emits('send', data)
 
