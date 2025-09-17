@@ -1,121 +1,101 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
-      <header class="modal-card-head has-background-black">
-        <p class="modal-card-title has-text-white">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/80" @click="closeModal"></div>
+    <div class="relative z-10 flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+      <header class="flex items-center justify-between border-b bg-black px-6 py-4">
+        <p class="text-lg font-semibold text-white">
           <font-awesome-icon icon="fa-solid fa-credit-card" class="mr-2" />
           Mode de paiement
         </p>
-        <button class="delete" aria-label="close" @click="closeModal"></button>
+        <button class="text-white/80 hover:text-white" aria-label="close" @click="closeModal">&times;</button>
       </header>
 
-      <section class="modal-card-body">
+      <section class="flex-1 overflow-y-auto bg-gray-50 px-6 py-4">
         <!-- Montant total -->
-        <div class="field mb-3">
-          <label class="label has-text-weight-bold">Total à payer</label>
-          <div class="control has-icons-right">
-            <input class="input is-large has-text-weight-bold" :value="formatPrice(totalAmount)" readonly disabled>
-            <span class="icon is-right is-large">
-              <span class="has-text-weight-bold">Ar</span>
-            </span>
+        <div class="mb-4">
+          <label class="mb-2 block font-semibold">Total à payer</label>
+          <div class="relative">
+            <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :value="formatPrice(totalAmount)" readonly disabled>
           </div>
         </div>
 
         <!-- Référence TPE -->
-        <div class="field mb-5" v-if="selectedPayment === 'TPE'">
-          <label class="label has-text-weight-bold">Référence</label>
-          <div class="control">
-            <input class="input is-large" v-model="cardNumber" placeholder="1234 5678 9012 3456" type="text"
-              maxlength="19" ref="cardNumberInput">
-          </div>
+        <div class="mb-5" v-if="selectedPayment === 'TPE'">
+          <label class="mb-2 block font-semibold">Référence</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg focus:border-blue-500 focus:outline-none" v-model="cardNumber" placeholder="1234 5678 9012 3456" type="text" maxlength="19" ref="cardNumberInput">
         </div>
 
         <!-- Montant reçu -->
-        <div class="field mb-5" v-if="selectedPayment === 'Espèce'">
-          <label class="label has-text-weight-bold">Montant reçu</label>
-          <div class="control has-icons-right">
-            <input class="input is-large has-text-weight-bold" v-model="amountReceived" @input="calculateChange"
-              placeholder="0.00" ref="amountReceivedInput">
-            <span class="icon is-right is-large">
-              <span class="has-text-weight-bold">Ar</span>
-            </span>
-          </div>
+        <div class="mb-5" v-if="selectedPayment === 'Espèce'">
+          <label class="mb-2 block font-semibold">Montant reçu</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" v-model="amountReceived" @input="calculateChange" placeholder="0.00" ref="amountReceivedInput">
         </div>
 
         <!-- Numéro mobile -->
-        <div class="field mb-5" v-if="isMobilePayment">
-          <label class="label has-text-weight-bold">Numéro de téléphone</label>
-          <div class="control">
-            <input class="input is-large" v-model="phoneNumber" placeholder="034 12 345 67" type="tel" ref="phoneInput">
-          </div>
+        <div class="mb-5" v-if="isMobilePayment">
+          <label class="mb-2 block font-semibold">Numéro de téléphone</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg focus:border-blue-500 focus:outline-none" v-model="phoneNumber" placeholder="034 12 345 67" type="tel" ref="phoneInput">
         </div>
 
         <!-- Monnaie à rendre -->
-        <div class="field mb-5" v-if="!isMobilePayment">
-          <label class="label has-text-weight-bold">Monnaie à rendre</label>
-          <div class="control">
-            <input class="input is-large has-text-weight-bold"
-              :class="changeAmount >= 0 ? 'has-text-success' : 'has-text-danger'"
-              :value="formatPrice(Math.abs(changeAmount))" readonly>
-          </div>
+        <div class="mb-5" v-if="!isMobilePayment">
+          <label class="mb-2 block font-semibold">Monnaie à rendre</label>
+          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :class="changeAmount >= 0 ? 'text-green-600' : 'text-red-600'" :value="formatPrice(Math.abs(changeAmount))" readonly>
         </div>
 
         <!-- Options de paiement et pavé numérique -->
-        <div class="payment-container">
-          <div class="payment-options">
-            <div v-for="(payment, index) in payments" :key="index" class="payment-option"
-              :class="{ 'is-active': selectedPayment === payment.name }" @click="selectPaymentMethod(payment.name)">
-              <div class="payment-icon">
+        <div class="mt-4 flex flex-col gap-4 md:flex-row">
+          <div class="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
+            <button
+              v-for="(payment, index) in payments"
+              :key="index"
+              @click="selectPaymentMethod(payment.name)"
+              class="relative inline-flex min-h-20 flex-col items-center justify-center rounded-md border px-3 py-2 text-sm font-medium shadow-sm transition hover:bg-gray-50"
+              :class="selectedPayment === payment.name ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-white text-gray-700 border-gray-200'"
+            >
+              <div class="mb-1 text-lg" :class="selectedPayment === payment.name ? 'text-white' : 'text-gray-700'">
                 <font-awesome-icon :icon="getPaymentIcon(payment.name)" />
               </div>
-              <div class="payment-name">{{ payment.name }}</div>
-              <div v-if="selectedPayment === payment.name" class="payment-check">
+              <div class="font-medium">{{ payment.name }}</div>
+              <div v-if="selectedPayment === payment.name" class="absolute right-1 top-1 text-white">
                 <font-awesome-icon icon="fa-solid fa-check-circle" />
               </div>
-            </div>
+            </button>
           </div>
 
-          <div class="numeric-keypad" :class="{ 'is-mobile-payment': isMobilePayment }">
-            <div class="keypad-row">
-              <button class="keypad-button" @click="appendToField('7')">7</button>
-              <button class="keypad-button" @click="appendToField('8')">8</button>
-              <button class="keypad-button" @click="appendToField('9')">9</button>
-            </div>
-            <div class="keypad-row">
-              <button class="keypad-button" @click="appendToField('4')">4</button>
-              <button class="keypad-button" @click="appendToField('5')">5</button>
-              <button class="keypad-button" @click="appendToField('6')">6</button>
-            </div>
-            <div class="keypad-row">
-              <button class="keypad-button" @click="appendToField('1')">1</button>
-              <button class="keypad-button" @click="appendToField('2')">2</button>
-              <button class="keypad-button" @click="appendToField('3')">3</button>
-            </div>
-            <div class="keypad-row">
-              <button class="keypad-button" @click="appendToField('0')">0</button>
-              <button class="keypad-button" @click="appendToField(' ')" v-if="isMobilePayment">Espace</button>
-              <button class="keypad-button" @click="appendDecimal()" v-else>
-                <font-awesome-icon icon="fa-solid fa-circle" />
-              </button>
-            </div>
-            <div class="keypad-row">
-              <button class="keypad-button is-danger" @click="clearField">
-                <font-awesome-icon icon="fa-solid fa-delete-left" />
-              </button>
-            </div>
+          <div class="grid w-full max-w-[220px] grid-cols-3 gap-2 rounded bg-white p-2 shadow" :class="{ '': isMobilePayment }">
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('7')">7</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('8')">8</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('9')">9</button>
+
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('4')">4</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('5')">5</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('6')">6</button>
+
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('1')">1</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('2')">2</button>
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('3')">3</button>
+
+            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('0')">0</button>
+            <button v-if="isMobilePayment" class="aspect-square w-full rounded border border-gray-300 text-xs transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField(' ')">Espace</button>
+            <button v-else class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendDecimal()">
+              <font-awesome-icon icon="fa-solid fa-circle" />
+            </button>
+
+            <button class="col-span-1 aspect-square w-full rounded border border-red-300 bg-red-100 text-red-700 transition hover:bg-red-200 active:bg-red-300" @click="clearField">
+              <font-awesome-icon icon="fa-solid fa-delete-left" />
+            </button>
           </div>
         </div>
       </section>
 
-      <footer class="modal-card-foot is-flex is-justify-content-space-between">
-        <button class="button is-light" @click="closeModal">
-          <font-awesome-icon icon="fa-solid fa-times" class="mr-2" />
+      <footer class="flex items-center justify-between border-t px-6 py-4">
+        <button class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100" @click="closeModal">
+          <font-awesome-icon icon="fa-solid fa-times" />
           Annuler
         </button>
-        <button class="button is-danger is-focused" :disabled="!isPaymentValid" @click="confirmPayment"
-          :class="{ 'is-loading': isProcessing }">
-          <font-awesome-icon icon="fa-solid fa-check" class="mr-2" />
+        <button class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60" :disabled="!isPaymentValid" @click="confirmPayment">
+          <font-awesome-icon icon="fa-solid fa-check" />
           Confirmer le paiement
         </button>
       </footer>

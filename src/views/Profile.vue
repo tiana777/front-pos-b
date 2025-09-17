@@ -1,4 +1,5 @@
 <template>
+
   <div>
 
     <div v-if="isOpen" class="menu-overlay" @click="closeMenu"></div>
@@ -39,8 +40,24 @@
           <button class="menu-button" @click="navigateTo('user-sales')">Gérer les  ventes</button>
 
 
+
         </div>
+        <ul class="py-2" aria-labelledby="user-menu-button">
+          <li>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ">Dashboard</a>
+          </li>
+          <li>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+          </li>
+          <li>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Earnings</a>
+          </li>
+          <li>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @click="logout">Deconnexion</a>
+          </li>
+        </ul>
       </div>
+
     </div>
 
     <nav class="navbar">
@@ -60,9 +77,11 @@
       </div>
     </nav>
   </div>
+
 </template>
 
 <script setup>
+defineOptions({ name: 'UserProfile' })
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
@@ -113,6 +132,7 @@ const navigateTo = (routeName) => {
 </script>
 
 <style scoped>
+
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -279,4 +299,5 @@ const navigateTo = (routeName) => {
   box-shadow: 0 6px 10px rgba(58, 12, 163, 0.6);
   cursor: pointer;
 }
+
 </style>

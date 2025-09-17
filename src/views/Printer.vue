@@ -15,15 +15,8 @@
             <button :class="{ active: selectedConnectionType === null }" @click="selectConnectionType(null)">
               Tous
             </button>
-            <button :class="{ active: selectedConnectionType === 'usb' }" @click="selectConnectionType('usb')">
-              USB
-            </button>
-            <button :class="{ active: selectedConnectionType === 'network' }" @click="selectConnectionType('network')">
-              Réseau
-            </button>
-            <button :class="{ active: selectedConnectionType === 'bluetooth' }"
-              @click="selectConnectionType('bluetooth')">
-              Bluetooth
+            <button :class="{ active: selectedConnectionType === 'cups' }" @click="selectConnectionType('cups')">
+              CUPS
             </button>
           </div>
         </div>
@@ -74,12 +67,6 @@
                     <p v-if="printer.cash_register && printer.cash_register.point_of_sale"><strong>POS:</strong> {{
                       printer.cash_register.point_of_sale.name }}
                     </p>
-                    <p v-if="printer.connection_type === 'network'">
-                      <strong>Réseau:</strong> {{ printer.ip_address }}
-                    </p>
-                    <p v-if="printer.connection_type === 'usb'">
-                      <strong>Périphérique:</strong> {{ printer.device_path }}
-                    </p>
                     <p><strong>Timeout:</strong> {{ printer.timeout !== undefined && printer.timeout !== null ?
                       printer.timeout : 'N/A' }}s</p>
                   </div>
@@ -105,9 +92,9 @@
     <PrinterCreateModal :isOpen="isAddModalOpen" @close="closeAddModal" @created="handleAdd"
       :selectedPOS="posStore.selectedPOS" />
 
-    <div v-if="isDeleteConfirmOpen" class="modal is-active">
-      <div class="modal-background" @click="closeDeleteConfirm"></div>
-      <div class="modal-card">
+    <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="modal-background absolute inset-0 bg-black/80" @click="closeDeleteConfirm"></div>
+      <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
         <header class="modal-header">
           <h2 class="modal-title">Confirmer la suppression</h2>
           <button class="modal-close" aria-label="Fermer" @click="closeDeleteConfirm">&times;</button>
@@ -116,8 +103,8 @@
           <p>Êtes-vous sûr de vouloir supprimer l'imprimante <strong>{{ printerToDelete?.name }}</strong> ?</p>
         </section>
         <footer class="modal-footer">
-          <button class="button is-danger" @click="deletePrinter" :disabled="isDeleting">Supprimer</button>
-          <button class="button" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
+          <button class="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60" @click="deletePrinter" :disabled="isDeleting">Supprimer</button>
+          <button class="rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
           <p v-if="deleteError" class="delete-error">{{ deleteError }}</p>
         </footer>
       </div>
@@ -186,9 +173,7 @@ const selectConnectionType = (type) => {
 
 const getConnectionTypeLabel = (type) => {
   const labels = {
-    usb: 'USB',
-    network: 'Réseau',
-    bluetooth: 'Bluetooth'
+    cups: 'CUPS'
   }
   return labels[type] || type
 }
@@ -302,7 +287,7 @@ const deletePrinter = async () => {
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+/* Bulma removed; using Tailwind utilities in template + local CSS */
 
 .printer-list-container {
   padding: 1.5rem;

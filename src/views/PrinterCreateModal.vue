@@ -1,7 +1,7 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-background absolute inset-0 bg-black/80" @click="closeModal"></div>
+    <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
       <header class="modal-header">
         <h2 class="modal-title">Ajouter une imprimante</h2>
         <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
@@ -44,44 +44,6 @@
                 </option>
               </select>
             </div>
-          </div>
-        </div>
-
-        <!-- Type de connexion -->
-        <div class="field">
-          <label class="label">Type de connexion *</label>
-          <div class="control">
-            <div class="select">
-              <select v-model="printer.connection_type">
-                <option value="usb">USB</option>
-                <option value="network">Réseau</option>
-                <option value="bluetooth">Bluetooth</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chemin du périphérique (pour USB) -->
-        <div v-if="printer.connection_type === 'usb'" class="field">
-          <label class="label">Chemin du périphérique *</label>
-          <div class="control">
-            <input class="input" type="text" v-model="printer.device_path" placeholder="/dev/usb/lp0" />
-          </div>
-        </div>
-
-        <!-- Adresse IP (pour réseau) -->
-        <div v-if="printer.connection_type === 'network'" class="field">
-          <label class="label">Adresse IP *</label>
-          <div class="control">
-            <input class="input" type="text" v-model="printer.ip_address" placeholder="192.168.1.100" />
-          </div>
-        </div>
-
-        <!-- Port (pour réseau) -->
-        <div v-if="printer.connection_type === 'network'" class="field">
-          <label class="label">Port *</label>
-          <div class="control">
-            <input class="input" type="number" v-model.number="printer.port" min="1" max="65535" />
           </div>
         </div>
 
@@ -142,10 +104,8 @@ const printer = reactive({
   name: '',
   cash_register_id: null,
   printer_type_id: null,
-  connection_type: 'usb',
-  device_path: '',
-  ip_address: '192.168.',
-  port: 9100,
+  connection_type: 'cups',
+  timeout: 30,
   is_default: false,
   is_active: true
 })
@@ -183,27 +143,12 @@ onMounted(() => {
 })
 
 const isFormValid = computed(() => {
-  const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
   return printer.name.trim() &&
     printer.cash_register_id &&
-    printer.printer_type_id &&
-    printer.connection_type &&
-    (printer.connection_type !== 'usb' || printer.device_path.trim()) &&
-    (printer.connection_type !== 'network' || (ipRegex.test(printer.ip_address.trim()) && printer.port))
+    printer.printer_type_id
 })
 
-const validateIPAddress = (ip) => {
-  const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
-  return ipRegex.test(ip.trim())
-}
-
 const savePrinter = async () => {
-  // Additional IP validation with user-friendly error message
-  if (printer.connection_type === 'network' && !validateIPAddress(printer.ip_address)) {
-    saveError.value = 'Adresse IP invalide. Format attendu: xxx.xxx.xxx.xxx'
-    return
-  }
-
   if (!isFormValid.value) return
 
   try {
@@ -217,9 +162,8 @@ const savePrinter = async () => {
       cash_register_id: printer.cash_register_id,
       printer_type_id: printer.printer_type_id,
       connection_type: printer.connection_type,
-      device_path: printer.device_path,
-      ip_address: printer.ip_address,
-      port: printer.port,
+      ip_address: null,
+      port: null,
       timeout: printer.timeout,
       is_default: printer.is_default,
       is_active: printer.is_active
@@ -247,10 +191,7 @@ const resetForm = () => {
     name: '',
     cash_register_id: null,
     printer_type_id: null,
-    connection_type: 'usb',
-    device_path: '',
-    ip_address: '192.168.',
-    port: 9100,
+    connection_type: 'cups',
     timeout: 30,
     is_default: false,
     is_active: true
@@ -264,7 +205,7 @@ const closeModal = () => {
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+/* Bulma removed; using Tailwind utilities in template */
 
 .modal {
   display: flex;

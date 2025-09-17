@@ -1,7 +1,7 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-background absolute inset-0 bg-black/80" @click="closeModal"></div>
+    <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
       <header class="modal-header">
         <h2 class="modal-title">{{ isEdit ? 'Éditer l\'imprimante' : 'Ajouter une imprimante' }}</h2>
         <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
@@ -47,44 +47,6 @@
           </div>
         </div>
 
-        <!-- Type de connexion -->
-        <div class="field">
-          <label class="label">Type de connexion</label>
-          <div class="control">
-            <div class="select">
-              <select v-model="localPrinter.connection_type">
-                <option value="usb">USB</option>
-                <option value="network">Réseau</option>
-                <option value="bluetooth">Bluetooth</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chemin du périphérique (pour USB) -->
-        <div v-if="localPrinter.connection_type === 'usb'" class="field">
-          <label class="label">Chemin du périphérique</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localPrinter.device_path" placeholder="/dev/usb/lp0" />
-          </div>
-        </div>
-
-        <!-- Adresse IP (pour réseau) -->
-        <div v-if="localPrinter.connection_type === 'network'" class="field">
-          <label class="label">Adresse IP</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localPrinter.ip_address" placeholder="192.168.1.100" />
-          </div>
-        </div>
-
-        <!-- Port (pour réseau) -->
-        <div v-if="localPrinter.connection_type === 'network'" class="field">
-          <label class="label">Port</label>
-          <div class="control">
-            <input class="input" type="number" v-model.number="localPrinter.port" min="1" max="65535" />
-          </div>
-        </div>
-
         <!-- Timeout -->
         <div class="field">
           <label class="label">Timeout (secondes)</label>
@@ -124,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, watch, reactive, onMounted, computed } from 'vue'
+import { ref, watch, reactive, onMounted } from 'vue'
 import axios from 'axios'
 import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
@@ -145,10 +107,7 @@ const localPrinter = reactive({
   name: '',
   cash_register_id: null,
   printer_type_id: null,
-  connection_type: 'usb',
-  device_path: '',
-  ip_address: '',
-  port: 9100,
+  connection_type: 'cups',
   timeout: 30,
   is_default: false,
   is_active: true
@@ -196,10 +155,7 @@ watch(
         name: newPrinter.name || '',
         cash_register_id: newPrinter.cash_register_id || null,
         printer_type_id: newPrinter.printer_type_id || null,
-        connection_type: newPrinter.connection_type || 'usb',
-        device_path: newPrinter.device_path || '',
-        ip_address: newPrinter.ip_address || '192.168.',
-        port: newPrinter.port ? Number(newPrinter.port) : 9100,
+        connection_type: 'cups',
         timeout: newPrinter.timeout !== null && newPrinter.timeout !== undefined ? Number(newPrinter.timeout) : null,
         is_default: newPrinter.is_default === true || newPrinter.is_default === 'true' || newPrinter.is_default === 1,
         is_active: newPrinter.is_active === true || newPrinter.is_active === 'true' || newPrinter.is_active === 1
@@ -212,10 +168,7 @@ watch(
         name: '',
         cash_register_id: null,
         printer_type_id: null,
-        connection_type: 'usb',
-        device_path: '',
-        ip_address: '',
-        port: 9100,
+        connection_type: 'cups',
         timeout: 30,
         is_default: false,
         is_active: true
@@ -225,18 +178,7 @@ watch(
   { immediate: true }
 )
 
-const validateIPAddress = (ip) => {
-  const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
-  return ipRegex.test(ip.trim())
-}
-
 const savePrinter = async () => {
-  // Validate IP address if network connection type
-  if (localPrinter.connection_type === 'network' && !validateIPAddress(localPrinter.ip_address)) {
-    saveError.value = 'Adresse IP invalide. Format attendu: xxx.xxx.xxx.xxx'
-    return
-  }
-
   try {
     isSaving.value = true
     saveError.value = ''
@@ -246,10 +188,9 @@ const savePrinter = async () => {
     const printerData = {
       name: localPrinter.name,
       cash_register_id: localPrinter.cash_register_id,
-      connection_type: localPrinter.connection_type,
-      device_path: localPrinter.device_path,
-      ip_address: localPrinter.ip_address,
-      port: localPrinter.port,
+      connection_type: 'cups',
+      ip_address: null,
+      port: null,
       timeout: localPrinter.timeout,
       is_default: localPrinter.is_default,
       is_active: localPrinter.is_active
@@ -286,10 +227,7 @@ const closeModal = () => {
     id: null,
     name: '',
     cash_register_id: null,
-    connection_type: 'usb',
-    device_path: '',
-    ip_address: '',
-    port: 9100,
+    connection_type: 'cups',
     timeout: 30,
     is_default: false,
     is_active: true
@@ -300,7 +238,7 @@ const closeModal = () => {
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
+/* Bulma removed; using Tailwind utilities in template */
 
 .modal {
   display: flex;

@@ -152,7 +152,9 @@ const filteredSales = computed(() => {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(sale => {
       if (!sale) return false
-      const ticketMatch = sale.ticket_number?.toLowerCase().includes(query)
+      const ticketMatch = sale.ticket_number !== undefined && sale.ticket_number !== null
+        ? sale.ticket_number.toString().toLowerCase().includes(query)
+        : false
       const dateMatch = formatDate(sale.created_at).toLowerCase().includes(query)
       const productMatch = sale.order_lines?.some(line =>
         line.product?.name.toLowerCase().includes(query)

@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div>
     <router-view />
   </div>
 </template>
@@ -12,13 +12,5 @@ export default {
 </script>
 
 <style>
-#app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.router-view {
-  flex: 1;
-}
+/* No custom styles needed here, using Tailwind CSS */
 </style>

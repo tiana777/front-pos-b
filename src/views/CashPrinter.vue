@@ -1,11 +1,11 @@
 <template>
   <Profile />
-  <section class="section">
-    <div class="container">
-      <div class="card shadow-box">
-        <div class="card-content">
-
+  <section class="py-16">
+    <div class="max-w-xl mx-auto">
+      <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-lg p-8 text-black transition duration-300 hover:shadow-xl">
+        <div>
           <!-- Sélection de la caisse -->
+
           <div v-if="!isAdmin" class="field">
             <label class="label">Choisir une caisse</label>
             <div class="control">
@@ -17,18 +17,23 @@
                 }" @click="selectCashRegister(register.id)">
                   <span class="icon is-large">
                     <i class="fas fa-desktop fa-2x"></i>
+
                   </span>
-                  <div class="cash-register-name">{{ register.name }}</div>
-                  <div class="status-tags">
-                    <span v-if="['connected', 'in use'].includes(cashRegisterStatuses[register.id])"
-                      class="tag is-success is-light">
+                  <div class="font-semibold mt-3 text-base">{{ register.name }}</div>
+                  <div class="mt-2">
+                    <span
+                      v-if="['connected', 'in use'].includes(cashRegisterStatuses[register.id])"
+                      class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs"
+                    >
                       {{ connectedUserId === currentUserId ? 'Vous êtes connecté' : 'Occupée' }}
                     </span>
-                    <span v-else-if="cashRegisterStatuses[register.id] === 'disconnected'"
-                      class="tag is-danger is-light">
+                    <span
+                      v-else-if="cashRegisterStatuses[register.id] === 'disconnected'"
+                      class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs"
+                    >
                       Libre
                     </span>
-                    <span v-else class="tag is-warning is-light">Inconnu</span>
+                    <span v-else class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Inconnu</span>
                   </div>
                 </div>
               </div>
@@ -36,27 +41,33 @@
           </div>
 
           <!-- Bouton de connexion -->
+
           <button class="button is-primary is-fullwidth mt-4" @click="onConnectButtonClick">
             <span class="icon"><i class="fas fa-link"></i></span>
+
             <span>{{ getConnectButtonText() }}</span>
           </button>
 
           <!-- Boutons RAZ & Billetage après connexion -->
+
           <div v-if="isConnected && connectedUserId === currentUserId && !isAdmin" class="buttons-container">
             <button class="button is-warning is-light" @click="resetCashRegister">
+
               <i class="fas fa-sync-alt"></i> Remise à zéro
             </button>
-            <button class="button is-info is-light" @click="performCashCount">
+            <button class="bg-blue-100 text-blue-700 px-4 py-2 rounded flex items-center gap-2 font-semibold hover:bg-blue-200" @click="performCashCount">
               <i class="fas fa-money-bill-wave"></i> Billetage
             </button>
-            <button class="button is-info is-light" @click="viewSales">
+            <button class="bg-blue-100 text-blue-700 px-4 py-2 rounded flex items-center gap-2 font-semibold hover:bg-blue-200" @click="viewSales">
               <i class="fas fa-chart-line"></i> Mes ventes
             </button>
           </div>
 
           <!-- Indicateur de connexion -->
+
           <p v-if="isConnected && connectedUserId === currentUserId" class="has-text-success has-text-centered mt-3">
             ✅ {{ isAdmin ? 'Administrateur connecté' : `Caisse connectée : ${connectedCashRegisterName}` }}
+
           </p>
         </div>
       </div>
@@ -270,105 +281,4 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.shadow-box {
-  max-width: 600px;
-  margin: auto;
-  text-align: center;
-  padding: 30px;
-  border-radius: 12px;
-  background-color: #f9fafb;
-  border: 1px solid #d1d5db;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.15);
-  transition: 0.3s ease-in-out;
-  color: black;
-}
 
-button,
-label,
-p,
-span,
-h2,
-small {
-  color: black !important;
-}
-
-.cash-register-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.cash-register-card {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 1 / 1;
-  transition: background-color 0.3s ease, filter 0.3s ease;
-  text-align: center;
-}
-
-.cash-register-card:hover {
-  background-color: #e6f0ff;
-}
-
-.cash-register-card.selected {
-  background-color: #3273dc;
-  color: white;
-}
-
-.cash-register-card.connected {
-  background-color: rgba(255, 255, 255, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  filter: none;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.cash-register-card.disconnected {
-  border: 2px solid #23d160;
-}
-
-.cash-register-name {
-  margin-top: 12px;
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: black;
-}
-
-.status-tags {
-  margin-top: 8px;
-}
-
-.shadow-box:hover {
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
-}
-
-.buttons-container {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.button {
-  transition: 0.2s ease-in-out;
-}
-
-.button:hover {
-  transform: scale(1.05);
-}
-
-.select.is-rounded select {
-  border-radius: 8px;
-  padding: 8px;
-}
-</style>
