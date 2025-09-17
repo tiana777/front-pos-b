@@ -1,10 +1,5 @@
 <template>
   <div>
-    <!-- Bouton burger -->
-    <button class="menu-toggle" @click="toggleMenu">
-      <FontAwesomeIcon :icon="faBars" />
-    </button>
-
     <!-- Overlay -->
     <div v-if="isOpen" class="menu-overlay" @click="closeMenu"></div>
 
