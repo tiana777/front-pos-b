@@ -19,7 +19,7 @@
 
     <!-- Chiffres -->
     <div class="mb-2 flex flex-wrap justify-center gap-2">
-      <button v-for="n in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']" :key="n" class="min-w-[45px] h-[45px] rounded-lg bg-gray-800 px-2 text-lg font-medium hover:bg-gray-700"
+      <button v-for="n in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']" :key="n" class="min-w-[45px] h-[45px] rounded-lg bg-gray-100 px-2 text-lg font-medium hover:bg-gray-700"
         @click.stop="pressKey(n)">
         {{ n }}
       </button>
@@ -27,7 +27,7 @@
 
     <!-- Lettres -->
     <div v-for="(row, index) in layout" :key="index" class="mb-2 flex flex-wrap justify-center gap-2">
-      <button v-for="key in row" :key="key" class="min-w-[45px] h-[45px] rounded-lg bg-gray-800 px-2 text-lg font-medium hover:bg-gray-700" @click.stop="pressKey(key)">
+      <button v-for="key in row" :key="key" class="min-w-[45px] h-[45px] rounded-lg bg-gray-100 px-2 text-lg font-medium hover:bg-gray-700" @click.stop="pressKey(key)">
         {{ formatKey(key) }}
       </button>
     </div>
@@ -108,5 +108,4 @@ function stopDrag() {
 }
 </script>
 
-<style scoped>
-</style>
+
