@@ -14,6 +14,7 @@
         <button class="menu-button" @click="navigateTo('table')">Table</button>
         <button class="menu-button" @click="navigateTo('ventes')">Ventes</button>
         <button class="menu-button" @click="navigateTo('retour')">Retour</button>
+        <button class="menu-button" @click="navigateTo('billetage')">Billetage</button>
 
         <div v-if="isAdmin">
           <hr class="menu-divider">

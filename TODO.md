@@ -1,18 +1,18 @@
-# TODO: Fix ticketNumber sending from AmountModal to CashPrinter and retrieve from session in Direct.vue
+# TODO: Implement Cash Transaction Update on Payment
 
 ## Completed Tasks
+- [x] Modified SaleController@store to create CashTransaction record after successful sale creation
+- [x] Added import for CashTransaction model in SaleController
+- [x] Created cashTransactionStore.js Pinia store for managing cash transactions state
+- [x] Updated CashTransactions.vue to use the new store instead of local state
+- [x] Updated DirectSale.vue to import and use the cashTransactionStore
+- [x] Added call to fetchTransactions after successful payment in DirectSale.vue
+- [x] Added CashTransactionController import in routes/api.php
+- [x] Added resource route for /cash-transactions in routes/api.php
 
-- [x] Analyzed AmountModal.vue and CashPrinter.vue to identify the issue
-- [x] Fixed destructuring in sendFondDeCaisse function to match emitted data from AmountModal
-- [x] Updated axios.post payload to use ticketNumber instead of startTicketNumber
-- [x] Updated localStorage.setItem for 'currentTicketNumber' to use ticketNumber
-- [x] Corrected the API URL back to 127.0.0.1
-- [x] Replace random ticket number generation with retrieval from cash register session's start_ticket_number
-- [x] Update handlePaymentConfirmation function to use the session's ticket number
-- [x] Fixed duplicate variable declaration issue
-- [x] Verified ticketNumber is correctly emitted as ticketNumber.value from AmountModal.vue
-- [x] Fixed ticketNumber type to be integer (changed from empty string to null)
-
-## Next Steps
-
-- [ ] Test the complete flow: AmountModal → CashPrinter → Direct.vue ticket retrieval → Sales creation
+## Remaining Tasks
+- [ ] Test the payment flow in DirectSale.vue to ensure cash transaction is created
+- [ ] Verify that CashTransactions.vue table updates after payment
+- [ ] Check backend logs for any errors in cash transaction creation
+- [ ] Ensure session_id is correctly passed and available for cash transactions
+- [x] Removed updateSessionTicket call to avoid permission issues

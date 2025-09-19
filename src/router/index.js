@@ -94,6 +94,11 @@ const router = createRouter({
       name: 'cash-register-sessions',
       component: () => import('../views/CashRegisterSessions.vue'),
     },
+    {
+      path: '/cash-registers/machine-link',
+      name: 'cash-registers-machine-link',
+      component: () => import('../views/CashRegisterMachineView.vue'),
+    },
     { path: '/roles', name: 'roles', component: RoleList },
     { path: '/roles/create', name: 'roles-create', component: RoleCreate },
     { path: '/roles/:id/edit', name: 'roles-edit', component: RoleEdit, props: true },
@@ -123,9 +128,29 @@ const router = createRouter({
       component: Printer,
     },
     {
+      path: '/printers/create',
+      name: 'printers-create',
+      component: () => import('../views/PrinterCreateView.vue'),
+    },
+    {
       path: '/categories',
       name: 'categories',
       component: CategoryManage,
+    },
+    {
+      path: '/cash-transactions',
+      name: 'cash-transactions',
+      component: () => import('../views/CashTransactions.vue'),
+    },
+    {
+      path: '/billetage',
+      name: 'billetage',
+      component: () => import('../views/Billetage.vue'),
+    },
+    {
+      path: '/billetage/:sessionId/resume',
+      name: 'billetage-summary',
+      component: () => import('../views/BilletageSummary.vue'),
     },
   ],
 })

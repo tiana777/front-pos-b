@@ -11,11 +11,36 @@
       </header>
 
       <section class="flex-1 overflow-y-auto bg-gray-50 px-6 py-4">
-        <!-- Montant total -->
-        <div class="mb-4">
-          <label class="mb-2 block font-semibold">Total à payer</label>
-          <div class="relative">
-            <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :value="formatPrice(totalAmount)" readonly disabled>
+        <!-- Montant total + remises -->
+        <div class="mb-4 space-y-3">
+          <div>
+            <label class="mb-2 block font-semibold">Total initial</label>
+            <div class="relative">
+              <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :value="formatPrice(totalAmount)" readonly disabled>
+            </div>
+          </div>
+
+          <div>
+            <label class="mb-2 block font-semibold">Remise rapide</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in discountOptions"
+                :key="option"
+                type="button"
+                class="rounded-full px-3 py-1 text-sm font-semibold transition"
+                :class="selectedDiscount === option ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                @click="selectDiscount(option)"
+              >
+                {{ option }}%
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="mb-2 block font-semibold">Total après remise</label>
+            <div class="relative">
+              <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold text-red-600 focus:border-blue-500 focus:outline-none" :value="formatPrice(discountedTotal)" readonly disabled>
+            </div>
           </div>
         </div>
 
@@ -163,6 +188,8 @@ const phoneNumber = ref('');
 const cardNumber = ref('');
 const isProcessing = ref(false);
 const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money'];
+const discountOptions = [0, 50, 100];
+const selectedDiscount = ref(0);
 
 // Computed
 const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value));
@@ -170,11 +197,13 @@ const isValidPhoneNumber = computed(() => {
   if (!isMobilePayment.value) return true;
   return phoneNumber.value.replace(/\D/g, '').length >= 10;
 });
+const discountedTotal = computed(() => Number((props.totalAmount * (1 - selectedDiscount.value / 100)).toFixed(2)));
+
 const isPaymentValid = computed(() => {
   if (!selectedPayment.value) return false;
   if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16;
   if (isMobilePayment.value) return isValidPhoneNumber.value;
-  if (selectedPayment.value === 'Espèce') return parseFloat(amountReceived.value) >= props.totalAmount;
+  if (selectedPayment.value === 'Espèce') return parseFloat(amountReceived.value) >= discountedTotal.value;
   return true;
 });
 
@@ -236,7 +265,12 @@ const clearField = () => {
 
 const calculateChange = () => {
   const received = parseFloat(amountReceived.value) || 0;
-  changeAmount.value = received - props.totalAmount;
+  changeAmount.value = received - discountedTotal.value;
+};
+
+const selectDiscount = (value) => {
+  selectedDiscount.value = value;
+  if (selectedPayment.value === 'Espèce') calculateChange();
 };
 
 const getPaymentIcon = (paymentName) => {
@@ -249,6 +283,7 @@ const closeModal = () => {
   changeAmount.value = 0;
   phoneNumber.value = '';
   cardNumber.value = '';
+  selectedDiscount.value = 0;
   isProcessing.value = false;
   emits('close-modal');
 };
@@ -258,6 +293,8 @@ const confirmPayment = () => {
   const paymentData = {
     method: selectedPayment.value,
     total: props.totalAmount,
+    discount_percentage: selectedDiscount.value,
+    final_total: discountedTotal.value,
     reference: selectedPayment.value === 'TPE' ? cardNumber.value : null,
     phone: isMobilePayment.value ? phoneNumber.value : null,
     received: selectedPayment.value === 'Espèce' ? parseFloat(amountReceived.value) : null,
@@ -273,6 +310,7 @@ watch(() => props.isOpen, (newVal) => {
     amountReceived.value = '0';
     phoneNumber.value = '';
     cardNumber.value = '';
+    selectedDiscount.value = 0;
   }
 });
 </script>

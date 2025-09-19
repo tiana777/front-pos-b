@@ -79,7 +79,7 @@
             class="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
           >
             <img
-              :src="`http://localhost:8000/storage/${product.image}`"
+              :src="`http://localhost:8000/storage/products/${product.image}`"
               class="w-full h-36 object-cover bg-gray-100"
               @error="handleImageError"
             />
@@ -191,10 +191,14 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import PaymentModal from './PaymentModal.vue'
 import InvoiceModal from './InvoiceModal.vue'
+import placeholderImage from '../assets/avatar.png'
+import { useCashTransactionStore } from '@/stores/cashTransactionStore'
 
 // Modal controls
 const isPaymentModalOpen = ref(false)
 const isInvoiceModalOpen = ref(false)
+
+const cashTransactionStore = useCashTransactionStore()
 
 const openPaymentModal = () => {
   isInvoiceModalOpen.value = false
@@ -233,20 +237,31 @@ const handlePaymentConfirmation = async (paymentData) => {
     return
   }
   try {
-    const timestampPart = Date.now().toString()
-    const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-    const ticketNumber = `${timestampPart}${randomPart}`
+    const sessionData = await fetchCurrentSession()
+    const sessionStartTicket = Number(sessionData?.start_ticket_number)
+
+    const ticketNumberValue = Number.isInteger(sessionStartTicket) && sessionStartTicket >= 0
+      ? sessionStartTicket
+      : Date.now()
+
+    const ticketNumber = ticketNumberValue.toString()
     const totalAmount = cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    const discount = Number(paymentData.discount_percentage ?? 0)
+    const finalAmount = Number(
+      paymentData.final_total !== undefined
+        ? paymentData.final_total
+        : (totalAmount * (1 - discount / 100)).toFixed(2)
+    )
 
     const saleData = {
       user_id: user.id,
       point_of_sale_id: user.point_of_sale_id,
-      cash_register_session_id: JSON.parse(localStorage.getItem('cashRegisterSession'))?.id || null,
+      cash_register_session_id: sessionData?.id || null,
       total_amount: totalAmount,
-      discount_percentage: paymentData.discount_percentage || 0,
+      discount_percentage: discount,
       status: paymentData.status || 'completed',
       payment_id: paymentMethodMap[paymentData.method] || null,
-      ticket_number: ticketNumber
+      ticket_number: Number(ticketNumber)
     }
 
     const response = await axios.post('http://127.0.0.1:8000/api/sales', saleData, {
@@ -273,6 +288,25 @@ const handlePaymentConfirmation = async (paymentData) => {
       })
     }
 
+    if (sessionData?.id) {
+      try {
+        await axios.post('http://127.0.0.1:8000/api/cash-transactions', {
+          session_id: sessionData.id,
+          type: 'sale',
+          amount: finalAmount,
+          description: `Vente ticket #${ticketNumber}`
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        })
+        await cashTransactionStore.fetchTransactions()
+      } catch (transactionError) {
+        console.error('Erreur lors de la mise à jour des transactions de caisse:', transactionError.response?.data || transactionError.message)
+      }
+    }
+
     try {
       await axios.post(`http://127.0.0.1:8000/api/printers/invoice/${saleId}`, {}, {
         headers: {
@@ -287,8 +321,11 @@ const handlePaymentConfirmation = async (paymentData) => {
     saleData.value = {
       ...response.data,
       items: [...cart.value],
-      paymentMethod: paymentData.method
+      paymentMethod: paymentData.method,
+      finalAmount
     }
+
+
 
     currentInvoiceNumber.value = `INV-${response.data.id || Date.now()}`
     currentPaymentMethod.value = paymentData.method
@@ -311,6 +348,26 @@ const checkout = () => {
   currentPaymentMethod.value = 'En attente'
   isInvoiceModalOpen.value = true
 }
+
+const authHeaders = () => {
+  const token = localStorage.getItem('token')
+  if (!token) throw new Error('Token manquant')
+  return { Authorization: `Bearer ${token}` }
+}
+
+const fetchCurrentSession = async () => {
+  try {
+    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+      headers: authHeaders()
+    })
+    return data?.data || data || null
+  } catch (error) {
+    console.error('Impossible de récupérer la session de caisse:', error.response?.data || error.message)
+    return null
+  }
+}
+
+
 
 // Add icons to library
 library.add(faList, faFolder, faBoxes, faSearch, faShoppingCart, faTrash, faTimes, faMinus, faPlus, faCheck)
@@ -417,6 +474,11 @@ onMounted(async () => {
 })
 
 const handleImageError = (event) => {
-  event.target.src = '/placeholder-image.png'
+  const target = event?.target
+  if (!target) return
+  if (target.dataset.fallbackApplied === 'true') return
+  target.dataset.fallbackApplied = 'true'
+  target.onerror = null
+  target.src = placeholderImage
 }
 </script>
