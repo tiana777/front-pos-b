@@ -1,5 +1,7 @@
 <template>
-  <Profile />
+  <template v-if="!embedded">
+    <Profile />
+  </template>
   <section class="user-sales-section">
 
     <h1 class="title has-text-black">Mes Ventes</h1>
@@ -60,8 +62,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import Profile from './Profile.vue'
+
 import EditSaleModal from './EditSaleModal.vue'
+
+// When embedded in Dashboard, header/menu are hidden
+const props = defineProps({
+  embedded: { type: Boolean, default: false }
+})
 
 const sales = ref([])
 const loading = ref(true)

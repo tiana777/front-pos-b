@@ -223,9 +223,6 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import AmountModal from './AmountModal.vue'
-import Profile from './Profile.vue'
-import { useAuth } from '@/composables/useAuth'
-
 const router = useRouter()
 const { isAdmin, currentUser, loadUserData } = useAuth()
 
@@ -504,22 +501,33 @@ const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
     const user = currentUser.value
     if (!user?.id) throw new Error('Utilisateur non authentifié')
 
-    const payload = {
-      cash_register_id: selectedCashRegister.value,
-      user_id: user.id,
-      starting_amount: amount,
-      note,
-      expected_cash_amount: 0,
-      start_ticket_number: ticketNumber
+    const response = await axios.post(
+      'http://127.0.0.1:8000/api/cash-register-sessions',
+      {
+        cash_register_id: selectedCashRegister.value,
+        user_id: user.id,
+        starting_amount: amount,
+        note: note,
+        expected_cash_amount: 0,
+        start_ticket_number: startTicketNumber
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+
+    if (response.data) {
+      localStorage.setItem('cashRegisterSession', JSON.stringify(response.data))
+
+      if (startTicketNumber !== undefined) {
+        localStorage.setItem('currentTicketNumber', startTicketNumber.toString())
+      }
+
+      isConnected.value = true
+      connectedUserId.value = user.id
+      await checkSessionStatus(selectedCashRegister.value)
+
+      router.push({ name: 'dashboard-direct' })
     }
-
-    await axios.post('http://127.0.0.1:8000/api/cash-register-sessions', payload, {
-      headers: getAuthHeaders()
-    })
-
-    await fetchMyActiveSession()
-    await initializeSessions()
-    router.push({ name: 'direct' })
   } catch (error) {
     console.error('Erreur connexion caisse:', error)
     alert(error.response?.data?.message || error.message || 'Erreur de connexion à la caisse')
@@ -563,79 +571,19 @@ const performCashCount = () => {
 }
 
 const viewSales = () => {
-  router.push({ name: 'user-sales' })
-}
-
-const openSummaryModal = async () => {
-  if (!activeSession.value) {
-    router.push({ name: 'direct' })
-    return
-  }
-  isSummaryModalOpen.value = true
-  summaryLoading.value = true
-  summaryError.value = ''
-  sessionSummary.value = null
-
-  try {
-    const { data } = await axios.get(`http://127.0.0.1:8000/api/cash-register-sessions/${activeSession.value.id}/summary`, {
-      headers: getAuthHeaders()
-    })
-    sessionSummary.value = data
-  } catch (error) {
-    console.error('Erreur résumé session:', error)
-    summaryError.value = error.response?.data?.message || 'Impossible de récupérer le résumé de session'
-  } finally {
-    summaryLoading.value = false
-  }
-}
-
-const closeSummaryModal = () => {
-  if (summaryLoading.value) return
-  isSummaryModalOpen.value = false
-}
-
-const continueAfterSummary = () => {
-  if (summaryLoading.value) return
-  isSummaryModalOpen.value = false
-  router.push({ name: 'direct' })
-}
-
-const goToMachineManagement = () => {
-  router.push({ name: 'cash-registers-machine-link' })
+  router.push({ name: 'dashboard-user-sales' })
 }
 
 const onConnectButtonClick = () => {
-  if (isAdmin.value) {
-    router.push({ name: 'direct' })
-    return
+  if (isConnected.value && connectedUserId.value === currentUserId.value) {
+    router.push({ name: 'dashboard-direct' })
+  } else {
+    if (!selectedCashRegister.value) return alert('Sélectionnez une caisse')
+    openAmountModal()
   }
-  if (isSelfConnected.value) {
-    openSummaryModal()
-    return
-  }
-  if (!selectedCashRegister.value || !machineRegister.value) {
-    alert('Associez cette machine à une caisse avant de continuer.')
-    return
-  }
-  openAmountModal()
 }
 
-const formatCurrency = (value) => {
-  const number = Number(value)
-  if (!Number.isFinite(number)) return '0,00 €'
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(number)
-}
-
-const formatDate = (date) => {
-  if (!date) return '—'
-  const parsed = new Date(date)
-  if (Number.isNaN(parsed.getTime())) return '—'
-  return parsed.toLocaleString('fr-FR')
-}
-
+// Lifecycle
 onMounted(async () => {
   try {
     await loadUserData()
@@ -649,103 +597,3 @@ onMounted(async () => {
   await initializeSessions()
 })
 </script>
-
-<style scoped>
-.cash-register-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-}
-
-.cash-register-card {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 18px;
-  padding: 1.5rem 1rem;
-  min-height: 170px;
-  text-align: center;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.cash-register-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.16);
-  border-color: #2563eb;
-}
-
-.cash-register-card.selected {
-  border-color: #2563eb;
-  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.18);
-}
-
-.cash-register-card.connected {
-  border-color: #15803d;
-  box-shadow: 0 14px 26px rgba(21, 128, 61, 0.18);
-}
-
-.cash-register-card.disabled,
-.cash-register-card:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  box-shadow: none;
-  border-color: #d1d5db;
-}
-
-.cash-register-card.disabled:hover,
-.cash-register-card:disabled:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.buttons-container {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
-}
-
-.buttons-container button {
-  flex: 1 1 150px;
-}
-
-.summary-modal {
-  max-width: 520px;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.summary-row:last-of-type {
-  border-bottom: none;
-}
-
-.summary-label {
-  font-weight: 600;
-  color: #374151;
-}
-
-.summary-value {
-  color: #1f2937;
-}
-
-@media (max-width: 640px) {
-  .cash-register-card {
-    min-height: 150px;
-    padding: 1.25rem 0.75rem;
-  }
-
-  .buttons-container {
-    flex-direction: column;
-  }
-}
-</style>
