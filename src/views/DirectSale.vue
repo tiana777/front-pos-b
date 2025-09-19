@@ -1,9 +1,6 @@
 <template>
   <!-- <div class="flex flex-col min-h-screen bg-gray-100 text-gray-800"> -->
 
-    <Profile />
-    <Pos />
-
     <!-- Modals -->
     <PaymentModal
       :isOpen="isPaymentModalOpen"
@@ -22,149 +19,186 @@
       @openPaymentModal="openPaymentModal"
     />
 
-    <!-- Main content -->
-    <div class="flex flex-1 fixed top-16 left-0 right-0 bottom-2">
-      <!-- Catégories -->
-      <div class="w-60 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-        <div class="border-b-2 border-blue-600 mb-4 pb-2">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <font-awesome-icon icon="fa-solid fa-list" />
-            Catégories
-          </h2>
-        </div>
-        <div class="flex flex-col gap-2">
-          <button
-            v-for="category in categories"
-            :key="category.id"
-            @click="loadProducts(category)"
-            :class="[
-              'flex items-center gap-2 px-3 py-2 rounded-md text-left transition',
-              activeCategory?.id === category.id
-                ? 'bg-blue-600 text-white'
-                : 'hover:bg-gray-100'
-            ]"
-          >
-            <font-awesome-icon icon="fa-solid fa-folder" />
-            {{ category.name }}
-          </button>
-        </div>
-      </div>
-
+    <div class="direct-sale-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
       <!-- Produits -->
-      <div class="flex-1 p-4 bg-white overflow-y-auto">
-        <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <font-awesome-icon icon="fa-solid fa-boxes" />
-            Produits
-          </h2>
-          <div class="relative w-72">
-            <font-awesome-icon
-              icon="fa-solid fa-search"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              v-model="searchQuery"
-              @input="filterProducts"
-              class="w-full pl-10 pr-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
-            />
-          </div>
-        </div>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
-          <div
-            v-for="product in filteredProducts"
-            :key="product.id"
-            @click="addToCart(product)"
-            class="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
-          >
-            <img
-              :src="`http://localhost:8000/storage/${product.image}`"
-              class="w-full h-36 object-cover bg-gray-100"
-              @error="handleImageError"
-            />
-            <div class="p-3">
-              <h3 class="text-sm font-medium truncate">{{ product.name }}</h3>
-              <p class="text-blue-600 font-bold">{{ formatPrice(product.price) }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Panier -->
-      <div class="w-80 bg-white border-l border-gray-200 flex flex-col">
-        <div class="flex justify-between items-center p-4 border-b">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <font-awesome-icon icon="fa-solid fa-shopping-cart" />
-            Panier
-          </h2>
-          <button
-            v-if="cart.length"
-            @click="clearCart"
-            class="flex items-center gap-1 text-red-500 hover:bg-red-50 px-2 py-1 rounded"
-          >
-            <font-awesome-icon icon="fa-solid fa-trash" />
-            Vider
-          </button>
-        </div>
-
-        <div v-if="cart.length > 0" class="flex-1 flex flex-col p-4 overflow-y-auto">
-          <div class="flex-1 space-y-3">
-            <div
-              v-for="item in cart"
-              :key="item.id"
-              class="flex items-center border-b pb-2"
-            >
-              <button
-                @click="removeItem(item)"
-                class="text-red-500 hover:text-red-700 mr-3"
-              >
-                <font-awesome-icon icon="fa-solid fa-times" />
-              </button>
-              <div class="flex-1">
-                <span class="block font-medium">{{ item.name }}</span>
-                <div class="flex items-center gap-2">
-                  <button
-                    @click="decrementQuantity(item)"
-                    class="w-6 h-6 flex items-center justify-center border rounded hover:bg-gray-100"
-                  >
-                    <font-awesome-icon icon="fa-solid fa-minus" />
-                  </button>
-                  <span>{{ item.quantity }}</span>
-                  <button
-                    @click="incrementQuantity(item)"
-                    class="w-6 h-6 flex items-center justify-center border rounded hover:bg-gray-100"
-                  >
-                    <font-awesome-icon icon="fa-solid fa-plus" />
-                  </button>
-                </div>
-              </div>
-              <span class="font-bold text-blue-600 min-w-[80px] text-right">{{
-                formatPrice(item.price * item.quantity)
-              }}</span>
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div class="flex flex-col gap-3 border-b border-slate-100 pb-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
+              <FontAwesomeIcon icon="fa-solid fa-boxes" />
+              Produits
+            </h2>
+            <div class="relative w-full sm:max-w-xs">
+              <FontAwesomeIcon
+                icon="fa-solid fa-search"
+                class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                placeholder="Rechercher un produit..."
+                v-model="searchQuery"
+                @input="filterProducts"
+                class="w-full rounded-full border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+              />
             </div>
           </div>
 
-          <div class="mt-auto border-t pt-4">
-            <div class="flex justify-between mb-3 font-semibold text-lg">
-              <span>Total:</span>
-              <span class="text-blue-600">{{ formatPrice(totalPrice) }}</span>
-            </div>
+          <div class="flex gap-2 overflow-x-auto pb-1">
             <button
-              @click="checkout"
-              class="w-full py-3 rounded-md bg-green-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition"
+              type="button"
+              class="rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="[
+                activeCategoryId === null
+                  ? 'bg-indigo-500 text-white shadow'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              ]"
+              @click="setActiveCategory(null)"
             >
-              <font-awesome-icon icon="fa-solid fa-check" />
-              Valider
+              Toutes
+            </button>
+            <button
+              v-for="category in categories"
+              :key="category.id"
+              type="button"
+              class="rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="[
+                activeCategoryId === category.id
+                  ? 'bg-indigo-500 text-white shadow'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              ]"
+              @click="setActiveCategory(category.id)"
+            >
+              {{ category.name }}
             </button>
           </div>
         </div>
 
-        <div v-else class="flex-1 flex flex-col items-center justify-center text-gray-400">
-          <font-awesome-icon icon="fa-solid fa-shopping-cart" size="2x" />
-          <p class="mt-2">Panier vide</p>
+        <div class="mt-2.5 flex-1 overflow-hidden">
+          <div
+            v-if="filteredProducts.length"
+            class="grid h-full grid-cols-1 gap-2.5 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          >
+            <button
+              v-for="product in filteredProducts"
+              :key="product.id"
+              type="button"
+              class="group flex flex-col rounded-3xl border border-slate-100 bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              @click="addToCart(product)"
+            >
+              <div class="overflow-hidden rounded-2xl bg-slate-100">
+                <img
+                  :src="`http://localhost:8000/storage/${product.image}`"
+                  class="aspect-square w-full object-cover transition duration-300 group-hover:scale-105"
+                  @error="handleImageError"
+                  loading="lazy"
+                />
+              </div>
+              <div class="mt-3 space-y-1">
+                <p class="text-sm font-semibold text-slate-900">{{ product.name }}</p>
+                <p class="text-xs text-slate-400">{{ product.category_name || '—' }}</p>
+                <p class="text-sm font-bold text-slate-900">
+                  {{ formatPrice(product.price) }}
+                  <span class="ml-1 text-xs font-medium text-slate-400">/portion</span>
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <div
+            v-else
+            class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-500"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-boxes" class="mb-3 text-2xl text-slate-300" />
+            Aucun produit disponible pour cette catégorie.
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- Panier -->
+      <aside class="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
+            <FontAwesomeIcon icon="fa-solid fa-shopping-cart" />
+            Panier
+          </h2>
+          <button
+            v-if="cart.length"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+            @click="clearCart"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-trash" />
+            Vider
+          </button>
+        </div>
+
+        <div v-if="cart.length > 0" class="flex-1 space-y-3.5 overflow-y-auto py-3">
+          <div
+            v-for="item in cart"
+            :key="item.id"
+            class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+          >
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">{{ item.name }}</p>
+                <p class="text-xs text-slate-400">{{ formatPrice(item.price) }}</p>
+              </div>
+              <button
+                type="button"
+                class="text-slate-400 transition hover:text-rose-500"
+                @click="removeItem(item)"
+              >
+                <FontAwesomeIcon icon="fa-solid fa-times" />
+              </button>
+            </div>
+            <div class="mt-3 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                  @click="decrementQuantity(item)"
+                >
+                  <FontAwesomeIcon icon="fa-solid fa-minus" />
+                </button>
+                <span class="text-sm font-semibold text-slate-700">{{ item.quantity }}</span>
+                <button
+                  type="button"
+                  class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                  @click="incrementQuantity(item)"
+                >
+                  <FontAwesomeIcon icon="fa-solid fa-plus" />
+                </button>
+              </div>
+              <span class="text-sm font-semibold text-indigo-600">
+                {{ formatPrice(item.price * item.quantity) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-400">
+          <FontAwesomeIcon icon="fa-solid fa-shopping-cart" class="mb-3 text-2xl" />
+          Panier vide
+        </div>
+
+        <div class="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3.5">
+          <div class="flex items-center justify-between text-sm font-semibold text-slate-700">
+            <span>Total</span>
+            <span class="text-indigo-600">{{ formatPrice(totalPrice) }}</span>
+          </div>
+          <button
+            type="button"
+            class="mt-4 w-full rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400"
+            @click="checkout"
+            :disabled="!cart.length"
+          >
+            <span class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+              <FontAwesomeIcon icon="fa-solid fa-check" />
+            </span>
+            Valider la commande
+          </button>
+        </div>
+      </aside>
     </div>
   <!-- </div> -->
 </template>
@@ -173,8 +207,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import Pos from './Pos.vue'
-import Profile from './Profile.vue'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
@@ -307,36 +339,42 @@ const categories = ref([])
 const products = ref([])
 const filteredProducts = ref([])
 const cart = ref([])
-const activeCategory = ref(null)
+const activeCategoryId = ref(null)
 const searchQuery = ref('')
 
 const formatPrice = (price) => {
-  return `${parseFloat(price).toFixed(2)} Ar`
+  const value = Number.parseFloat(price)
+  if (!Number.isFinite(value)) return '—'
+  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ar`
 }
 
-const loadProducts = (category) => {
-  activeCategory.value = category
-  filteredProducts.value = category.products.map(p => ({
-    ...p,
-    price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0
-  }))
+const applyFilters = () => {
+  let base = products.value
+  const categoryId = activeCategoryId.value
+
+  if (categoryId !== null) {
+    base = base.filter((product) => product.category_id === categoryId)
+  }
+
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    base = base.filter(
+      (product) =>
+        product.name.toLowerCase().includes(query) ||
+        (product.description && product.description.toLowerCase().includes(query))
+    )
+  }
+
+  filteredProducts.value = base
+}
+
+const setActiveCategory = (categoryId) => {
+  activeCategoryId.value = categoryId
+  applyFilters()
 }
 
 const filterProducts = () => {
-  if (!searchQuery.value) {
-    if (activeCategory.value) {
-      loadProducts(activeCategory.value)
-    } else {
-      filteredProducts.value = [...products.value]
-    }
-    return
-  }
-
-  const query = searchQuery.value.toLowerCase()
-  filteredProducts.value = products.value.filter(p =>
-    p.name.toLowerCase().includes(query) ||
-    (p.description && p.description.toLowerCase().includes(query))
-  )
+  applyFilters()
 }
 
 const addToCart = (product) => {
@@ -347,7 +385,7 @@ const addToCart = (product) => {
     cart.value.push({
       ...product,
       quantity: 1,
-      price: product.pricing?.[0]?.price ? parseFloat(product.pricing[0].price) : 0
+      price: Number.isFinite(product.price) ? product.price : 0
     })
   }
 }
@@ -399,13 +437,40 @@ onMounted(async () => {
     })
     const data = Array.isArray(response.data) ? response.data : response.data.data || []
     categories.value = data
+    products.value = data.flatMap((category) =>
+      (category.products || []).map((product) => ({
+        ...product,
+        category_id: category.id,
+        category_name: category.name,
+        price: product.pricing?.[0]?.price ? Number.parseFloat(product.pricing[0].price) : 0,
+      }))
+    )
+
+    activeCategoryId.value = null
+    applyFilters()
   } catch (error) {
     console.error('Erreur de chargement des produits :', error.response?.data || error.message)
   }
 })
 
 const handleImageError = (event) => {
-  event.target.src = '/placeholder-image.png'
+  event.target.src = 'https://via.placeholder.com/160x160?text=Image'
 }
 </script>
 
+<style scoped>
+.direct-sale-layout {
+  min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
+}
+
+@media (min-width: 1024px) {
+  .direct-sale-layout {
+    height: calc(100vh - 5.5rem);
+    height: calc(100dvh - 5.5rem);
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow: hidden;
+  }
+}
+</style>

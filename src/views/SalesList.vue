@@ -1,6 +1,7 @@
 <template>
-  <Pos />
-  <Profile />
+  <template v-if="!embedded">
+    <Profile />
+  </template>
   <div class="sales-list-container">
     <h1 class="title has-text-black">Ventes</h1>
     <div class="search-container">
@@ -75,9 +76,12 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import Pos from './Pos.vue'
 import EditSaleModal from './EditSaleModal.vue'
-import Profile from './Profile.vue'
+
+// When embedded in Dashboard, header/menu are hidden
+const props = defineProps({
+  embedded: { type: Boolean, default: false }
+})
 
 const sales = ref([])
 const loading = ref(true)

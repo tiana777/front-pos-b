@@ -1,5 +1,4 @@
 <template>
-  <Pos />
   <Profile />
   <section class="py-16">
     <div class="max-w-xl mx-auto">
@@ -84,8 +83,6 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import AmountModal from './AmountModal.vue'
-import Pos from './Pos.vue'
-import Profile from './Profile.vue'
 const router = useRouter()
 
 // États
@@ -217,7 +214,7 @@ const sendFondDeCaisse = async ({ amount, note, startTicketNumber }) => {
       connectedUserId.value = user.id
       await checkSessionStatus(selectedCashRegister.value)
 
-      router.push({ name: 'direct' })
+      router.push({ name: 'dashboard-direct' })
     }
   } catch (error) {
     console.error('Erreur connexion caisse:', error)
@@ -250,12 +247,12 @@ const performCashCount = () => {
 }
 
 const viewSales = () => {
-  router.push({ name: 'user-sales' })
+  router.push({ name: 'dashboard-user-sales' })
 }
 
 const onConnectButtonClick = () => {
   if (isConnected.value && connectedUserId.value === currentUserId.value) {
-    router.push({ name: 'direct' })
+    router.push({ name: 'dashboard-direct' })
   } else {
     if (!selectedCashRegister.value) return alert('Sélectionnez une caisse')
     openAmountModal()
@@ -270,5 +267,3 @@ onMounted(async () => {
   await initializeSessions()
 })
 </script>
-
-
