@@ -1,6 +1,6 @@
 <template>
-  <div class="z-[999] w-[600px] select-none rounded-2xl bg-neutral-900 p-4 text-white shadow-2xl"
-    :style="{ position: 'fixed', bottom: '20px', right: '20px' }"
+  <div class="keyboard box" :style="{ position: 'fixed', top: position.top + 'px', left: position.left + 'px' }"
+
     @mousedown.stop.prevent="startDrag">
     <!-- Drag header -->
     <div class="mb-3 flex items-center justify-between">
@@ -19,7 +19,7 @@
 
     <!-- Chiffres -->
     <div class="mb-2 flex flex-wrap justify-center gap-2">
-      <button v-for="n in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']" :key="n" class="min-w-[45px] h-[45px] rounded-lg bg-gray-800 px-2 text-lg font-medium hover:bg-gray-700"
+      <button v-for="n in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']" :key="n" class="min-w-[45px] h-[45px] rounded-lg bg-gray-100 px-2 text-lg font-medium hover:bg-gray-700"
         @click.stop="pressKey(n)">
         {{ n }}
       </button>
@@ -27,7 +27,7 @@
 
     <!-- Lettres -->
     <div v-for="(row, index) in layout" :key="index" class="mb-2 flex flex-wrap justify-center gap-2">
-      <button v-for="key in row" :key="key" class="min-w-[45px] h-[45px] rounded-lg bg-gray-800 px-2 text-lg font-medium hover:bg-gray-700" @click.stop="pressKey(key)">
+      <button v-for="key in row" :key="key" class="min-w-[45px] h-[45px] rounded-lg bg-gray-100 px-2 text-lg font-medium hover:bg-gray-700" @click.stop="pressKey(key)">
         {{ formatKey(key) }}
       </button>
     </div>
@@ -54,7 +54,9 @@ const position = ref({ top: 600, left: 0 })
 
 onMounted(() => {
   const width = 600
-  position.value.left = (window.innerWidth - width) / 2
+  const height = 400 // approximate height of keyboard
+  position.value.left = window.innerWidth - width - 20
+  position.value.top = window.innerHeight - height - 20
 })
 
 let offset = { x: 0, y: 0 }
@@ -106,5 +108,4 @@ function stopDrag() {
 }
 </script>
 
-<style scoped>
-</style>
+

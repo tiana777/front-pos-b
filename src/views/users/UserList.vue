@@ -1,5 +1,10 @@
 <template>
+  <div style="position: relative;">*
+    <Profile />
+  </div>
   <div class="user-list">
+    <!-- Include POS Component -->
+
     <div class="container">
       <div class="page-header">
         <div class="header-content">
@@ -128,13 +133,18 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script>
 import userService from '@/services/userService'
+import Profile from '../Profile.vue'
 
 export default {
   name: 'UserList',
+  components: {
+    Profile
+  },
   data() {
     return {
       users: [],
@@ -217,7 +227,7 @@ export default {
 .user-list {
   min-height: 100vh;
   background-color: #f8fafc;
-  padding: 2rem;
+  padding: 5rem 2rem 2rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 

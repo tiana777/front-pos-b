@@ -1,28 +1,18 @@
-# TODO - Vue de Gestion des Imprimantes
+# TODO: Implement Cash Transaction Update on Payment
 
-## ✅ Terminé
+## Completed Tasks
+- [x] Modified SaleController@store to create CashTransaction record after successful sale creation
+- [x] Added import for CashTransaction model in SaleController
+- [x] Created cashTransactionStore.js Pinia store for managing cash transactions state
+- [x] Updated CashTransactions.vue to use the new store instead of local state
+- [x] Updated DirectSale.vue to import and use the cashTransactionStore
+- [x] Added call to fetchTransactions after successful payment in DirectSale.vue
+- [x] Added CashTransactionController import in routes/api.php
+- [x] Added resource route for /cash-transactions in routes/api.php
 
-- [x] Créer src/services/printerService.js avec méthodes CRUD
-- [x] Créer src/views/PrinterEditModal.vue pour édition
-- [x] Créer src/views/PrinterCreateModal.vue pour ajout
-- [x] Créer src/views/Printer.vue vue principale de gestion
-- [x] Ajouter route /printers dans src/router/index.js
-
-## 🔄 Étapes de Suivi
-
-- [ ] Tester la vue en lançant l'application
-- [ ] Vérifier que les endpoints API existent côté backend
-- [ ] Ajustements si nécessaire basés sur les tests
-
-## 📋 Fonctionnalités Implémentées
-
-- Liste des imprimantes avec filtres (type de connexion, statut)
-- Recherche par nom
-- Ajout d'imprimante
-- Édition d'imprimante
-- Suppression d'imprimante
-- Gestion des champs : nom, caisse, type connexion, chemins réseau/USB, timeout, défaut, actif
-
-## 🔗 Routes
-
-- `/printers` - Gestion des imprimantes
+## Remaining Tasks
+- [ ] Test the payment flow in DirectSale.vue to ensure cash transaction is created
+- [ ] Verify that CashTransactions.vue table updates after payment
+- [ ] Check backend logs for any errors in cash transaction creation
+- [ ] Ensure session_id is correctly passed and available for cash transactions
+- [x] Removed updateSessionTicket call to avoid permission issues

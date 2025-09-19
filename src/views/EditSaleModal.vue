@@ -5,7 +5,7 @@
       <form @submit.prevent="save">
         <div class="form-group">
           <label for="ticketNumber">Numéro de ticket</label>
-          <input id="ticketNumber" v-model="editableSale.ticket_number" required />
+          <input id="ticketNumber" type="number" min="0" step="1" v-model.number="editableSale.ticket_number" required />
         </div>
         <div class="form-group">
           <label for="status">Statut</label>

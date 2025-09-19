@@ -32,41 +32,18 @@
           </div>
         </div>
 
-        <!-- Type de connexion -->
+        <!-- Type d'imprimante -->
         <div class="field">
-          <label class="label">Type de connexion</label>
+          <label class="label">Type d'imprimante</label>
           <div class="control">
             <div class="select">
-              <select v-model="localPrinter.connection_type">
-                <option value="usb">USB</option>
-                <option value="network">Réseau</option>
-                <option value="bluetooth">Bluetooth</option>
+              <select v-model="localPrinter.printer_type_id">
+                <option :value="null" disabled>Choisir un type d'imprimante</option>
+                <option v-for="type in printerTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </option>
               </select>
             </div>
-          </div>
-        </div>
-
-        <!-- Chemin du périphérique (pour USB) -->
-        <div v-if="localPrinter.connection_type === 'usb'" class="field">
-          <label class="label">Chemin du périphérique</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localPrinter.device_path" placeholder="/dev/usb/lp0" />
-          </div>
-        </div>
-
-        <!-- Adresse IP (pour réseau) -->
-        <div v-if="localPrinter.connection_type === 'network'" class="field">
-          <label class="label">Adresse IP</label>
-          <div class="control">
-            <input class="input" type="text" v-model="localPrinter.ip_address" placeholder="192.168.1.100" />
-          </div>
-        </div>
-
-        <!-- Port (pour réseau) -->
-        <div v-if="localPrinter.connection_type === 'network'" class="field">
-          <label class="label">Port</label>
-          <div class="control">
-            <input class="input" type="number" v-model.number="localPrinter.port" min="1" max="65535" />
           </div>
         </div>
 
@@ -109,8 +86,9 @@
 </template>
 
 <script setup>
-import { ref, watch, reactive, onMounted, computed } from 'vue'
+import { ref, watch, reactive, onMounted } from 'vue'
 import axios from 'axios'
+import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -128,10 +106,8 @@ const localPrinter = reactive({
   id: null,
   name: '',
   cash_register_id: null,
-  connection_type: 'usb',
-  device_path: '',
-  ip_address: '',
-  port: 9100,
+  printer_type_id: null,
+  connection_type: 'cups',
   timeout: 30,
   is_default: false,
   is_active: true
@@ -140,6 +116,8 @@ const localPrinter = reactive({
 const cashRegisters = ref([])
 const isSaving = ref(false)
 const saveError = ref('')
+
+const { printerTypes, fetchPrinterTypes } = usePrinterTypes()
 
 
 
@@ -162,7 +140,10 @@ const fetchCashRegisters = async () => {
   }
 }
 
-onMounted(fetchCashRegisters)
+onMounted(() => {
+  fetchCashRegisters()
+  fetchPrinterTypes()
+})
 
 watch(
   () => props.printer,
@@ -173,10 +154,8 @@ watch(
         id: newPrinter.id || null,
         name: newPrinter.name || '',
         cash_register_id: newPrinter.cash_register_id || null,
-        connection_type: newPrinter.connection_type || 'usb',
-        device_path: newPrinter.device_path || '',
-        ip_address: newPrinter.ip_address || '192.168.',
-        port: newPrinter.port ? Number(newPrinter.port) : 9100,
+        printer_type_id: newPrinter.printer_type_id || null,
+        connection_type: 'cups',
         timeout: newPrinter.timeout !== null && newPrinter.timeout !== undefined ? Number(newPrinter.timeout) : null,
         is_default: newPrinter.is_default === true || newPrinter.is_default === 'true' || newPrinter.is_default === 1,
         is_active: newPrinter.is_active === true || newPrinter.is_active === 'true' || newPrinter.is_active === 1
@@ -188,10 +167,8 @@ watch(
         id: null,
         name: '',
         cash_register_id: null,
-        connection_type: 'usb',
-        device_path: '',
-        ip_address: '',
-        port: 9100,
+        printer_type_id: null,
+        connection_type: 'cups',
         timeout: 30,
         is_default: false,
         is_active: true
@@ -201,18 +178,7 @@ watch(
   { immediate: true }
 )
 
-const validateIPAddress = (ip) => {
-  const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/
-  return ipRegex.test(ip.trim())
-}
-
 const savePrinter = async () => {
-  // Validate IP address if network connection type
-  if (localPrinter.connection_type === 'network' && !validateIPAddress(localPrinter.ip_address)) {
-    saveError.value = 'Adresse IP invalide. Format attendu: xxx.xxx.xxx.xxx'
-    return
-  }
-
   try {
     isSaving.value = true
     saveError.value = ''
@@ -222,10 +188,9 @@ const savePrinter = async () => {
     const printerData = {
       name: localPrinter.name,
       cash_register_id: localPrinter.cash_register_id,
-      connection_type: localPrinter.connection_type,
-      device_path: localPrinter.device_path,
-      ip_address: localPrinter.ip_address,
-      port: localPrinter.port,
+      connection_type: 'cups',
+      ip_address: null,
+      port: null,
       timeout: localPrinter.timeout,
       is_default: localPrinter.is_default,
       is_active: localPrinter.is_active
@@ -262,10 +227,7 @@ const closeModal = () => {
     id: null,
     name: '',
     cash_register_id: null,
-    connection_type: 'usb',
-    device_path: '',
-    ip_address: '',
-    port: 9100,
+    connection_type: 'cups',
     timeout: 30,
     is_default: false,
     is_active: true

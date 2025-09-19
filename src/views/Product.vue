@@ -193,6 +193,25 @@
         </button>
       </div>
     </div>
+
+    <!-- Modal de confirmation de suppression de catégorie -->
+    <div v-if="isCategoryDeleteConfirmOpen" class="modal is-active">
+      <div class="modal-background" @click="closeCategoryDeleteConfirm"></div>
+      <div class="modal-card">
+        <header class="modal-card-head">
+          <p class="modal-card-title">Confirmer la suppression</p>
+          <button class="delete" @click="closeCategoryDeleteConfirm"></button>
+        </header>
+        <section class="modal-card-body">
+          <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>{{ categoryToDelete?.name }}</strong> ?</p>
+          <p class="has-text-danger">Cette action est irréversible et supprimera également tous les produits associés.</p>
+        </section>
+        <footer class="modal-card-foot">
+          <button class="button is-danger" @click="deleteCategory" :disabled="isCategoryDeleting">Supprimer</button>
+          <button class="button" @click="closeCategoryDeleteConfirm">Annuler</button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
