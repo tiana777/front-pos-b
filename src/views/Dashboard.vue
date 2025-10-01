@@ -178,6 +178,7 @@ import {
   faKey,
   faUserGroup,
   faChartLine,
+  faLayerGroup,
 } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '@/composables/useAuth'
 
@@ -252,6 +253,7 @@ const navigationSections = computed(() => {
         { label: 'Vente directe', name: 'dashboard-direct', icon: faCashRegister },
         { label: 'Service à table', name: 'dashboard-table', icon: faTableCellsLarge },
         { label: 'Produits', name: 'dashboard-product', icon: faBoxesStacked },
+        { label: 'Catégories', name: 'dashboard-categories', icon: faLayerGroup },
         { label: 'Ventes', name: 'dashboard-ventes', icon: faChartLine },
         { label: 'Mes ventes', name: 'dashboard-user-sales', icon: faReceipt },
         { label: 'Retour', name: 'dashboard-retour', icon: faArrowRotateLeft },
