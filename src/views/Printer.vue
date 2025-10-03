@@ -1,115 +1,218 @@
 /* eslint-disable vue/multi-word-component-names */
 <template>
-  <Pos />
-  <Profile />
-  <div class="printer-list-container">
-    <div class="header-section">
-      <h1>Gestion des Imprimantes</h1>
-    </div>
-    <div class="main-layout">
-      <div class="sidebar">
-        <h3>Filtres</h3>
-        <div class="filter-section">
-          <label>Type de connexion</label>
-          <div class="filter-buttons">
-            <button :class="{ active: selectedConnectionType === null }" @click="selectConnectionType(null)">
+  <div class="printer-layout grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+    <aside class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-semibold text-slate-800">Filtres</h2>
+        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+          {{ filteredPrinters.length }}
+        </span>
+      </div>
+
+      <div class="mt-4 space-y-3">
+        <div class="space-y-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Type de connexion</h3>
+          <div class="flex flex-col gap-2">
+            <button
+              type="button"
+              class="rounded-xl border border-slate-200 px-4 py-2 text-left text-sm font-medium transition hover:border-indigo-200 hover:text-indigo-600"
+              :class="selectedConnectionType === null ? 'bg-indigo-500 text-white shadow' : 'bg-white text-slate-600'"
+              @click="selectConnectionType(null)"
+            >
               Tous
             </button>
-            <button :class="{ active: selectedConnectionType === 'cups' }" @click="selectConnectionType('cups')">
-              CUPS
+            <button
+              v-for="type in connectionTypes"
+              :key="type"
+              type="button"
+              class="rounded-xl border border-slate-200 px-4 py-2 text-left text-sm font-medium transition hover:border-indigo-200 hover:text-indigo-600"
+              :class="selectedConnectionType === type ? 'bg-indigo-500 text-white shadow' : 'bg-white text-slate-600'"
+              @click="selectConnectionType(type)"
+            >
+              {{ getConnectionTypeLabel(type) }}
             </button>
           </div>
         </div>
+      </div>
+    </aside>
 
-
+    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h1 class="text-base font-semibold text-slate-800">Gestion des imprimantes</h1>
+          <p class="text-xs text-slate-400">Surveillez et configurez vos imprimantes connectées.</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+          @click="openAddModal"
+        >
+          <FontAwesomeIcon icon="fa-solid fa-plus" />
+          Ajouter une imprimante
+        </button>
       </div>
 
-      <div class="content">
-        <div class="search-section">
-          <button @click="openAddModal" title="Ajouter une imprimante" class="add-button">
-            <font-awesome-icon icon="fa-solid fa-plus" />
+      <div class="mt-3 flex-1 overflow-hidden">
+        <div
+          v-if="loading"
+          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-10 text-center text-sm text-slate-500"
+        >
+          <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+          <p class="mt-4 font-medium">Chargement des imprimantes...</p>
+        </div>
+
+        <div
+          v-else-if="error"
+          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-rose-50/60 px-6 text-center text-sm text-rose-500"
+        >
+          <p>{{ error }}</p>
+          <button
+            type="button"
+            class="mt-3 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            @click="fetchPrinters"
+          >
+            Réessayer
           </button>
         </div>
 
-        <div v-if="loading" class="loading">
-          <div class="spinner"></div>
-          <p>Chargement en cours...</p>
+        <div
+          v-else-if="!filteredPrinters.length"
+          class="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-sm text-slate-500"
+        >
+          Aucune imprimante trouvée
         </div>
 
-        <div v-else-if="error" class="error">
-          <p>{{ error }}</p>
-          <button @click="fetchPrinters">Réessayer</button>
-        </div>
-
-        <div v-else>
-          <div v-if="filteredPrinters.length === 0" class="no-results">
-            Aucune imprimante trouvée
-          </div>
-
-          <div v-else class="printers-section">
-            <div class="printers-list">
-              <div v-for="printer in filteredPrinters" :key="printer.id" class="printer-card"
-                :class="{ inactive: !isActive(printer) }">
-                <div class="printer-details">
-                  <div class="printer-header">
-                    <h3>{{ printer.name }}</h3>
-                    <div class="badges">
-                      <span v-if="printer.is_default == 1" class="badge default">Par défaut</span>
-                      <span :class="['badge', isActive(printer) ? 'active' : 'inactive']">
-                        {{ isActive(printer) ? 'Actif' : 'Inactif' }}
-                      </span>
-                    </div>
+        <div v-else class="flex h-full flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <article
+                v-for="printer in filteredPrinters"
+                :key="printer.id"
+                class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+                :class="{ 'opacity-70': !isActive(printer) }"
+              >
+                <header class="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-800">{{ printer.name }}</h3>
+                    <p class="text-xs text-slate-400">{{ getConnectionTypeLabel(printer.connection_type) }}</p>
                   </div>
-
-                  <div class="printer-meta">
-                    <p><strong>Type:</strong> {{ getConnectionTypeLabel(printer.connection_type) }}</p>
-                    <p v-if="printer.cash_register"><strong>Cash name:</strong> {{ printer.cash_register.name }}</p>
-                    <p v-if="printer.cash_register && printer.cash_register.point_of_sale"><strong>POS:</strong> {{
-                      printer.cash_register.point_of_sale.name }}
-                    </p>
-                    <p><strong>Timeout:</strong> {{ printer.timeout !== undefined && printer.timeout !== null ?
-                      printer.timeout : 'N/A' }}s</p>
+                  <div class="flex gap-2">
+                    <span
+                      v-if="printer.is_default == 1"
+                      class="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-600"
+                    >
+                      Par défaut
+                    </span>
+                    <span
+                      class="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                      :class="isActive(printer) ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-600'"
+                    >
+                      {{ isActive(printer) ? 'Actif' : 'Inactif' }}
+                    </span>
                   </div>
+                </header>
 
-                  <div class="printer-actions">
-                    <button @click.stop="openEditModal(printer)">
-                      <font-awesome-icon icon="fa-solid fa-pencil" />
-                    </button>
-                    <button @click.stop="confirmDelete(printer)">
-                      <font-awesome-icon icon="fa-solid fa-trash" />
-                    </button>
+                <dl class="mt-3 space-y-1 text-xs text-slate-500">
+                  <div class="flex items-center justify-between">
+                    <dt class="font-semibold text-slate-600">Timeout</dt>
+                    <dd>{{ printer.timeout ?? 'N/A' }}s</dd>
                   </div>
-                </div>
-              </div>
+                  <div v-if="printer.cash_register" class="flex items-center justify-between">
+                    <dt class="font-semibold text-slate-600">Caisse</dt>
+                    <dd class="truncate text-right">{{ printer.cash_register.name }}</dd>
+                  </div>
+                  <div v-if="printer.cash_register?.point_of_sale" class="flex items-center justify-between">
+                    <dt class="font-semibold text-slate-600">Point de vente</dt>
+                    <dd class="truncate text-right">{{ printer.cash_register.point_of_sale.name }}</dd>
+                  </div>
+                </dl>
+
+                <footer class="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                    @click.stop="openEditModal(printer)"
+                    aria-label="Modifier"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-pen" />
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
+                    @click.stop="confirmDelete(printer)"
+                    aria-label="Supprimer"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-trash" />
+                  </button>
+                </footer>
+              </article>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+  </div>
 
-    <PrinterEditModal :isOpen="isEditModalOpen" :printer="selectedPrinter" :isEdit="true" @close="closeEditModal"
-      @save="handleSave" :selectedPOS="posStore.selectedPOS" />
-    <PrinterCreateModal :isOpen="isAddModalOpen" @close="closeAddModal" @created="handleAdd"
-      :selectedPOS="posStore.selectedPOS" />
+  <PrinterEditModal
+    :isOpen="isEditModalOpen"
+    :printer="selectedPrinter"
+    :isEdit="true"
+    @close="closeEditModal"
+    @save="handleSave"
+    :selectedPOS="posStore.selectedPOS"
+  />
+  <PrinterCreateModal
+    :isOpen="isAddModalOpen"
+    @close="closeAddModal"
+    @created="handleAdd"
+    :selectedPOS="posStore.selectedPOS"
+  />
 
+  <transition name="fade">
     <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-      <div class="modal-background absolute inset-0 bg-black/80" @click="closeDeleteConfirm"></div>
-      <div class="modal-card relative z-10 rounded-lg bg-white shadow-xl">
-        <header class="modal-header">
-          <h2 class="modal-title">Confirmer la suppression</h2>
-          <button class="modal-close" aria-label="Fermer" @click="closeDeleteConfirm">&times;</button>
+      <div class="absolute inset-0 bg-slate-900/60" @click="closeDeleteConfirm"></div>
+      <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <header class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Confirmer la suppression</h2>
+            <p class="text-xs text-slate-400">Cette action supprimera définitivement l'imprimante.</p>
+          </div>
+          <button
+            type="button"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:text-rose-500"
+            @click="closeDeleteConfirm"
+          >
+            ×
+          </button>
         </header>
-        <section class="modal-body">
-          <p>Êtes-vous sûr de vouloir supprimer l'imprimante <strong>{{ printerToDelete?.name }}</strong> ?</p>
+
+        <section class="mt-4 space-y-2 text-sm text-slate-600">
+          <p>Supprimer l'imprimante <strong>{{ printerToDelete?.name }}</strong> ?</p>
+          <p class="text-xs text-rose-500">Cette opération est irréversible.</p>
         </section>
-        <footer class="modal-footer">
-          <button class="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60" @click="deletePrinter" :disabled="isDeleting">Supprimer</button>
-          <button class="rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
-          <p v-if="deleteError" class="delete-error">{{ deleteError }}</p>
+
+        <footer class="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            @click="closeDeleteConfirm"
+            :disabled="isDeleting"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"
+            @click="deletePrinter"
+            :disabled="isDeleting"
+          >
+            Supprimer
+          </button>
         </footer>
+        <p v-if="deleteError" class="mt-2 text-xs text-rose-500">{{ deleteError }}</p>
       </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script setup>
@@ -120,7 +223,6 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import printerService from '../services/printerService.js'
 import { usePosStore } from '../stores/posStore.js'
 import { useAuth } from '../composables/useAuth.js'
-import Profile from './Profile.vue'
 
 const posStore = usePosStore()
 
@@ -201,6 +303,16 @@ const filteredPrinters = computed(() => {
   }
 
   return result
+})
+
+const connectionTypes = computed(() => {
+  const types = new Set()
+  if (Array.isArray(printers.value)) {
+    printers.value.forEach((printer) => {
+      if (printer?.connection_type) types.add(printer.connection_type)
+    })
+  }
+  return Array.from(types)
 })
 
 // Gestion des modals d'édition
@@ -287,419 +399,29 @@ const deletePrinter = async () => {
 </script>
 
 <style scoped>
-/* Bulma removed; using Tailwind utilities in template + local CSS */
-
-.printer-list-container {
-  padding: 1.5rem;
-  background-color: #f8f9fa;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
+.printer-layout {
+  min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
 }
 
-.header-section {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.header-section h1 {
-  font-size: 2.2rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-}
-
-.main-layout {
-  display: flex;
-  gap: 2rem;
-  flex-grow: 1;
-}
-
-.sidebar {
-  width: 260px;
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  height: fit-content;
-  border: 1px solid #e2e8f0;
-}
-
-.sidebar h3 {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 1.2rem;
-  text-align: center;
-}
-
-.filter-section {
-  margin-bottom: 1.5rem;
-}
-
-.filter-section label {
-  display: block;
-  font-weight: 600;
-  color: #4a5568;
-  margin-bottom: 0.8rem;
-  font-size: 0.95rem;
-}
-
-.filter-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.filter-buttons button {
-  width: 100%;
-  padding: 0.9rem 1.1rem;
-  text-align: left;
-  background-color: #f7fafc;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  color: #4a5568;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.filter-buttons button:hover {
-  background-color: #e2e8f0;
-}
-
-.filter-buttons button.active {
-  background-color: #3182ce;
-  color: white;
-  border-color: #3182ce;
-  font-weight: 600;
-}
-
-.content {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.search-section {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 1.5rem;
-}
-
-.add-button {
-  padding: 0.9rem 1.2rem;
-  background-color: #3182ce;
-  border: none;
-  color: white;
-  cursor: pointer;
-  border-radius: 12px;
-  transition: background-color 0.2s ease;
-  font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.add-button:hover {
-  background-color: #2c5282;
-}
-
-.loading,
-.no-results,
-.error {
-  text-align: center;
-  margin-top: 2rem;
-  font-size: 1.2rem;
-  color: #718096;
-  font-weight: 500;
-}
-
-.error p {
-  color: #e53e3e;
-}
-
-.error button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #3182ce;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.error button:hover {
-  background-color: #2c5282;
-}
-
-.spinner {
-  border: 4px solid #e2e8f0;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border-left-color: #3182ce;
-  animation: spin 1s ease infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
+@media (min-width: 1024px) {
+  .printer-layout {
+    height: calc(100vh - 5.5rem);
+    height: calc(100dvh - 5.5rem);
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow: hidden;
   }
 }
 
-.printers-section {
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e2e8f0;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.printers-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.printer-card {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: box-shadow 0.2s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.printer-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.printer-card.inactive {
-  opacity: 0.7;
-}
-
-.printer-details {
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  flex-grow: 1;
-}
-
-.printer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.printer-details h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-  flex-grow: 1;
-  line-height: 1.3;
-}
-
-.badges {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.badge {
-  padding: 0.4rem 0.8rem;
-  border-radius: 16px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.badge.default {
-  background-color: #38a169;
-  color: white;
-}
-
-.badge.active {
-  background-color: #38a169;
-  color: white;
-}
-
-.badge.inactive {
-  background-color: #e53e3e;
-  color: white;
-}
-
-.printer-meta {
-  font-size: 0.95rem;
-  color: #4a5568;
-  line-height: 1.5;
-}
-
-.printer-meta p {
-  margin: 0.4rem 0;
-  font-weight: 500;
-}
-
-.printer-meta strong {
-  color: #2d3748;
-  font-weight: 600;
-}
-
-.printer-actions {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: auto;
-  justify-content: flex-end;
-  padding-top: 0.8rem;
-}
-
-.printer-actions button {
-  background-color: #f7fafc;
-  border: 1px solid #d1d5db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  color: #4a5568;
-  font-size: 1rem;
-}
-
-.printer-actions button:hover {
-  background-color: #e2e8f0;
-}
-
-.printer-actions button:first-child {
-  color: #38a169;
-  border-color: #38a169;
-}
-
-.printer-actions button:first-child:hover {
-  background-color: #38a169;
-  color: white;
-}
-
-.printer-actions button:last-child {
-  color: #e53e3e;
-  border-color: #e53e3e;
-}
-
-.printer-actions button:last-child:hover {
-  background-color: #e53e3e;
-  color: white;
-}
-
-/* Modals */
-.modal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1000;
-}
-
-.modal-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(10, 10, 10, 0.86);
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 480px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  background-color: #ffffff;
-  position: relative;
-  z-index: 1001;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.2rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8f9fa;
-  border-radius: 12px 12px 0 0;
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  cursor: pointer;
-  line-height: 1;
-  color: #718096;
-  transition: color 0.2s ease;
-}
-
-.modal-close:hover {
-  color: #2d3748;
-}
-
-.modal-body {
-  padding: 1.5rem;
-  font-size: 1rem;
-  color: #2d3748;
-  line-height: 1.5;
-  background-color: #ffffff;
-}
-
-.modal-footer {
-  padding: 1.2rem 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.8rem;
-  border-top: 1px solid #e2e8f0;
-  background-color: #f8f9fa;
-  border-radius: 0 0 12px 12px;
-}
-
-.modal-footer .button {
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: background-color 0.2s ease;
-}
-
-.modal-footer .button:hover {
-  background-color: #e2e8f0;
-}
-
-.delete-error {
-  color: #e53e3e;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  text-align: center;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>

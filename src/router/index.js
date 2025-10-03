@@ -121,6 +121,11 @@ const router = createRouter({
           component: Product,
         },
         {
+          path: 'categories',
+          name: 'dashboard-categories',
+          component: CategoryManage,
+        },
+        {
           path: 'ventes',
           name: 'dashboard-ventes',
           component: () => import('../views/SalesList.vue'),
@@ -284,8 +289,7 @@ const router = createRouter({
     },
     {
       path: '/categories',
-      name: 'categories',
-      component: CategoryManage,
+      redirect: { name: 'dashboard-categories' },
     },
     {
       path: '/cash-transactions',

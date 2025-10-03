@@ -138,12 +138,12 @@
 
 <script>
 import userService from '@/services/userService'
-import Profile from '../Profile.vue'
+
 
 export default {
   name: 'UserList',
   components: {
-    Profile
+
   },
   data() {
     return {

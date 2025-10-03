@@ -45,6 +45,9 @@ import {
   faCircleQuestion,
   faEye,
   faXmark,
+  faPen,
+  faMagnifyingGlass,
+  faChevronUp,
 } from '@fortawesome/free-solid-svg-icons'
 
 // Ajoute les icônes dans la bibliothèque
@@ -90,6 +93,9 @@ library.add(
   faCircleQuestion,
   faEye,
   faXmark,
+  faPen,
+  faMagnifyingGlass,
+  faChevronUp,
 )
 
 export { FontAwesomeIcon }

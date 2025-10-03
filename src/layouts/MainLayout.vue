@@ -32,7 +32,6 @@ routes
 })
 
 export default router
-=======
 import { createRouter, createWebHistory } from 'vue-router'
 import CashPrinter from '../views/CashPrinter.vue'
 import Direct from '../views/Direct.vue'

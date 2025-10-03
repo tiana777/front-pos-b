@@ -1,54 +1,93 @@
 <template>
-  <div class="pos-manage-container">
-    <h1>Gestion des Points de Vente</h1>
-
-    <div class="actions">
-      <button @click="showAddForm = true">Ajouter un Point de Vente</button>
-    </div>
-
-    <div v-if="loading" class="loading">Chargement des points de vente...</div>
-
-    <div v-else>
-      <table class="pos-table">
-        <thead>
-          <tr>
-            <th class="has-text-black">Nom</th>
-            <th class="has-text-black">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="pos in pointsOfSale" :key="pos.id">
-            <td class="has-text-black">{{ pos.name }}</td>
-            <td class="has-text-black">
-              <button @click="editPointOfSale(pos)">Éditer</button>
-              <button @click="deletePointOfSale(pos.id)">Supprimer</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Add/Edit Form Modal -->
-    <div v-if="showAddForm || showEditForm" class="modal-overlay">
-      <div class="modal-content">
-        <h2>{{ showEditForm ? 'Éditer Point de Vente' : 'Ajouter Point de Vente' }}</h2>
-        <form @submit.prevent="submitForm">
-          <label for="name">Nom:</label>
-          <input id="name" v-model="form.name" required />
-
-          <div class="modal-actions">
-            <button type="submit">{{ showEditForm ? 'Mettre à jour' : 'Ajouter' }}</button>
-            <button type="button" @click="closeForm">Annuler</button>
-          </div>
-        </form>
+  <div class="pos-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)]">
+    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h1 class="text-base font-semibold text-slate-800">Gestion des points de vente</h1>
+          <p class="text-xs text-slate-400">Administrez les différents points de vente disponibles.</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+          @click="openCreate"
+        >
+          <FontAwesomeIcon icon="fa-solid fa-plus" />
+          Nouveau point de vente
+        </button>
       </div>
-    </div>
+
+      <div class="mt-3 flex-1 overflow-hidden">
+        <div
+          v-if="loading"
+          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-10 text-center text-sm text-slate-500"
+        >
+          <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+          <p class="mt-4 font-medium">Chargement des points de vente...</p>
+        </div>
+
+        <div
+          v-else-if="!pointsOfSale.length"
+          class="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-sm text-slate-500"
+        >
+          Aucun point de vente enregistré.
+        </div>
+
+        <div v-else class="flex h-full flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto">
+            <table class="min-w-full divide-y divide-slate-100 text-sm">
+              <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th class="px-4 py-3 text-left">Nom</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="pos in pointsOfSale" :key="pos.id" class="bg-white">
+                  <td class="px-4 py-3 text-slate-700">{{ pos.name }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                        @click="editPointOfSale(pos)"
+                        aria-label="Éditer"
+                      >
+                        <FontAwesomeIcon icon="fa-solid fa-pen" />
+                      </button>
+                      <button
+                        type="button"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
+                        @click="deletePointOfSale(pos.id)"
+                        aria-label="Supprimer"
+                      >
+                        <FontAwesomeIcon icon="fa-solid fa-trash" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <PointOfSaleModal
+    :is-open="showAddForm || showEditForm"
+    :title="showEditForm ? 'Éditer un point de vente' : 'Ajouter un point de vente'"
+    :submit-label="showEditForm ? 'Mettre à jour' : 'Ajouter'"
+    :initial-name="form.name"
+    @submit="submitForm"
+    @close="closeForm"
+  />
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import PointOfSaleModal from './PointOfSaleModal.vue'
 
 const pointsOfSale = ref([])
 const loading = ref(true)
@@ -56,7 +95,7 @@ const showAddForm = ref(false)
 const showEditForm = ref(false)
 const form = ref({
   id: null,
-  name: ''
+  name: '',
 })
 
 const fetchPointsOfSale = async () => {
@@ -71,12 +110,15 @@ const fetchPointsOfSale = async () => {
   }
 }
 
-const submitForm = async () => {
+const submitForm = async (name) => {
+  if (typeof name === 'string') {
+    form.value.name = name
+  }
   if (showEditForm.value) {
     // Update existing point of sale
     try {
       await axios.put(`http://127.0.0.1:8000/api/point_of_sales/${form.value.id}`, {
-        name: form.value.name
+        name: form.value.name,
       })
       await fetchPointsOfSale()
       closeForm()
@@ -87,7 +129,7 @@ const submitForm = async () => {
     // Add new point of sale
     try {
       await axios.post('http://127.0.0.1:8000/api/point_of_sales', {
-        name: form.value.name
+        name: form.value.name,
       })
       await fetchPointsOfSale()
       closeForm()
@@ -122,80 +164,30 @@ const closeForm = () => {
   form.value.name = ''
 }
 
+const openCreate = () => {
+  showAddForm.value = true
+  form.value.id = null
+  form.value.name = ''
+}
+
 onMounted(() => {
   fetchPointsOfSale()
 })
 </script>
 
 <style scoped>
-.pos-manage-container {
-  padding: 1rem;
-  max-width: 600px;
-  margin: 0 auto;
-  text-align: center;
+.pos-layout {
+  min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
 }
 
-.actions {
-  margin-bottom: 1rem;
-}
-
-.pos-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
-}
-
-.pos-table th,
-.pos-table td {
-  border: 1px solid #ccc;
-  padding: 0.5rem;
-  text-align: left;
-}
-
-button {
-  margin-right: 0.5rem;
-  padding: 0.3rem 0.6rem;
-  background-color: #d32f2f;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #b71c1c;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-content {
-  background-color: white;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 400px;
-  text-align: left;
-}
-
-.modal-actions {
-  margin-top: 1rem;
-  text-align: right;
-}
-
-input {
-  width: 100%;
-  padding: 0.5rem;
-  margin-top: 0.3rem;
-  box-sizing: border-box;
+@media (min-width: 1024px) {
+  .pos-layout {
+    height: calc(100vh - 5.5rem);
+    height: calc(100dvh - 5.5rem);
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow: hidden;
+  }
 }
 </style>
