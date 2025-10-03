@@ -102,6 +102,48 @@ const { isAdmin, loadUserData } = useAuth()
 const user = ref({ name: '', email: '', point_of_sale_name: '' })
 const isOpen = ref(false)
 
+const posOperationLinks = [
+  { icon: 'fa-solid fa-chart-line', label: 'Tableau caissier', route: 'cashier-dashboard' },
+  { icon: 'fa-solid fa-bolt', label: 'Vente directe', route: 'direct' },
+  { icon: 'fa-solid fa-table', label: 'Service en salle', route: 'table' },
+  { icon: 'fa-solid fa-cash-register', label: 'Gestion des caisses', route: 'cash-registers-machine-link' },
+  { icon: 'fa-solid fa-receipt', label: 'Mes ventes', route: 'user-sales' }
+]
+
+const posCatalogueLinks = [
+  { icon: 'fa-solid fa-box-open', label: 'Produits', route: 'product' },
+  { icon: 'fa-solid fa-list', label: 'Historique des ventes', route: 'ventes' },
+  { icon: 'fa-solid fa-undo', label: 'Retour caisse', route: 'retour' }
+]
+
+const posAdminLinks = [
+  { icon: 'fa-solid fa-user-shield', label: 'Gestion des rôles', route: 'roles' },
+  { icon: 'fa-solid fa-lock', label: 'Permissions', route: 'permissions' },
+  { icon: 'fa-solid fa-users', label: 'Utilisateurs', route: 'users' },
+  { icon: 'fa-solid fa-print', label: 'Imprimantes', route: 'printers' }
+]
+
+const greetingName = computed(() => user.value?.name || 'cher caissier')
+const isPosRoute = computed(() => route.name === 'pos')
+const sessionLabel = computed(() => {
+  try {
+    const raw = localStorage.getItem('cash_register_session')
+    if (!raw) return 'à démarrer'
+    const session = JSON.parse(raw)
+    if (!session) return 'à démarrer'
+    if (session.status) return session.status
+    if (session.opened_at) {
+      const openedDate = new Date(session.opened_at)
+      if (!Number.isNaN(openedDate.getTime())) {
+        return `depuis ${openedDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+      }
+    }
+  } catch (error) {
+    // Ignore parsing errors and fall through to default label
+  }
+  return 'active'
+})
+
 const breadcrumbLabels = {
   pos: 'Accueil',
   direct: 'Vente directe',
