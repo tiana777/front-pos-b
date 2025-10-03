@@ -1,29 +1,36 @@
 <template>
-  <div v-if="isOpen" class="invoice-modal-overlay" @click.self="closeModal">
-    <div class="invoice-modal">
-      <div class="invoice-header">
-        <div class="company-logo">
-          <img :src="companyLogo || '/default-logo.png'" :alt="companyName || 'Logo de l\'entreprise'"
-            class="logo-image" />
+  <div
+    v-if="isOpen"
+    class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[1000]"
+    @click.self="closeModal"
+  >
+    <div class="bg-white rounded-lg max-w-2xl w-[90%] max-h-[90vh] overflow-y-auto shadow-xl font-sans text-gray-800">
+      <div class="flex justify-between items-center p-8 border-b-2 border-gray-200">
+        <div class="flex-shrink-0">
+          <img
+            :src="companyLogo || '/default-logo.png'"
+            :alt="companyName || 'Logo de l\'entreprise'"
+            class="max-h-[100px] max-w-[200px] h-auto w-auto object-contain"
+          />
         </div>
-        <div class="invoice-info">
-          <h1>FACTURE</h1>
-          <div class="invoice-meta">
-            <p style="font-weight: bold; color: black;">N° Facture: {{ invoiceNumber || 'N/A' }}</p>
-            <p style="font-weight: bold; color: black;">Date: {{ currentDate }}</p>
-            <p style="font-weight: bold; color: black;">Client: {{ clientName || 'Client non spécifié' }}</p>
+        <div class="text-right">
+          <h1 class="m-0 mb-4 text-gray-900 text-4xl font-bold">FACTURE</h1>
+          <div>
+            <p class="font-bold text-black my-1">N° Facture: {{ invoiceNumber || 'N/A' }}</p>
+            <p class="font-bold text-black my-1">Date: {{ currentDate }}</p>
+            <p class="font-bold text-black my-1">Client: {{ clientName || 'Client non spécifié' }}</p>
           </div>
         </div>
       </div>
 
-      <div class="invoice-body">
-        <table class="invoice-table">
+      <div class="p-8">
+        <table class="w-full border-collapse">
           <thead>
             <tr>
-              <th style="font-weight: bold; color: black;">Description</th>
-              <th style="font-weight: bold; color: black;">Quantité</th>
-              <th style="font-weight: bold; color: black;">Prix unitaire</th>
-              <th style="font-weight: bold; color: black;">Total</th>
+              <th class="bg-gray-100 font-bold text-black p-3 text-left border-b">Description</th>
+              <th class="bg-gray-100 font-bold text-black p-3 text-left border-b">Quantité</th>
+              <th class="bg-gray-100 font-bold text-black p-3 text-left border-b">Prix unitaire</th>
+              <th class="bg-gray-100 font-bold text-black p-3 text-left border-b">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -32,6 +39,10 @@
               <td>{{ item.quantity }}</td>
               <td>{{ item.price }} Ar</td>
               <td>{{ item.quantity * item.price }} Ar</td>
+              <td class="p-3 border-b">{{ item.name }}</td>
+              <td class="p-3 border-b">{{ item.quantity }}</td>
+              <td class="p-3 border-b">{{ item.price }} €</td>
+              <td class="p-3 border-b">{{ (item.quantity * item.price).toFixed(2) }} €</td>
             </tr>
           </tbody>
         </table>
@@ -45,11 +56,27 @@
         <div class="summary-row total">
           <span style="color: black;">Total:</span>
           <span style="color: black;">{{ totalAmount }} Ar</span>
+      <div class="px-8 pb-4 text-right">
+        <div class="flex justify-end items-center my-2">
+          <span class="font-bold text-black mr-8">Sous-total:</span>
+          <span class="font-bold text-black">{{ subtotal }} €</span>
+        </div>
+        <div class="flex justify-end items-center text-lg font-bold border-t-2 border-gray-800 pt-2">
+          <span class="font-bold text-black mr-8">Total:</span>
+          <span class="font-bold text-black">{{ totalAmount }} €</span>
+        </div>
+      </div>
+          <span class="font-bold text-black">{{ totalAmount }} €</span>
         </div>
       </div>
 
-      <div class="invoice-footer">
-        <button class="btn btn-primary" @click="openPaymentModal">Ouvrir Paiement</button>
+      <div class="flex justify-center p-8 border-t">
+        <button
+          class="px-6 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          @click="openPaymentModal"
+        >
+          Ouvrir Paiement
+        </button>
       </div>
     </div>
   </div>
@@ -117,133 +144,40 @@ export default {
 </script>
 
 <style scoped>
-.invoice-modal-overlay {
+.fixed {
   position: fixed;
+}
+
+.inset-0 {
   top: 0;
+  right: 0;
+  bottom: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.bg-black {
+  background-color: black;
+}
+
+.bg-opacity-50 {
+  --tw-bg-opacity: 0.5;
+  background-color: rgb(0 0 0 / var(--tw-bg-opacity));
+}
+
+.flex {
   display: flex;
+}
+
+.justify-center {
   justify-content: center;
+}
+
+.items-center {
   align-items: center;
+}
+
+.z-\[1000\] {
   z-index: 1000;
-}
-
-.invoice-modal {
-  background: white;
-  border-radius: 8px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #333;
-}
-
-.invoice-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.company-logo {
-  flex: 0 0 auto;
-}
-
-.logo-image {
-  max-height: 100px;
-  max-width: 200px;
-  height: auto;
-  width: auto;
-  object-fit: contain;
-}
-
-.invoice-info {
-  text-align: right;
-}
-
-.invoice-info h1 {
-  margin: 0 0 1rem 0;
-  color: #1a1a1a;
-  font-size: 2.5rem;
-}
-
-.invoice-meta p {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-}
-
-.invoice-body {
-  padding: 2rem;
-}
-
-.invoice-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.invoice-table th,
-.invoice-table td {
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.invoice-table th {
-  background-color: #f5f5f5;
-  font-weight: bold;
-}
-
-.invoice-summary {
-  padding: 1rem 2rem;
-  text-align: right;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: flex-end;
-  margin: 0.5rem 0;
-}
-
-.summary-row span:first-child {
-  margin-right: 2rem;
-  font-weight: bold;
-}
-
-.summary-row.total {
-  font-size: 1.2rem;
-  font-weight: bold;
-  border-top: 2px solid #333;
-  padding-top: 0.5rem;
-}
-
-.invoice-footer {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
 }
 
 @media print {

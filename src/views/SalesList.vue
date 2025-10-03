@@ -6,6 +6,70 @@
         <div>
           <h1>Ventes de la session</h1>
           <p>Consultez les tickets enregistrés pendant la session de caisse en cours.</p>
+  <template v-if="!embedded">
+    <Profile />
+  </template>
+  <div class="sales-list-container">
+    <h1 class="title has-text-black">Ventes</h1>
+    <div class="search-container">
+      <input type="text" v-model="searchQuery" placeholder="Rechercher par ticket, produit, date..."
+        class="search-input" />
+    </div>
+
+    <div class="filters-container">
+      <label for="periodFilter">Période:</label>
+      <select id="periodFilter" v-model="periodFilter" @change="applyPeriodFilter" class="filter-select">
+        <option value="">Toutes</option>
+        <option value="today">Aujourd'hui</option>
+        <option value="thisWeek">Cette semaine</option>
+        <option value="thisMonth">Ce mois</option>
+      </select>
+
+      <label for="startDate">Date début:</label>
+      <input type="date" id="startDate" v-model="startDate" class="filter-date" />
+
+      <label for="endDate">Date fin:</label>
+      <input type="date" id="endDate" v-model="endDate" class="filter-date" />
+    </div>
+    <div v-if="loading" class="loading">Chargement des ventes...</div>
+    <div v-else>
+      <div v-if="filteredSales.length === 0">Aucune vente trouvée.</div>
+      <template v-for="sale in filteredSales" :key="sale?.id">
+        <div v-if="sale" class="sale-card">
+          <div class="sale-header flex-header" @click="toggleSale(sale.id)">
+            <h2 class="sale-title">Ticket: {{ sale?.ticket_number || 'N/A' }} - Total: {{ formatPrice(sale?.total_amount
+              || 0) }} - Date: {{ formatDate(sale?.created_at) }}</h2>
+            <button class="toggle-button">{{ expandedSales.has(sale.id) ? '▲' : '▼' }}</button>
+            <button class="edit-button" @click.stop="editSale(sale.id)">Éditer</button>
+            <button class="delete-button" @click.stop="deleteSale(sale.id)">Supprimer</button>
+          </div>
+
+          <div class="sale-actions">
+
+          </div>
+          <table v-if="expandedSales.has(sale.id)" class="order-lines-table">
+            <thead>
+              <tr>
+                <th class="has-text-black">Produit</th>
+                <th class="has-text-black">Quantité</th>
+                <th class="has-text-black">Prix unitaire</th>
+                <th class="has-text-black">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="line in sale.order_lines" :key="line.id">
+                <td class="has-text-black">{{ line.product?.name || 'N/A' }}</td>
+                <td class="has-text-black">{{ line.quantity }}</td>
+                <td class="has-text-black">{{ formatPrice(line.price) }}</td>
+                <td class="has-text-black">{{ formatPrice(line.total) }}</td>
+              </tr>
+              <tr class="order-lines-total-row">
+                <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
+                <td style="font-weight: bold;">{{formatPrice(sale.order_lines.reduce((sum, line) => sum + line.total,
+                  0))}}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div class="meta" v-if="sessionId">
           <span>Session #{{ sessionId }}</span>
@@ -121,6 +185,10 @@ import {
 
 library.add(faPenToSquare, faTrash, faChevronDown, faChevronUp, faCircleCheck, faCircleXmark, faClock)
 
+// When embedded in Dashboard, header/menu are hidden
+const props = defineProps({
+  embedded: { type: Boolean, default: false }
+})
 const sales = ref([])
 const loading = ref(true)
 const searchQuery = ref('')

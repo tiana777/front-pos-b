@@ -56,6 +56,11 @@
           </div>
           <div v-else class="no-sales">Aucune vente trouvée pour cette session.</div>
         </div>
+  <template v-if="!embedded">
+    <Profile />
+  </template>
+  <section class="user-sales-section">
+  </section>
 
 
       </div>
@@ -163,8 +168,13 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
-import Profile from './Profile.vue'
+
 import EditSaleModal from './EditSaleModal.vue'
+
+// When embedded in Dashboard, header/menu are hidden
+const props = defineProps({
+  embedded: { type: Boolean, default: false }
+})
 
 const sales = ref([])
 const loading = ref(true)

@@ -1,48 +1,75 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
-      <header class="modal-header">
-        <h2 class="modal-title">Ajouter un produit</h2>
-        <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
-      </header>
-      <section class="modal-body">
-        <form @submit.prevent="addProduct" class="form-container">
-          <div class="field">
-            <label class="label">Nom du produit</label>
-            <div class="control">
-              <input class="input" type="text" v-model="localProduct.name" maxlength="255" required
-                placeholder="Nom du produit" />
-            </div>
-          </div>
-          <div class="field">
-            <label class="label">Réference du produit</label>
-            <div class="control">
-              <input class="input" type="text" v-model="localProduct.ref" maxlength="4" required
-                placeholder="Référence du produit" />
-            </div>
-          </div>
+  <transition name="fade">
+    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="closeModal"></div>
 
-          <div class="field">
-            <label class="label">Prix</label>
-            <div class="control">
-              <input class="input" type="number" v-model.number="localProduct.price" min="0" step="0.01" required
-                placeholder="Prix" />
+      <div
+        class="relative z-10 w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl"
+      >
+        <header class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Ajouter un produit</h2>
+            <p class="text-sm text-slate-500">
+              Complétez les informations ci-dessous pour créer un nouveau produit.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:text-rose-500"
+            aria-label="Fermer"
+            @click="closeModal"
+          >
+            &times;
+          </button>
+        </header>
+
+        <section class="px-6 py-6">
+          <form id="add-product-form" @submit.prevent="addProduct" class="space-y-5">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="space-y-2">
+                <label class="text-sm font-semibold text-slate-600">Nom du produit</label>
+                <input
+                  v-model="localProduct.name"
+                  type="text"
+                  maxlength="255"
+                  required
+                  placeholder="Nom du produit"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+              <div class="space-y-2">
+                <label class="text-sm font-semibold text-slate-600">Référence</label>
+                <input
+                  v-model="localProduct.ref"
+                  type="text"
+                  maxlength="20"
+                  required
+                  placeholder="Référence du produit"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
             </div>
-          </div>
 
-          <div class="field checkbox-field">
-            <label class="checkbox">
-              <input type="checkbox" v-model="localProduct.status" />
-              Actif
-            </label>
-          </div>
-
-          <div class="field">
-            <label class="label">Catégorie</label>
-            <div class="control">
-              <div class="select">
-                <select v-model="localProduct.category_id">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="space-y-2">
+                <label class="text-sm font-semibold text-slate-600">Prix</label>
+                <input
+                  v-model.number="localProduct.price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  placeholder="0.00"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+              <div class="space-y-2">
+                <label class="text-sm font-semibold text-slate-600">Catégorie</label>
+                <select
+                  v-model="localProduct.category_id"
+                  required
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                >
                   <option :value="null" disabled>Choisir une catégorie</option>
                   <option v-for="category in categories" :key="category.id" :value="category.id">
                     {{ category.name }}
@@ -50,36 +77,81 @@
                 </select>
               </div>
             </div>
-          </div>
 
-          <div class="field">
-            <label class="label">Image</label>
-            <div class="control">
-              <input type="file" accept="image/*" @change="onImageChange" />
+            <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-700">Produit actif</p>
+                <p class="text-xs text-slate-500">Affichez le produit sur vos points de vente</p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" class="peer sr-only" v-model="localProduct.status" />
+                <span
+                  class="peer h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-indigo-500 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5"
+                ></span>
+              </label>
             </div>
-            <p v-if="imageError" class="help is-danger">{{ imageError }}</p>
-            <figure class="image-preview">
-              <img :src="imageUrl" alt="Aperçu de l'image" class="product-image" loading="lazy" />
-            </figure>
-          </div>
-        </form>
-      </section>
-      <footer class="modal-footer">
-        <button class="button button-success" :class="{ 'is-loading': isSaving }" @click="addProduct"
-          :disabled="isSaving">
-          Ajouter
-        </button>
-        <button class="button button-cancel" @click="closeModal" :disabled="isSaving">
-          Annuler
-        </button>
-      </footer>
-      <p v-if="saveError" class="save-error">{{ saveError }}</p>
+
+            <div class="space-y-3">
+              <label class="text-sm font-semibold text-slate-600">Image</label>
+              <div
+                class="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center"
+              >
+                <input
+                  ref="fileInput"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="onImageChange"
+                />
+                <img
+                  :src="imageUrl"
+                  alt="Aperçu du produit"
+                  class="h-20 w-20 rounded-full object-cover shadow-inner ring-2 ring-white"
+                />
+                <div class="space-y-1 text-xs text-slate-500">
+                  <p>Formats acceptés : JPG, PNG (max 2 Mo)</p>
+                  <button
+                    type="button"
+                    class="font-semibold text-indigo-600 transition hover:text-indigo-700"
+                    @click="triggerFileDialog"
+                  >
+                    Choisir une image
+                  </button>
+                </div>
+                <p v-if="imageError" class="text-xs font-medium text-rose-500">{{ imageError }}</p>
+              </div>
+            </div>
+
+            <p v-if="saveError" class="text-sm font-semibold text-rose-500">{{ saveError }}</p>
+          </form>
+        </section>
+
+        <footer class="flex flex-col gap-3 border-t border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+          <button
+            type="button"
+            class="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 sm:w-auto"
+            @click="closeModal"
+            :disabled="isSaving"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            form="add-product-form"
+            class="w-full rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400 sm:w-auto"
+            :disabled="isSaving"
+          >
+            <span v-if="isSaving" class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+            Ajouter le produit
+          </button>
+        </footer>
+      </div>
     </div>
-  </div>
+  </transition>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -100,6 +172,7 @@ const localProduct = reactive({
 
 const categories = ref([])
 const imageError = ref('')
+const fileInput = ref(null)
 
 const fetchCategories = async () => {
   try {
@@ -113,7 +186,28 @@ const fetchCategories = async () => {
   }
 }
 
+const resetForm = () => {
+  localProduct.name = ''
+  localProduct.ref = ''
+  localProduct.price = 0
+  localProduct.status = true
+  localProduct.category_id = null
+  localProduct.image = null
+  localProduct.imagePreview = ''
+  imageError.value = ''
+  saveError.value = ''
+}
+
 onMounted(fetchCategories)
+
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      resetForm()
+    }
+  }
+)
 
 const imageUrl = computed(() => {
   return localProduct.imagePreview || 'http://localhost:8000/storage/products/default-product-image.jpg'
@@ -123,7 +217,6 @@ const onImageChange = (event) => {
   const file = event.target.files[0]
   if (!file) return
   event.target.value = ''
-
   if (!file.type.startsWith('image/')) {
     imageError.value = 'Type de fichier invalide'
     return
@@ -136,6 +229,10 @@ const onImageChange = (event) => {
   imageError.value = ''
   localProduct.image = file
   localProduct.imagePreview = URL.createObjectURL(file)
+}
+
+const triggerFileDialog = () => {
+  fileInput.value?.click()
 }
 
 const isSaving = ref(false)
@@ -185,150 +282,15 @@ const addProduct = async () => {
 
 const closeModal = () => emits('close')
 </script>
-
 <style scoped>
-.modal-card {
-  max-width: 600px;
-  width: 100%;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(235, 229, 229, 0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.2s ease;
 }
 
-.modal-header {
-  padding: 1.5rem 2rem;
-  background: #a83232;
-  border-bottom: 1px solid #eee;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  font-size: 2rem;
-  color: white;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  transition: color 0.2s ease;
-}
-
-.modal-close:hover {
-  color: #ffb3b3;
-}
-
-.modal-body {
-  padding: 1.5rem 2rem;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-}
-
-.label {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #333;
-}
-
-.input,
-.select select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 1rem;
-  transition: border-color 0.2s ease;
-}
-
-.input:focus,
-.select select:focus {
-  outline: none;
-  border-color: #a83232;
-  box-shadow: 0 0 5px rgba(168, 50, 50, 0.5);
-}
-
-.checkbox-field {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.checkbox input[type='checkbox'] {
-  margin: 0;
-}
-
-.image-preview {
-  margin-top: 0.5rem;
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 8px;
-  object-fit: contain;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.modal-footer {
-  padding: 1rem 2rem;
-  background: #f9f9f9;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.button-success {
-  background-color: #a83232;
-  color: white;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.button-success:hover {
-  background-color: #8a2929;
-}
-
-.button-cancel {
-  background-color: #ccc;
-  color: #333;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.button-cancel:hover {
-  background-color: #b3b3b3;
-}
-
-.help.is-danger {
-  color: #d9534f;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
 }
 </style>
