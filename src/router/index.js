@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import DirectSale from '../views/DirectSale.vue'
-
+import Pos from '../views/Pos.vue'
 
 import Product from '../views/Product.vue'
 import CashPrinter from '../views/CashPrinter.vue'
@@ -17,8 +17,6 @@ import PermissionCreate from '@/views/permissions/PermissionCreate.vue'
 import UserList from '@/views/users/UserList.vue'
 import UserRoleManagement from '@/views/users/UserRoleManagement.vue'
 import Printer from '../views/Printer.vue'
-
-import Table from '../views/Table.vue'
 
 // Fonction de vérification de l'expiration du token
 function checkTokenExpiration() {
@@ -49,6 +47,11 @@ const router = createRouter({
       component: Login,
     },
     {
+      path: '/pos',
+      name: 'pos',
+      component: Pos,
+    },
+    {
       path: '/direct',
       name: 'direct',
       component: DirectSale,
@@ -56,7 +59,34 @@ const router = createRouter({
     {
       path: '/table',
       name: 'table',
-      component: Table,
+      component: () => import('../views/TableSales.vue'),
+    },
+    {
+      path: '/table-sales',
+      name: 'table-sales',
+      component: () => import('../views/TableSales.vue'),
+    },
+    {
+      path: '/table/order/:tableId?',
+      name: 'table-order',
+      component: () => import('../views/TableSale.vue'),
+      props: route => ({ tableId: route.params.tableId })
+    },
+
+    {
+      path: '/tables/manage',
+      name: 'tables-manage',
+      component: () => import('../views/TableManage.vue'),
+    },
+    {
+      path: '/tables/layout',
+      name: 'tables-layout',
+      component: () => import('../views/TableLayout.vue'),
+    },
+    {
+      path: '/tables/selector',
+      name: 'tables-selector',
+      component: () => import('../views/TableSelector.vue'),
     },
     {
       path: '/product',

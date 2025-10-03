@@ -622,7 +622,7 @@ const onConnectButtonClick = () => {
 
 const formatCurrency = (value) => {
   const number = Number(value)
-  if (!Number.isFinite(number)) return '0,00 €'
+  if (!Number.isFinite(number)) return '0,00 Ar'
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR'

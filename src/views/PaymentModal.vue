@@ -89,21 +89,21 @@
           </div>
 
           <div class="grid w-full max-w-[220px] grid-cols-3 gap-2 rounded bg-white p-2 shadow" :class="{ '': isMobilePayment }">
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('7')">7</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('8')">8</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('9')">9</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('7')">7</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('8')">8</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('9')">9</button>
 
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('4')">4</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('5')">5</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('6')">6</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('4')">4</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('5')">5</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('6')">6</button>
 
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('1')">1</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('2')">2</button>
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('3')">3</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('1')">1</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('2')">2</button>
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('3')">3</button>
 
-            <button class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField('0')">0</button>
-            <button v-if="isMobilePayment" class="aspect-square w-full rounded border border-gray-300 text-xs transition hover:bg-gray-100 active:bg-gray-200" @click="appendToField(' ')">Espace</button>
-            <button v-else class="aspect-square w-full rounded border border-gray-300 text-lg transition hover:bg-gray-100 active:bg-gray-200" @click="appendDecimal()">
+            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('0')">0</button>
+            <button v-if="isMobilePayment" :class="keypadButtonClass(false)" @click="appendToField(' ')">Espace</button>
+            <button v-else :class="keypadButtonClass(true)" disabled>
               <font-awesome-icon icon="fa-solid fa-circle" />
             </button>
 
@@ -197,19 +197,29 @@ const isValidPhoneNumber = computed(() => {
   if (!isMobilePayment.value) return true;
   return phoneNumber.value.replace(/\D/g, '').length >= 10;
 });
-const discountedTotal = computed(() => Number((props.totalAmount * (1 - selectedDiscount.value / 100)).toFixed(2)));
+const discountedTotal = computed(() => {
+  const base = Math.round(props.totalAmount || 0)
+  const discount = Math.max(0, Math.min(100, selectedDiscount.value))
+  return Math.round(base * (100 - discount) / 100)
+});
 
 const isPaymentValid = computed(() => {
   if (!selectedPayment.value) return false;
   if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16;
   if (isMobilePayment.value) return isValidPhoneNumber.value;
-  if (selectedPayment.value === 'Espèce') return parseFloat(amountReceived.value) >= discountedTotal.value;
+  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value;
   return true;
+});
+
+const isCashPadLocked = computed(() => {
+  if (selectedPayment.value !== 'Espèce') return false;
+  return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value && discountedTotal.value > 0;
 });
 
 // Méthodes
 const formatPrice = (price) => {
-  return parseFloat(price).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$& ');
+  const amount = Math.round(Number(price) || 0)
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)
 };
 
 const selectPaymentMethod = (method) => {
@@ -238,15 +248,13 @@ const appendToField = (value) => {
   else if (selectedPayment.value === 'Espèce') {
     if (value === ' ') return;
     const newValue = amountReceived.value === '0' ? value : amountReceived.value + value;
-    amountReceived.value = newValue.replace(/[^0-9.]/g, '');
+    amountReceived.value = newValue.replace(/[^0-9]/g, '');
     calculateChange();
   }
 };
 
 const appendDecimal = () => {
-  if (!amountReceived.value.includes('.')) {
-    amountReceived.value += amountReceived.value ? '.' : '0.';
-  }
+  return;
 };
 
 const clearField = () => {
@@ -264,7 +272,7 @@ const clearField = () => {
 };
 
 const calculateChange = () => {
-  const received = parseFloat(amountReceived.value) || 0;
+  const received = parseInt(amountReceived.value, 10) || 0;
   changeAmount.value = received - discountedTotal.value;
 };
 
@@ -275,6 +283,15 @@ const selectDiscount = (value) => {
 
 const getPaymentIcon = (paymentName) => {
   return payments.value.find(p => p.name === paymentName)?.icon || 'fa-solid fa-credit-card';
+};
+
+const keypadButtonClass = (disabled) => {
+  return [
+    'aspect-square w-full rounded border text-lg transition',
+    disabled
+      ? 'cursor-not-allowed bg-gray-200 text-gray-400 border-gray-200 hover:bg-gray-200 active:bg-gray-200'
+      : 'border-gray-300 hover:bg-gray-100 active:bg-gray-200'
+  ];
 };
 
 const closeModal = () => {
@@ -297,8 +314,8 @@ const confirmPayment = () => {
     final_total: discountedTotal.value,
     reference: selectedPayment.value === 'TPE' ? cardNumber.value : null,
     phone: isMobilePayment.value ? phoneNumber.value : null,
-    received: selectedPayment.value === 'Espèce' ? parseFloat(amountReceived.value) : null,
-    change: changeAmount.value
+    received: selectedPayment.value === 'Espèce' ? (parseInt(amountReceived.value, 10) || 0) : null,
+    change: parseInt(changeAmount.value, 10) || 0
   };
   emits('confirm-payment', paymentData);
   isProcessing.value = false;

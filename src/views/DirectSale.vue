@@ -23,7 +23,7 @@
     />
 
     <!-- Main content -->
-    <div class="flex flex-1 fixed top-16 left-0 right-0 bottom-2">
+    <div class="flex flex-1 fixed top-20 left-0 right-0 bottom-2">
       <!-- Catégories -->
       <div class="w-60 bg-white border-r border-gray-200 p-4 overflow-y-auto">
         <div class="border-b-2 border-blue-600 mb-4 pb-2">
@@ -193,12 +193,15 @@ import PaymentModal from './PaymentModal.vue'
 import InvoiceModal from './InvoiceModal.vue'
 import placeholderImage from '../assets/avatar.png'
 import { useCashTransactionStore } from '@/stores/cashTransactionStore'
+import { useCategories } from '@/composables/useCategories'
 
 // Modal controls
 const isPaymentModalOpen = ref(false)
 const isInvoiceModalOpen = ref(false)
 
 const cashTransactionStore = useCashTransactionStore()
+
+const { categories, products, filteredProducts, activeCategory, loadCategories, loadProducts } = useCategories()
 
 const openPaymentModal = () => {
   isInvoiceModalOpen.value = false
@@ -257,7 +260,7 @@ const handlePaymentConfirmation = async (paymentData) => {
       user_id: user.id,
       point_of_sale_id: user.point_of_sale_id,
       cash_register_session_id: sessionData?.id || null,
-      total_amount: totalAmount,
+      total_amount: Math.round(totalAmount), // Convert to integer
       discount_percentage: discount,
       status: paymentData.status || 'completed',
       payment_id: paymentMethodMap[paymentData.method] || null,
@@ -277,8 +280,8 @@ const handlePaymentConfirmation = async (paymentData) => {
         sale_id: saleId,
         product_id: item.id,
         quantity: item.quantity,
-        price: item.price,
-        total: item.price * item.quantity
+        price: Math.round(item.price), // Convert to integer
+        total: Math.round(item.price * item.quantity) // Convert to integer
       }
       await axios.post('http://127.0.0.1:8000/api/orderlines', orderLineData, {
         headers: {
@@ -367,28 +370,14 @@ const fetchCurrentSession = async () => {
   }
 }
 
-
-
 // Add icons to library
 library.add(faList, faFolder, faBoxes, faSearch, faShoppingCart, faTrash, faTimes, faMinus, faPlus, faCheck)
 
-const categories = ref([])
-const products = ref([])
-const filteredProducts = ref([])
 const cart = ref([])
-const activeCategory = ref(null)
 const searchQuery = ref('')
 
 const formatPrice = (price) => {
   return `${parseFloat(price).toFixed(2)} Ar`
-}
-
-const loadProducts = (category) => {
-  activeCategory.value = category
-  filteredProducts.value = category.products.map(p => ({
-    ...p,
-    price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0
-  }))
 }
 
 const filterProducts = () => {
@@ -446,31 +435,7 @@ const totalPrice = computed(() => {
 })
 
 onMounted(async () => {
-  const user = JSON.parse(localStorage.getItem('user'))
-  const token = localStorage.getItem('token')
-
-  if (!user?.point_of_sale_id || !token) {
-    console.error('Utilisateur non authentifié ou point de vente non défini')
-    return
-  }
-
-  try {
-    const response = await axios.get('http://127.0.0.1:8000/api/categories', {
-      params: {
-        'with_products': 1,
-        'point_of_sale_id': user.point_of_sale_id,
-        'with_pricing': 1,
-      },
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    })
-    const data = Array.isArray(response.data) ? response.data : response.data.data || []
-    categories.value = data
-  } catch (error) {
-    console.error('Erreur de chargement des produits :', error.response?.data || error.message)
-  }
+  await loadCategories()
 })
 
 const handleImageError = (event) => {

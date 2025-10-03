@@ -16,12 +16,15 @@
             type="button"
             class="btn primary"
             @click="printSummary"
-            :disabled="loading || Boolean(errorMessage)"
+            :disabled="loading || Boolean(errorMessage) || isPrinting"
           >
-            Imprimer
+            <span v-if="isPrinting">Envoi en cours…</span>
+            <span v-else>Imprimer</span>
           </button>
         </div>
       </header>
+
+      <p v-if="printSuccess" class="feedback success-banner">{{ printSuccess }}</p>
 
       <section v-if="loading" class="card status-card">
         <p>Chargement du récapitulatif…</p>
@@ -32,104 +35,78 @@
       </section>
 
       <section v-else class="summary-content" ref="summaryRef">
-        <article class="card info-card">
-          <h2 class="card-title">Informations session</h2>
-          <ul class="info-list">
+        <article class="card billetage-card">
+          <h2 class="card-title">Billetage</h2>
+          <ul class="billetage-stats">
             <li>
-              <span>Caisse</span>
-              <strong>{{ sessionInfo?.cash_register?.name ?? '—' }}</strong>
+              <span class="label">Montant billetage</span>
+              <strong>{{ formatCurrency(billetageAmount) }}</strong>
             </li>
             <li>
-              <span>Ouverte par</span>
-              <strong>{{ sessionInfo?.user?.name ?? '—' }}</strong>
+              <span class="label">Total ventes espèces</span>
+              <strong>{{ formatCurrency(cashSalesTotal) }}</strong>
             </li>
             <li>
-              <span>Ouverte le</span>
-              <strong>{{ sessionOpenedAt }}</strong>
-            </li>
-            <li>
-              <span>Montant attendu</span>
-              <strong>{{ formatCurrency(expectedAmount) }}</strong>
-            </li>
-            <li>
-              <span>Montant compté</span>
-              <strong>{{ formatCurrency(actualAmount) }}</strong>
-            </li>
-            <li>
-              <span>Écart</span>
-              <strong :class="{ negative: difference < 0, positive: difference >= 0 }">
-                {{ formatCurrency(difference) }}
+              <span class="label">Écart (cash - billetage)</span>
+              <strong :class="{ positive: differenceAmount < 0, negative: differenceAmount > 0 }">
+                {{ formatCurrency(differenceAmount) }}
               </strong>
-            </li>
-            <li>
-              <span>Statut</span>
-              <strong>{{ sessionStatus }}</strong>
             </li>
           </ul>
         </article>
 
-        <article class="card recap-card">
+        <article class="card recap-card recap-card--categories">
           <h2 class="card-title">Ventes par catégorie</h2>
-          <table v-if="categorySummary.length" class="data-table">
+          <table v-if="categorySummary.length" class="category-table">
             <thead>
               <tr>
-                <th>Catégorie</th>
+                <th class="category-col">Catégorie</th>
+                <th>Produit</th>
                 <th>Quantité</th>
                 <th>Montant</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in categorySummary" :key="item.category_id ?? item.category_name">
-                <td>{{ item.category_name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ formatCurrency(item.amount) }}</td>
-              </tr>
+              <template v-for="category in categorySummary" :key="category.category_id ?? category.category_name">
+                <tr class="category-table__group-row">
+                  <td colspan="4">
+                    <div class="category-group__header">
+                      <h3 class="category-title">{{ category.category_name }}</h3>
+                      <span class="category-total">{{ formatCurrency(category.amount) }}</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="!category.products.length">
+                  <td class="list-empty" colspan="4">Aucun produit enregistré pour cette catégorie.</td>
+                </tr>
+                <tr
+                  v-for="product in category.products"
+                  :key="`${category.category_id ?? category.category_name}-${product.product_id ?? product.product_name}`"
+                >
+                  <td></td>
+                  <td>{{ product.product_name }}</td>
+                  <td class="numeric">{{ formatQuantity(product.quantity) }}</td>
+                  <td class="numeric">{{ formatCurrency(product.amount) }}</td>
+                </tr>
+              </template>
             </tbody>
           </table>
           <p v-else class="list-empty">Aucune vente enregistrée.</p>
         </article>
 
-        <article class="card recap-card">
-          <h2 class="card-title">Ventes par mode de paiement</h2>
-          <table v-if="paymentSummary.length" class="data-table">
-            <thead>
-              <tr>
-                <th>Moyen</th>
-                <th>Transactions</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in paymentSummary" :key="item.payment_id ?? item.payment_name">
-                <td>{{ item.payment_name }}</td>
-                <td>{{ item.transactions }}</td>
-                <td>{{ formatCurrency(item.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="list-empty">Aucun paiement enregistré.</p>
-        </article>
-
-        <article class="card totals-card">
-          <h2 class="card-title">Totaux</h2>
-          <ul class="totals-list">
-            <li>
-              <span>Total remises</span>
-              <strong>{{ formatCurrency(totalDiscount) }}</strong>
+        <article class="card recap-card payments-card">
+          <h2 class="card-title">Montants par paiement</h2>
+          <ul v-if="paymentSummary.length" class="payment-list">
+            <li v-for="item in paymentSummary" :key="item.payment_id ?? item.payment_name">
+              <span class="payment-name">{{ item.payment_name }}</span>
+              <span class="payment-amount">{{ formatCurrency(item.total) }}</span>
             </li>
-            <li>
-              <span>Total ventes (net)</span>
-              <strong>{{ formatCurrency(finalSalesTotal) }}</strong>
-            </li>
-            <li>
-              <span>Total transactions</span>
-              <strong>{{ formatCurrency(totalTransactions) }}</strong>
-            </li>
-            <li>
-              <span>Total écarts signalés</span>
-              <strong>{{ formatCurrency(totalDiscrepancies) }}</strong>
+            <li class="payment-total">
+              <span>Total des paiements</span>
+              <span>{{ formatCurrency(totalPaymentsAmount) }}</span>
             </li>
           </ul>
+          <p v-else class="list-empty">Aucun paiement enregistré.</p>
         </article>
       </section>
     </section>
@@ -151,10 +128,8 @@ const errorMessage = ref('')
 const summaryData = ref(null)
 const categorySummary = ref([])
 const paymentSummary = ref([])
-const totalDiscount = ref(0)
-const finalSalesTotal = ref(0)
-const totalTransactions = ref(0)
-const totalDiscrepancies = ref(0)
+const isPrinting = ref(false)
+const printSuccess = ref('')
 
 const sessionId = computed(() => {
   const raw = route.params.sessionId ?? route.query.sessionId
@@ -164,13 +139,6 @@ const sessionId = computed(() => {
 
 const sessionInfo = computed(() => summaryData.value?.session ?? null)
 
-const expectedAmount = computed(() => Number(sessionInfo.value?.expected_cash_amount ?? 0))
-const actualAmount = computed(() => {
-  const value = sessionInfo.value?.actual_cash_amount
-  return value === undefined || value === null ? 0 : Number(value)
-})
-const difference = computed(() => Number((actualAmount.value - expectedAmount.value).toFixed(2)))
-
 const sessionLabel = computed(() => {
   if (!sessionInfo.value) return ''
   const id = sessionInfo.value.id ? `#${sessionInfo.value.id}` : ''
@@ -178,11 +146,32 @@ const sessionLabel = computed(() => {
   return `Session ${id}${register}`.trim()
 })
 
-const sessionOpenedAt = computed(() => formatDate(sessionInfo.value?.opened_at ?? sessionInfo.value?.created_at))
+const removeDiacritics = (value) => {
+  if (!value) return ''
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
 
-const sessionStatus = computed(() => {
-  if (!sessionInfo.value) return '—'
-  return sessionInfo.value.is_closed ? 'Clôturée' : 'Ouverte'
+const billetageAmount = computed(() => Number(sessionInfo.value?.actual_cash_amount ?? 0))
+
+const cashSalesTotal = computed(() => {
+  const keywords = ['cash', 'espe', 'liquide']
+  return paymentSummary.value.reduce((sum, payment) => {
+    const rawName = String(payment?.payment_name ?? '')
+    const normalized = removeDiacritics(rawName).toLowerCase()
+    const isCash = keywords.some(keyword => normalized.includes(keyword))
+    if (!isCash) return sum
+    const amount = Number(payment?.total ?? 0)
+    return sum + (Number.isFinite(amount) ? amount : 0)
+  }, 0)
+})
+
+const differenceAmount = computed(() => Number((cashSalesTotal.value - billetageAmount.value).toFixed(2)))
+
+const totalPaymentsAmount = computed(() => {
+  return paymentSummary.value.reduce((sum, payment) => {
+    const amount = Number(payment?.total ?? 0)
+    return sum + (Number.isFinite(amount) ? amount : 0)
+  }, 0)
 })
 
 const authHeaders = () => {
@@ -193,14 +182,20 @@ const authHeaders = () => {
 
 const formatCurrency = (amount) => {
   const number = Number(amount)
-  if (!Number.isFinite(number)) return '0,00 €'
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(number)
+  if (!Number.isFinite(number)) return '0 Ar'
+  return `${new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(number))} Ar`
 }
 
-const formatDate = (value) => {
-  if (!value) return '—'
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString('fr-FR')
+const formatQuantity = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return '0'
+  return new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0
+  }).format(Math.round(number))
 }
 
 const fetchSummary = async () => {
@@ -218,12 +213,27 @@ const fetchSummary = async () => {
     })
 
     summaryData.value = data || null
-    categorySummary.value = Array.isArray(data?.categories) ? data.categories : []
-    paymentSummary.value = Array.isArray(data?.payments) ? data.payments : []
-    totalDiscount.value = Number(data?.total_discount || 0)
-    finalSalesTotal.value = Number(data?.final_total || 0)
-    totalTransactions.value = Number(data?.total_transactions || 0)
-    totalDiscrepancies.value = Number(data?.total_discrepancies || 0)
+    categorySummary.value = Array.isArray(data?.categories)
+      ? data.categories.map(category => ({
+          ...category,
+          quantity: Number(category?.quantity ?? 0),
+          amount: Number(category?.amount ?? 0),
+          products: Array.isArray(category?.products)
+            ? category.products.map(product => ({
+                ...product,
+                quantity: Number(product?.quantity ?? 0),
+                amount: Number(product?.amount ?? 0)
+              }))
+            : []
+        }))
+      : []
+    paymentSummary.value = Array.isArray(data?.payments)
+      ? data.payments.map(payment => ({
+          ...payment,
+          total: Number(payment?.total ?? 0),
+          transactions: Number(payment?.transactions ?? 0)
+        }))
+      : []
   } catch (error) {
     console.error('Erreur chargement résumé billetage:', error.response?.data || error.message)
     errorMessage.value = error.response?.data?.message || 'Impossible de charger le récapitulatif.'
@@ -236,34 +246,29 @@ const goBack = () => {
   router.push({ name: 'billetage' })
 }
 
-const printSummary = () => {
-  if (!summaryRef.value) return
-  const content = summaryRef.value.innerHTML
-  const printWindow = window.open('', '_blank', 'width=900,height=1000')
-  if (!printWindow) return
-
-  printWindow.document.write(`<!DOCTYPE html><html><head><title>Résumé de session</title><style>
-    body { font-family: 'Segoe UI', sans-serif; padding: 24px; color: #0f172a; }
-    h1, h2, h3 { margin: 0 0 12px; }
-    h2 { font-size: 18px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-    th, td { padding: 8px 10px; border: 1px solid #cbd5f5; text-align: left; }
-    th { background: #e2e8f0; text-transform: uppercase; font-size: 12px; }
-    ul { list-style: none; padding: 0; margin: 0 0 16px; }
-    li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; }
-    li:last-child { border-bottom: none; }
-    strong { font-weight: 600; }
-  </style></head><body>${content}</body></html>`)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
-  printWindow.close()
+const printSummary = async () => {
+  if (!sessionId.value) return
+  isPrinting.value = true
+  printSuccess.value = ''
+  errorMessage.value = ''
+  try {
+    await axios.post(`http://127.0.0.1:8000/api/printers/session-recap/${sessionId.value}`, {}, {
+      headers: authHeaders()
+    })
+    printSuccess.value = 'Récapitulatif envoyé à l\'imprimante.'
+  } catch (error) {
+    console.error('Erreur impression recap:', error.response?.data || error.message)
+    const backendMessage = error.response?.data?.message
+    errorMessage.value = backendMessage || "Impossible d'envoyer le récapitulatif à l'imprimante."
+  } finally {
+    isPrinting.value = false
+  }
 }
 
 onMounted(fetchSummary)
 </script>
 
-<style scoped>
+  <style scoped>
 .billetage-summary-view {
   min-height: 100vh;
   background: #f8fafc;
@@ -271,9 +276,10 @@ onMounted(fetchSummary)
 }
 
 .page-section {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
   display: grid;
   gap: 1.5rem;
 }
@@ -321,60 +327,146 @@ onMounted(fetchSummary)
 
 .summary-content {
   display: grid;
-  gap: 1.4rem;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
 }
 
-.info-list,
-.totals-list {
+.billetage-card .billetage-stats {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.75rem;
 }
 
-.info-list li,
-.totals-list li {
+.billetage-stats li {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(14, 116, 144, 0.08));
 }
 
-.info-list strong,
-.totals-list strong {
-  font-weight: 600;
+.billetage-stats .label {
+  color: #475569;
+  font-weight: 500;
 }
 
-.negative {
-  color: #dc2626;
+.billetage-stats strong {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .positive {
-  color: #16a34a;
+  color: #16a34a !important;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-  border: 1px solid #cbd5f5;
-  padding: 0.6rem 0.75rem;
-  text-align: left;
-}
-
-.data-table th {
-  background: #f1f5f9;
-  text-transform: uppercase;
-  font-size: 0.8rem;
-  color: #475569;
+.negative {
+  color: #dc2626 !important;
 }
 
 .list-empty {
   color: #94a3b8;
   font-size: 0.9rem;
+}
+
+.category-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.category-table thead {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.category-table th,
+.category-table td {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.category-table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+}
+
+.category-table__group-row td {
+  padding: 0;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.1));
+}
+
+.category-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.category-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.category-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.category-col {
+  width: 22%;
+}
+
+.category-table td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.payment-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.62rem 0.85rem;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.06), rgba(13, 148, 136, 0.1));
+  border-radius: 0.7rem;
+}
+
+.payment-list .payment-total {
+  background: rgba(15, 23, 42, 0.08);
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.payment-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.payment-amount {
+  font-weight: 700;
+  color: #0f766e;
 }
 
 .btn {
@@ -410,19 +502,16 @@ onMounted(fetchSummary)
   color: #dc2626;
 }
 
+.feedback.success-banner {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0;
+}
+
 .status-card {
   text-align: center;
 }
 
-@media (max-width: 768px) {
-  .summary-content {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (min-width: 769px) {
-  .summary-content {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-}
 </style>

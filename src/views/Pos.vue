@@ -85,8 +85,7 @@
 defineOptions({ name: 'PosMenu' })
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faBars } from '@fortawesome/free-solid-svg-icons'
+
 import { useAuth } from '@/composables/useAuth'
 
 const isOpen = ref(false)

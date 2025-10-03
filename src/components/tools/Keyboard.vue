@@ -10,9 +10,14 @@
         </span>
         <strong>Clavier Virtuel</strong>
       </div>
-      <div>
-        <button class="rounded border border-gray-500 bg-gray-800 px-2 py-1 text-xs text-white hover:bg-gray-700" @click="toggleShift">
-          {{ isUppercase ? 'MAJ' : 'min' }}
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="flex items-center justify-center rounded border border-gray-500 bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+          @click="closeKeyboard"
+          title="Fermer le clavier"
+        >
+          <CloseIcon class="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -43,16 +48,31 @@
 
 <script setup>
 defineOptions({ name: 'VirtualKeyboard' })
-import { ref, onMounted } from 'vue'
-import { Move as MoveIcon } from 'lucide-vue-next'
+import { ref, onMounted, watch } from 'vue'
+import { Move as MoveIcon, X as CloseIcon } from 'lucide-vue-next'
 
-const emit = defineEmits(['key-pressed'])
+const props = defineProps({
+  initialPosition: {
+    type: Object,
+    default: null
+  }
+})
+
+const emit = defineEmits(['key-pressed', 'close'])
 
 const isUppercase = ref(false)
 const isDragging = ref(false)
 const position = ref({ top: 600, left: 0 })
 
 onMounted(() => {
+  if (props.initialPosition && Number.isFinite(props.initialPosition.top) && Number.isFinite(props.initialPosition.left)) {
+    position.value = {
+      top: props.initialPosition.top,
+      left: props.initialPosition.left
+    }
+    return
+  }
+
   const width = 600
   const height = 400 // approximate height of keyboard
   position.value.left = window.innerWidth - width - 20
@@ -60,6 +80,17 @@ onMounted(() => {
 })
 
 let offset = { x: 0, y: 0 }
+
+watch(
+  () => props.initialPosition,
+  (nextPosition) => {
+    if (!nextPosition || isDragging.value) return
+    const { top, left } = nextPosition
+    if (!Number.isFinite(top) || !Number.isFinite(left)) return
+    position.value = { top, left }
+  },
+  { deep: true }
+)
 
 const layout = [
   ['a', 'z', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
@@ -106,6 +137,8 @@ function stopDrag() {
   document.removeEventListener('mousemove', onDrag)
   document.removeEventListener('mouseup', stopDrag)
 }
+
+function closeKeyboard() {
+  emit('close')
+}
 </script>
-
-

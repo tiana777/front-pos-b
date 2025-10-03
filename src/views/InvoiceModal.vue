@@ -30,8 +30,8 @@
             <tr v-for="(item, index) in items" :key="index">
               <td>{{ item.name }}</td>
               <td>{{ item.quantity }}</td>
-              <td>{{ item.price }} €</td>
-              <td>{{ (item.quantity * item.price).toFixed(2) }} €</td>
+              <td>{{ item.price }} Ar</td>
+              <td>{{ item.quantity * item.price }} Ar</td>
             </tr>
           </tbody>
         </table>
@@ -40,11 +40,11 @@
       <div class="invoice-summary">
         <div class="summary-row">
           <span style="color: black;">Sous-total:</span>
-          <span style="color: black;">{{ subtotal }} €</span>
+          <span style="color: black;">{{ subtotal }} Ar</span>
         </div>
         <div class="summary-row total">
           <span style="color: black;">Total:</span>
-          <span style="color: black;">{{ totalAmount }} €</span>
+          <span style="color: black;">{{ totalAmount }} Ar</span>
         </div>
       </div>
 
@@ -101,7 +101,7 @@ export default {
 
     totalAmount() {
       const total = parseFloat(this.subtotal);
-      return total.toFixed(2);
+      return total;
     }
   },
   methods: {

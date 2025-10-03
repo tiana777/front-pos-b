@@ -53,7 +53,7 @@
         </div>
     </div>
 </div>
-<Keyboard v-if="keyboardVisible" @key-pressed="handleKeyPress" />
+<Keyboard v-if="keyboardVisible" @key-pressed="handleKeyPress" @close="closeKeyboard" />
 
 
 </template>
@@ -88,7 +88,7 @@ const login = async () => {
 
     if (response.data.token && response.data.user) {
       // Durée de vie des cookies : 60 minutes (en millisecondes)
-      const expirationTime = 60 * 60 * 1000; // 60 minutes
+      const expirationTime = 24 * 60 * 60 * 1000; // 60 minutes
       const expirationDate = new Date().getTime() + expirationTime;
 
       // Stockage des informations avec expiration
@@ -141,6 +141,11 @@ function handleKeyPress(key) {
     if (activeField.value === 'email') email.value += key
     if (activeField.value === 'password') password.value += key
   }
+}
+
+function closeKeyboard() {
+  keyboardVisible.value = false
+  activeField.value = null
 }
 
 onMounted(() => {

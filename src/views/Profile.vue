@@ -43,20 +43,7 @@
 
 
         </div>
-        <ul class="py-2" aria-labelledby="user-menu-button">
-          <li>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ">Dashboard</a>
-          </li>
-          <li>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
-          </li>
-          <li>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Earnings</a>
-          </li>
-          <li>
-            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @click="logout">Deconnexion</a>
-          </li>
-        </ul>
+
       </div>
 
     </div>
@@ -107,6 +94,8 @@ const fetchUserProfile = async () => {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     })
     user.value = response.data.user
+    // Mettre à jour localStorage avec les données utilisateur complètes
+    localStorage.setItem('user', JSON.stringify(response.data.user))
   } catch (error) {
     console.error('Erreur lors du chargement du profil:', error)
   }

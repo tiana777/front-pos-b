@@ -30,7 +30,11 @@
         </div>
       </header>
 
-      <form class="card billetage-card" @submit.prevent="submit">
+      <form
+        ref="formRef"
+        class="card billetage-card"
+        @submit.prevent="submit"
+      >
           <h2 class="card-title">Comptage des billets</h2>
 
           <div class="denominations">
@@ -44,11 +48,13 @@
               </label>
               <input
                 :id="`denom-${denomination.value}`"
-                v-model.number="counts[denomination.value]"
+                v-model="counts[denomination.value]"
                 type="number"
+                inputmode="numeric"
                 min="0"
                 step="1"
                 :disabled="isSubmitting || isLoading || sessionClosed"
+                @focus="showKeyboard({ type: 'denomination', value: denomination.value })"
               />
               <span class="denomination-total">{{ formatCurrency(denominationTotal(denomination.value)) }}</span>
             </div>
@@ -58,12 +64,14 @@
             <span>Pièces / autres montants</span>
             <input
               id="coins"
-              v-model.number="coinsValue"
+              v-model="coinsValue"
               type="number"
+              inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="0.00"
               :disabled="isSubmitting || isLoading || sessionClosed"
+              @focus="showKeyboard({ type: 'coins' })"
             />
           </label>
 
@@ -93,14 +101,21 @@
           <p v-if="successMessage" class="feedback success">{{ successMessage }}</p>
       </form>
     </section>
+    <Keyboard
+      v-if="keyboardVisible"
+      :initial-position="keyboardPosition"
+      @key-pressed="handleKeyPress"
+      @close="hideKeyboard"
+    />
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Profile from './Profile.vue'
+import Keyboard from '../components/tools/Keyboard.vue'
 
 const denominations = [
   { value: 20000, label: '20 000' },
@@ -118,6 +133,10 @@ const router = useRouter()
 
 const counts = reactive(Object.fromEntries(denominations.map(d => [d.value, 0])))
 const coinsValue = ref(0)
+const keyboardVisible = ref(false)
+const activeField = ref(null)
+const keyboardPosition = ref({ top: 0, left: 0 })
+const formRef = ref(null)
 
 const sessionId = ref(null)
 const sessionClosed = ref(false)
@@ -151,7 +170,7 @@ const denominationTotal = (value) => {
 
 const formatCurrency = (amount) => {
   const number = Number(amount)
-  if (!Number.isFinite(number)) return '0,00 €'
+  if (!Number.isFinite(number)) return '0,00 Ar'
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(number)
 }
 
@@ -160,6 +179,8 @@ const resetForm = () => {
   coinsValue.value = 0
   errorMessage.value = ''
   successMessage.value = ''
+  activeField.value = null
+  keyboardVisible.value = false
 }
 
 const goToSummary = () => {
@@ -277,6 +298,7 @@ const closeSession = async () => {
     successMessage.value = 'Session clôturée avec succès.'
     sessionClosed.value = true
     await fetchActiveSession()
+    router.push({ name: 'cash-printer' })
   } catch (error) {
     console.error('Erreur clôture session:', error.response?.data || error.message)
     errorMessage.value = error.response?.data?.message || "Impossible de clôturer la session."
@@ -285,7 +307,113 @@ const closeSession = async () => {
   }
 }
 
+const KEYBOARD_WIDTH = 600
+const KEYBOARD_HEIGHT = 400
+const KEYBOARD_MARGIN = 16
+
+const updateKeyboardPosition = () => {
+  const formEl = formRef.value
+  if (!formEl) return
+
+  const rect = formEl.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  let left = rect.right + KEYBOARD_MARGIN
+  if (left + KEYBOARD_WIDTH > viewportWidth - KEYBOARD_MARGIN) {
+    left = viewportWidth - KEYBOARD_WIDTH - KEYBOARD_MARGIN
+  }
+  left = Math.max(KEYBOARD_MARGIN, left)
+
+  let top = rect.top
+  if (top + KEYBOARD_HEIGHT > viewportHeight - KEYBOARD_MARGIN) {
+    top = viewportHeight - KEYBOARD_HEIGHT - KEYBOARD_MARGIN
+  }
+  top = Math.max(KEYBOARD_MARGIN, top)
+
+  keyboardPosition.value = { top, left }
+}
+
+const handleViewportChange = () => {
+  updateKeyboardPosition()
+}
+
+const detachKeyboardListeners = () => {
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('scroll', handleViewportChange, true)
+}
+
+const showKeyboard = async (field) => {
+  activeField.value = field
+  keyboardVisible.value = true
+  await nextTick()
+  updateKeyboardPosition()
+}
+
+const handleKeyPress = (key) => {
+  if (!activeField.value) return
+
+  if (activeField.value.type === 'denomination') {
+    const denominationValue = activeField.value.value
+    const current = counts[denominationValue]
+    const baseString = current === 0 || current === '' ? '' : String(current)
+
+    if (key === 'BACKSPACE') {
+      const updated = baseString.slice(0, -1)
+      counts[denominationValue] = updated === '' ? '' : Number(updated)
+      return
+    }
+
+    if (!/^[0-9]$/.test(key)) return
+    const updated = `${baseString}${key}`
+    counts[denominationValue] = Number(updated)
+    return
+  }
+
+  if (activeField.value.type === 'coins') {
+    const current = coinsValue.value
+    const baseString = current === 0 || current === '' ? '' : String(current)
+
+    if (key === 'BACKSPACE') {
+      const updated = baseString.slice(0, -1)
+      coinsValue.value = updated
+      return
+    }
+
+    if (key === '.') {
+      if (baseString.includes('.')) return
+      coinsValue.value = baseString === '' ? '0.' : `${baseString}.`
+      return
+    }
+
+    if (!/^[0-9]$/.test(key)) return
+    const updated = `${baseString}${key}`
+    coinsValue.value = updated
+  }
+}
+
+const hideKeyboard = () => {
+  keyboardVisible.value = false
+  activeField.value = null
+}
+
 onMounted(fetchActiveSession)
+
+watch(keyboardVisible, (isVisible) => {
+  if (isVisible) {
+    nextTick(() => {
+      updateKeyboardPosition()
+      window.addEventListener('resize', handleViewportChange)
+      window.addEventListener('scroll', handleViewportChange, true)
+    })
+  } else {
+    detachKeyboardListeners()
+  }
+})
+
+onBeforeUnmount(() => {
+  detachKeyboardListeners()
+})
 </script>
 
 <style scoped>
@@ -293,6 +421,13 @@ onMounted(fetchActiveSession)
   min-height: 100vh;
   background: #f8fafc;
   color: #0f172a;
+  padding-top: 5.5rem;
+}
+
+@media (max-width: 640px) {
+  .billetage-view {
+    padding-top: 4.75rem;
+  }
 }
 
 .page-section {

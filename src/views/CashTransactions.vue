@@ -32,7 +32,7 @@
           </label>
 
           <label class="field">
-            <span>Montant (€)</span>
+            <span>Montant (Ar)</span>
             <input v-model.number="form.amount" type="number" step="0.01" :disabled="!form.id" required />
           </label>
 

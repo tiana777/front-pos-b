@@ -36,6 +36,15 @@ import {
   faIdCard,
   faPrint,
   faLayerGroup,
+  faTable,
+  faArrowsRotate,
+  faTableCells,
+  faCircleCheck,
+  faCalendarCheck,
+  faWrench,
+  faCircleQuestion,
+  faEye,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 
 // Ajoute les icônes dans la bibliothèque
@@ -72,6 +81,15 @@ library.add(
   faIdCard,
   faPrint,
   faLayerGroup,
+  faTable,
+  faArrowsRotate,
+  faTableCells,
+  faCircleCheck,
+  faCalendarCheck,
+  faWrench,
+  faCircleQuestion,
+  faEye,
+  faXmark,
 )
 
 export { FontAwesomeIcon }
