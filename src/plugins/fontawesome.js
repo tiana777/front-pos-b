@@ -36,6 +36,9 @@ import {
   faIdCard,
   faPrint,
   faLayerGroup,
+  faPen,
+  faMagnifyingGlass,
+  faChevronUp,
 } from '@fortawesome/free-solid-svg-icons'
 
 // Ajoute les icônes dans la bibliothèque
@@ -72,6 +75,9 @@ library.add(
   faIdCard,
   faPrint,
   faLayerGroup,
+  faPen,
+  faMagnifyingGlass,
+  faChevronUp,
 )
 
 export { FontAwesomeIcon }

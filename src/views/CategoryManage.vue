@@ -1,77 +1,153 @@
 <template>
-  <div class="category-manage-container">
-    <Profile />
-    <div class="header-section">
-      <h1>Gestion des Catégories</h1>
-      <button @click="openCreateModal" class="button is-primary">
-        <font-awesome-icon icon="fa-solid fa-plus" />
-        Ajouter une catégorie
-      </button>
-    </div>
+  <div class="category-layout grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+    <aside class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-base font-semibold text-slate-800">Catégories</h2>
+        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+          {{ filteredCategories.length }}
+        </span>
+      </div>
 
-    <div class="main-layout">
-      <div class="content">
-        <div class="search-section">
-          <input type="text" v-model.trim="searchQuery" placeholder="Rechercher une catégorie..." class="input" />
+      <div class="mt-4 flex-1 space-y-3 overflow-y-auto pb-1">
+        <div>
+          <button
+            type="button"
+            class="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+            @click="openCreateModal"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-plus" />
+            Nouvelle catégorie
+          </button>
         </div>
 
-        <div v-if="loading" class="loading">
-          <div class="spinner"></div>
-          <p>Chargement en cours...</p>
-        </div>
-
-        <div v-else>
-          <div v-if="filteredCategories.length === 0" class="no-results">
-            Aucune catégorie trouvée
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Recherche</label>
+          <div class="relative mt-1">
+            <FontAwesomeIcon
+              icon="fa-solid fa-magnifying-glass"
+              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              v-model.trim="searchQuery"
+              type="text"
+              placeholder="Rechercher une catégorie..."
+              class="w-full rounded-full border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+            />
           </div>
+        </div>
 
-          <div v-else class="categories-section">
-            <div class="categories-list">
-              <div v-for="category in filteredCategories" :key="category.id" class="category-card">
-                <div class="category-details">
-                  <h3>{{ category.name }}</h3>
-                  <p v-if="category.description">{{ category.description }}</p>
+        <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 text-sm text-slate-600">
+          <p class="flex items-center justify-between">
+            <span class="font-semibold text-slate-800">Types d'imprimante</span>
+            <span class="text-xs text-slate-400">{{ printerTypes.length }}</span>
+          </p>
+          <ul class="mt-2 space-y-1 text-xs text-slate-500">
+            <li v-for="type in printerTypes" :key="type.id" class="truncate">• {{ type.name }}</li>
+            <li v-if="!printerTypes.length" class="text-slate-400">Aucun type configuré</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
 
-                  <p class="product-count">{{ category.products_count || 0 }} produits</p>
+    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h1 class="text-base font-semibold text-slate-800">Gestion des catégories</h1>
+        <span class="text-xs font-semibold text-slate-400">{{ filteredCategories.length }} résultat(s)</span>
+      </div>
+
+      <div class="mt-2.5 flex-1 overflow-hidden">
+        <div
+          v-if="loading"
+          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-10 text-center text-sm text-slate-500"
+        >
+          <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+          <p class="mt-4 font-medium">Chargement des catégories...</p>
+        </div>
+
+        <div
+          v-else-if="filteredCategories.length === 0"
+          class="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-sm text-slate-500"
+        >
+          Aucune catégorie trouvée
+        </div>
+
+        <div v-else class="flex h-full flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto">
+            <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <li
+                v-for="category in filteredCategories"
+                :key="category.id"
+                class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-800">{{ category.name }}</p>
+                    <p v-if="category.description" class="mt-1 text-xs text-slate-500">{{ category.description }}</p>
+                    <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      {{ category.products_count || 0 }} produit(s)
+                    </p>
+                  </div>
+                  <div class="flex flex-col items-end gap-2">
+                    <button
+                      type="button"
+                      class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                      @click.stop="openEditModal(category)"
+                    >
+                      <FontAwesomeIcon icon="fa-solid fa-pen" />
+                    </button>
+                    <button
+                      type="button"
+                      class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
+                      @click.stop="confirmDelete(category)"
+                    >
+                      <FontAwesomeIcon icon="fa-solid fa-trash" />
+                    </button>
+                  </div>
                 </div>
-
-                <div class="category-actions">
-                  <button @click.stop="openEditModal(category)" class="button is-small is-info">
-                    <font-awesome-icon icon="fa-solid fa-pencil" />
-                  </button>
-                  <button @click.stop="confirmDelete(category)" class="button is-small is-danger">
-                    <font-awesome-icon icon="fa-solid fa-trash" />
-                  </button>
-                </div>
-              </div>
-            </div>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
-    </div>
+    </section>
+  </div>
 
-    <CategoryCreateModal :isOpen="isCreateModalOpen" @close="closeCreateModal" @added="handleAdded" />
+  <CategoryCreateModal :isOpen="isCreateModalOpen" @close="closeCreateModal" @added="handleAdded" />
+  <CategoryEditModal
+    :isOpen="isEditModalOpen"
+    :categoryData="selectedCategory"
+    @close="closeEditModal"
+    @updated="handleUpdated"
+  />
 
-    <CategoryEditModal :isOpen="isEditModalOpen" :categoryData="selectedCategory" @close="closeEditModal"
-      @updated="handleUpdated" />
-
-    <!-- Modal de confirmation de suppression -->
-    <div v-if="isDeleteConfirmOpen" class="modal is-active">
-      <div class="modal-background" @click="closeDeleteConfirm"></div>
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Confirmer la suppression</p>
-          <button class="delete" @click="closeDeleteConfirm"></button>
-        </header>
-        <section class="modal-card-body">
-          <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>{{ categoryToDelete?.name }}</strong> ?</p>
-          <p class="has-text-danger">Cette action est irréversible et supprimera également tous les produits associés.
-          </p>
-        </section>
-        <footer class="modal-card-foot">
-          <button class="button is-danger" @click="deleteCategory" :disabled="isDeleting">Supprimer</button>
-          <button class="button" @click="closeDeleteConfirm" :disabled="isDeleting">Annuler</button>
-        </footer>
+  <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-slate-900/60" @click="closeDeleteConfirm"></div>
+    <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <h2 class="text-lg font-semibold text-slate-900">Confirmer la suppression</h2>
+      <p class="mt-3 text-sm text-slate-500">
+        Êtes-vous sûr de vouloir supprimer la catégorie
+        <strong class="text-slate-700">{{ categoryToDelete?.name }}</strong> ?
+      </p>
+      <p class="mt-2 text-xs text-rose-500">
+        Cette action est irréversible et supprimera également tous les produits associés.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          @click="closeDeleteConfirm"
+          :disabled="isDeleting"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+          @click="deleteCategory"
+          :disabled="isDeleting"
+        >
+          Supprimer
+        </button>
       </div>
     </div>
   </div>
@@ -81,7 +157,6 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import Profile from './Profile.vue'
 import CategoryCreateModal from './CategoryCreateModal.vue'
 import CategoryEditModal from './CategoryEditModal.vue'
 import { usePrinterTypes } from '../composables/usePrinterTypes.js'
@@ -287,118 +362,18 @@ const deleteCategory = async () => {
 </script>
 
 <style scoped>
-@import 'https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css';
-
-.category-manage-container {
-  padding: 1.5rem;
-  background-color: #f5f5f5;
-  min-height: 100vh;
-  margin-top: 70px;
+.category-layout {
+  min-height: calc(100vh - 5rem);
+  min-height: calc(100dvh - 5rem);
 }
 
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  background-color: #fff;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.header-section h1 {
-  margin: 0;
-  color: #333;
-}
-
-.search-section {
-  margin-bottom: 1.5rem;
-}
-
-.search-section .input {
-  max-width: 400px;
-}
-
-.loading,
-.no-results {
-  text-align: center;
-  margin-top: 2rem;
-  font-size: 1.2rem;
-  color: #777;
-}
-
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #00d1b2;
-  animation: spin 1s ease infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
+@media (min-width: 1024px) {
+  .category-layout {
+    height: calc(100vh - 5.5rem);
+    height: calc(100dvh - 5.5rem);
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow: hidden;
   }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.categories-section {
-  background-color: #fff;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.categories-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.category-card {
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s, box-shadow 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.category-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.category-details h3 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
-}
-
-.category-details p {
-  margin: 0.25rem 0;
-  color: #666;
-}
-
-.product-count {
-  font-size: 0.9rem;
-  color: #888;
-}
-
-.category-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.category-actions .button {
-  min-width: 36px;
 }
 </style>
