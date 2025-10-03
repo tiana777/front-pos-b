@@ -11,6 +11,7 @@
           <font-awesome-icon icon="fa-home" />
         </div>
         <button class="menu-button" @click="navigateTo('direct')">Direct</button>
+        <button class="menu-button" @click="navigateTo('cashier-dashboard')">Tableau caissier</button>
         <button class="menu-button" @click="navigateTo('table')">Table</button>
         <button class="menu-button" @click="navigateTo('ventes')">Ventes</button>
         <button class="menu-button" @click="navigateTo('retour')">Retour</button>
@@ -50,36 +51,122 @@
 
     <nav class="navbar">
       <div class="navbar-start">
-        <button class="menu-toggle" @click="toggleMenu">
+        <button class="menu-toggle" @click="toggleMenu" aria-label="Ouvrir le menu">
           <font-awesome-icon icon="fa-bars" />
         </button>
       </div>
       <div class="navbar-end">
-        <span class="icon">
-
-          <font-awesome-icon :icon="['fas', 'user-circle']" /> </span>
-        {{ user.name }}
+        <span class="icon avatar-icon">
+          <font-awesome-icon :icon="['fas', 'user-circle']" />
+        </span>
+        <span class="user-name">{{ user.name }}</span>
         <span class="icon logout-icon" @click="logout" title="Déconnexion">
           <font-awesome-icon :icon="['fas', 'sign-out-alt']" />
         </span>
       </div>
     </nav>
+
+    <div class="breadcrumb-container">
+      <nav aria-label="Fil d'Ariane" class="breadcrumb-nav">
+        <ol>
+          <li v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`" class="breadcrumb-item">
+            <router-link
+              v-if="crumb.routeName && index !== breadcrumbs.length - 1"
+              :to="{ name: crumb.routeName }"
+            >
+              {{ crumb.label }}
+            </router-link>
+            <span v-else class="breadcrumb-current">{{ crumb.label }}</span>
+            <span v-if="index !== breadcrumbs.length - 1" class="breadcrumb-separator">
+              <font-awesome-icon icon="fa-angle-right" />
+            </span>
+          </li>
+        </ol>
+      </nav>
+    </div>
   </div>
 
 </template>
 
 <script setup>
 defineOptions({ name: 'UserProfile' })
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const router = useRouter()
+const route = useRoute()
 const { isAdmin, loadUserData } = useAuth()
 const user = ref({ name: '', email: '', point_of_sale_name: '' })
 const isOpen = ref(false)
+
+const breadcrumbLabels = {
+  pos: 'Accueil',
+  direct: 'Vente directe',
+  table: 'Service à table',
+  'table-sales': 'Ventes par table',
+  'table-order': 'Commande table',
+  'tables-manage': 'Gestion des tables',
+  'tables-layout': 'Plan de salle',
+  'tables-selector': 'Sélecteur de table',
+  ventes: 'Historique des ventes',
+  retour: 'Retour caisse',
+  billetage: 'Billetage',
+  'billetage-summary': 'Résumé billetage',
+  roles: 'Gestion des rôles',
+  'roles-create': 'Créer un rôle',
+  'roles-edit': 'Modifier un rôle',
+  permissions: 'Permissions',
+  'permissions-create': 'Créer une permission',
+  users: 'Utilisateurs',
+  'users-create': 'Créer un utilisateur',
+  'users-edit': 'Modifier un utilisateur',
+  'users-roles': 'Rôles utilisateur',
+  printers: 'Imprimantes',
+  'printers-create': 'Ajouter une imprimante',
+  categories: 'Catégories',
+  product: 'Catalogue produits',
+  'user-sales': 'Mes ventes',
+  'cash-registers-machine-link': 'Lien caisse',
+  'cash-register-sessions': 'Sessions caisse',
+  'cash-transactions': 'Transactions caisse',
+  'cashier-dashboard': 'Tableau caissier'
+}
+
+const formatLabel = (value) => {
+  if (!value) return 'Page'
+  if (breadcrumbLabels[value]) return breadcrumbLabels[value]
+  if (typeof value === 'string') {
+    return value
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  }
+  return 'Page'
+}
+
+const breadcrumbs = computed(() => {
+  const matched = route.matched.filter((record) => record.name)
+
+  if (!matched.length) {
+    return [{ label: 'Accueil', routeName: null }]
+  }
+
+  const items = []
+
+  if (matched[0].name !== 'pos') {
+    items.push({ label: 'Accueil', routeName: 'pos' })
+  }
+
+  matched.forEach((record, index) => {
+    const isLast = index === matched.length - 1
+    const label = record.meta?.breadcrumb || record.meta?.title || formatLabel(record.name)
+    items.push({ label, routeName: isLast ? null : record.name })
+  })
+
+  return items
+})
 
 onMounted(async () => {
   await loadUserData()
@@ -124,22 +211,28 @@ const navigateTo = (routeName) => {
 <style scoped>
 
 .navbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: fixed;
   top: 0;
   right: 0;
   left: 0;
-  z-index: 1100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.navbar-start {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  font-weight: 600;
+  z-index: 1100;
+}
+
+.navbar-start,
+.navbar-end {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .menu-toggle {
@@ -148,58 +241,110 @@ const navigateTo = (routeName) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 0.75rem;
+  background: transparent;
+  border-radius: 0.9rem;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  transition: all 0.25s ease;
 }
 
 .menu-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  background: rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
 }
 
-.navbar-link {
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.75rem 1rem;
-  color: white;
-  border-radius: 0.5rem;
-  transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.avatar-icon,
+.logout-icon,
+.menu-toggle {
+  font-size: 1.125rem;
 }
 
-.navbar-link:hover {
-  background: rgba(255, 255, 255, 0.1);
+.user-name {
+  font-weight: 700;
+  color: #111827;
 }
 
 .icon {
-  margin-right: 5px;
+  display: flex;
+  align-items: center;
+  color: inherit;
 }
 
 .logout-icon {
-  margin-left: 10px;
+  margin-left: 0.5rem;
   cursor: pointer;
-  color: #dc2626;
+  color: #334155;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .logout-icon:hover {
   color: #b91c1c;
+  transform: translateY(-1px);
 }
 
-.has-dropdown:hover .navbar-dropdown {
-  display: block;
+.breadcrumb-container {
+  position: fixed;
+  top: 96px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 2rem;
+  z-index: 1098;
+  pointer-events: none;
 }
 
-.navbar-item.has-text-danger {
-  color: red;
+.breadcrumb-nav {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 16px 45px rgba(15, 23, 42, 0.12);
+  border-radius: 9999px;
+  padding: 0.5rem 1.5rem;
+  backdrop-filter: blur(10px);
 }
+
+.breadcrumb-nav ol {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.breadcrumb-nav a {
+  color: #0f172a;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-nav a:hover {
+  color: #2563eb;
+}
+
+.breadcrumb-current {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.breadcrumb-separator {
+  color: rgba(100, 116, 139, 0.75);
+  display: flex;
+  align-items: center;
+}
+
 
 .menu-overlay {
   position: fixed;
@@ -213,10 +358,10 @@ const navigateTo = (routeName) => {
 
 .side-menu {
   position: fixed;
-  top: 100px;
+  top: 156px;
   left: -280px;
   width: 280px;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 156px);
   background: #f5f5f5;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease;

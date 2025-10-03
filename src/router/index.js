@@ -98,6 +98,11 @@ const router = createRouter({
       name: 'cashprinter',
       component: CashPrinter,
     },
+    {
+      path: '/cashier-dashboard',
+      name: 'cashier-dashboard',
+      component: () => import('../views/CashierDashboard.vue'),
+    },
 
     {
       path: '/user-sales',
