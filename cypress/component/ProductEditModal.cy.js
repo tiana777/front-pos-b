@@ -1,6 +1,5 @@
 import { mount } from '@cypress/vue'
 import ProductEditModal from '../../../src/views/ProductEditModal.vue'
-import { ref } from 'vue'
 
 describe('ProductEditModal.vue', () => {
   const defaultProduct = {

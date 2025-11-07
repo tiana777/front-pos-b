@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 
 const getPrinterTypeLabel = (type) => {
-  const labels = { cash: 'Cash', kitchen: 'Cuisine', bar: 'Bar', invoice: 'Facture' }
+  const labels = { cash: 'Caisse', kitchen: 'Cuisine', bar: 'Bar', invoice: 'Facture' }
   return labels[type] || type
 }
 
@@ -12,7 +13,7 @@ export function usePrinterTypes() {
   const fetchPrinterTypes = async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await axios.get('http://127.0.0.1:8000/api/printer-types', {
+      const response = await axios.get(`${API_BASE_URL}/printer-types`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -22,7 +23,7 @@ export function usePrinterTypes() {
         printerTypes.value = data
       }
     } catch (error) {
-      console.error('Failed to fetch printer types:', error)
+      console.error('Impossible de récupérer les types d\'imprimantes :', error)
       printerTypes.value = []
     }
   }

@@ -1,153 +1,164 @@
 <template>
-  <div class="min-h-screen bg-gray-100 text-gray-900">
-    <Profile />
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur">
+    <div class="relative mx-4 w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Configuration</p>
+          <h1 class="mt-2 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+            <i class="fas fa-desktop text-indigo-500"></i>
+            Associer une caisse à cette machine
+          </h1>
+          <p class="mt-1 text-sm text-slate-500">
+            Identifiez le poste actuel et rattachez-le au point de vente pour pouvoir ouvrir une session
+            de caisse et encaisser des ventes.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+            @click="resetForm"
+          >
+            <i class="fas fa-rotate"></i>
+            Nouvelle caisse
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600"
+            @click="closeModal"
+          >
+            <i class="fas fa-xmark"></i>
+            Fermer
+          </button>
+        </div>
+      </header>
 
-    <section class="pt-24 pb-12">
-      <div class="max-w-4xl mx-auto px-4">
-        <div class="bg-white rounded-2xl shadow-lg p-8">
-          <header class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div class="grid gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <section class="space-y-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+          <header class="flex items-start justify-between gap-2 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-4">
             <div>
-              <h1 class="text-2xl font-semibold text-gray-900">Gestion des caisses (machines)</h1>
-              <p class="mt-1 text-sm text-gray-500">
-                Enregistrez ici le nom de la machine et rattachez-la à un point de vente.
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Machine détectée</p>
+              <p class="mt-2 text-sm text-slate-600">
+                {{ machineName ? 'Nom récupéré automatiquement.' : 'Impossible de détecter le nom.' }}
+              </p>
+              <p class="mt-1 text-lg font-semibold text-slate-900">
+                {{ machineName || '—' }}
               </p>
             </div>
             <button
               type="button"
-              class="px-3 py-2 rounded-md border border-indigo-600 text-indigo-600 font-semibold hover:bg-indigo-50"
-              @click="resetForm"
+              class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:border-indigo-200 hover:bg-indigo-50"
+              @click="refreshMachineName"
             >
-              Nouvelle caisse
+              <i class="fas fa-arrows-rotate"></i>
+              Réessayer
             </button>
           </header>
 
           <form class="space-y-5" @submit.prevent="submitForm">
-            <div class="rounded-lg border border-gray-200 p-6 space-y-4">
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-sm text-gray-600">
-                  Nom de machine détecté :
-                  <span v-if="machineName" class="font-semibold text-indigo-600">{{ machineName }}</span>
-                  <span v-else class="text-amber-600">Non détecté</span>
-                </p>
-                <button
-                  type="button"
-                  class="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                  @click="refreshMachineName"
-                >
-                  Réessayer
-                </button>
-              </div>
+            <div class="space-y-2">
+              <label for="cashregister-name" class="text-sm font-medium text-slate-700">Nom de la caisse / machine</label>
+              <input
+                id="cashregister-name"
+                v-model="formName"
+                type="text"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                placeholder="Ex. POS-CAISSE-01"
+                maxlength="255"
+                required
+              />
+              <p class="text-xs text-slate-500">Vous pouvez garder le nom détecté automatiquement ou le personnaliser.</p>
+            </div>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700" for="cashregister-name">
-                  Nom de la caisse / machine
-                </label>
-                <input
-                  id="cashregister-name"
-                  v-model="formName"
-                  type="text"
-                  class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Ex. POS-CAISSE-01"
-                  maxlength="255"
-                  required
-                />
-                <p class="text-xs text-gray-500 mt-1">
-                  Le nom est prérempli avec le hostname de la machine mais reste modifiable.
-                </p>
-              </div>
+            <div class="space-y-2">
+              <label for="point-of-sale" class="text-sm font-medium text-slate-700">Point de vente</label>
+              <select
+                id="point-of-sale"
+                v-model="selectedPointOfSaleId"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                :disabled="!isAdmin"
+                required
+              >
+                <option :value="null" disabled>Choisir un point de vente</option>
+                <option v-for="pos in pointOfSales" :key="pos.id" :value="pos.id">
+                  {{ pos.name }}
+                </option>
+              </select>
+              <p v-if="!isAdmin" class="text-xs text-slate-500">Ce champ est automatiquement défini selon votre compte.</p>
+            </div>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700" for="point-of-sale">
-                  Point de vente
-                </label>
-                <select
-                  id="point-of-sale"
-                  v-model="selectedPointOfSaleId"
-                  class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  :disabled="!isAdmin"
-                  required
-                >
-                  <option :value="null" disabled>Choisir un point de vente</option>
-                  <option v-for="pos in pointOfSales" :key="pos.id" :value="pos.id">
-                    {{ pos.name }}
-                  </option>
-                </select>
-                <p v-if="!isAdmin" class="text-xs text-gray-500 mt-1">
-                  Ce champ est fixé sur votre point de vente.
-                </p>
-              </div>
-
-              <div class="flex items-center gap-3">
-                <button
-                  type="submit"
-                  class="px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-60"
-                  :disabled="isSaving || !formValid"
-                >
-                  <span v-if="isSaving" class="flex items-center gap-2">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    Enregistrement...
-                  </span>
-                  <span v-else>Enregistrer</span>
-                </button>
-                <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
-                <p v-else-if="successMessage" class="text-sm text-green-600">{{ successMessage }}</p>
-              </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="isSaving || !formValid"
+              >
+                <i v-if="isSaving" class="fas fa-spinner fa-spin"></i>
+                <span>{{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}</span>
+              </button>
+              <p v-if="errorMessage" class="text-sm font-semibold text-rose-500">{{ errorMessage }}</p>
+              <p v-else-if="successMessage" class="text-sm font-semibold text-emerald-600">{{ successMessage }}</p>
             </div>
           </form>
+        </section>
 
-  <section class="mt-10">
-    <header class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-medium text-gray-800">Caisses par point de vente</h2>
-      <span class="text-sm text-gray-500">Total : {{ cashRegisters.length }}</span>
-    </header>
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <header class="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 class="text-base font-semibold text-slate-800">Caisses enregistrées</h2>
+              <p class="text-xs text-slate-400">Liste par point de vente | Total {{ cashRegisters.length }}</p>
+            </div>
+          </header>
 
-    <div v-if="groupedRegisters.length" class="space-y-6">
-      <div
-        v-for="group in groupedRegisters"
+          <div class="max-h-[420px] overflow-y-auto px-5 py-4">
+            <template v-if="groupedRegisters.length">
+              <div
+                v-for="group in groupedRegisters"
                 :key="group.pointOfSaleId ?? 'none'"
-                class="border border-gray-200 rounded-lg"
+                class="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80"
               >
-                <div class="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                <div class="flex items-center justify-between rounded-2xl border-b border-slate-200 bg-white px-4 py-3">
                   <div>
-                    <h3 class="text-sm font-semibold text-gray-700">
-                      {{ group.pointOfSaleName || 'Sans point de vente' }}
-                    </h3>
-                    <p class="text-xs text-gray-500">{{ group.registers.length }} caisse(s)</p>
+                    <p class="text-sm font-semibold text-slate-800">{{ group.pointOfSaleName || 'Sans point de vente' }}</p>
+                    <p class="text-xs text-slate-500">{{ group.registers.length }} caisse(s)</p>
                   </div>
                 </div>
-                <ul>
+                <ul class="divide-y divide-slate-200">
                   <li
                     v-for="register in group.registers"
                     :key="register.id"
-              class="px-4 py-3 border-t border-gray-200 flex items-center justify-between text-sm"
-            >
-              <span class="font-medium text-gray-800">{{ register.name }}</span>
-              <div class="flex items-center gap-3">
-                <span class="text-gray-500">ID&nbsp;: {{ register.id }}</span>
-                <button
-                  type="button"
-                  class="text-xs text-red-600 hover:text-red-700"
-                  @click="confirmDelete(register)"
-                >
-                  Supprimer
-                </button>
+                    class="flex items-center justify-between px-4 py-3 text-sm text-slate-700"
+                  >
+                    <div>
+                      <p class="font-semibold text-slate-900">{{ register.name }}</p>
+                      <p class="text-xs text-slate-400">ID : {{ register.id }}</p>
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                      @click="confirmDelete(register)"
+                    >
+                      Supprimer
+                    </button>
+                  </li>
+                </ul>
               </div>
-            </li>
-          </ul>
-        </div>
+            </template>
+            <p v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Aucune caisse enregistrée pour le moment.
+            </p>
+          </div>
+        </section>
       </div>
-      <p v-else class="text-sm text-gray-500 text-center py-6">Aucune caisse enregistrée pour le moment.</p>
-          </section>
-        </div>
-      </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
-import Profile from './Profile.vue'
+import { API_BASE_URL, API_URL } from '@/utils/api'
 import { useAuth } from '@/composables/useAuth'
 
 const { isAdmin, currentUser, loadUserData } = useAuth()
@@ -221,7 +232,7 @@ const refreshMachineName = () => {
 
 const fetchPointOfSales = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/pointofsales', {
+    const { data } = await axios.get(`${API_BASE_URL}/pointofsales`, {
       headers: getAuthHeaders()
     })
     pointOfSales.value = data?.data || data || []
@@ -257,7 +268,7 @@ const fetchPointOfSales = async () => {
 
 const fetchCashRegisters = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-registers', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-registers`, {
       headers: getAuthHeaders()
     })
     cashRegisters.value = data?.data || data || []
@@ -312,7 +323,7 @@ const submitForm = async () => {
       payload.point_of_sale_id = selectedPointOfSaleId.value
     }
 
-    const { data } = await axios.post('http://127.0.0.1:8000/api/cash-registers', payload, {
+    const { data } = await axios.post(`${API_BASE_URL}/cash-registers`, payload, {
       headers: getAuthHeaders()
     })
 
@@ -351,7 +362,7 @@ const deleteRegister = async (register) => {
   successMessage.value = ''
 
   try {
-    await axios.delete(`http://127.0.0.1:8000/api/cash-registers/${register.id}`, {
+    await axios.delete(`${API_BASE_URL}/cash-registers/${register.id}`, {
       headers: getAuthHeaders()
     })
 
@@ -381,10 +392,12 @@ onMounted(async () => {
     selectedPointOfSaleId.value = userPointOfSaleId.value
   }
 })
+
+const router = useRouter()
+function closeModal() {
+  router.push({ name: 'dashboard-overview' })
+}
 </script>
 
 <style scoped>
-button {
-  transition: background 0.2s ease, color 0.2s ease;
-}
 </style>

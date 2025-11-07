@@ -1,278 +1,128 @@
 <template>
-  <div class="container">
-    <header>
-      <h2>Permissions</h2>
-      <router-link to="/permissions/create" class="create-btn">
-        <FontAwesomeIcon :icon="faPlus" />
-        <span>Créer une permission</span>
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Administration</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="fa-solid fa-key" class="text-indigo-500" />
+          Gestion des permissions
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Définissez des permissions fines pour affiner les accès des rôles.
+        </p>
+      </div>
+      <router-link
+        :to="{ name: 'dashboard-permissions-create' }"
+        class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+      >
+        <font-awesome-icon icon="fa-solid fa-plus" />
+        Nouvelle permission
       </router-link>
     </header>
 
-    <div v-if="permissions.length" class="permissions-grid">
-      <div v-for="permission in permissions" :key="permission.id" class="permission-card">
-        <div class="permission-details">
-          <span class="permission-name">{{ permission.name }}</span>
-        </div>
-        <div class="permission-actions">
-          <button @click="deletePermission(permission.id)" class="delete-btn action-btn">
-            <FontAwesomeIcon :icon="faTrash" />
-          </button>
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-slate-800">Permissions disponibles</h2>
+          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            {{ permissions.length }} permission{{ permissions.length > 1 ? 's' : '' }}
+          </span>
         </div>
       </div>
-    </div>
-    <div v-else class="empty-state">
-      <i class="fas fa-list-ul"></i>
-      <p>Aucune permission n'a été trouvée. Créez-en une pour commencer.</p>
-    </div>
+
+      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-sm text-slate-500">
+        <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+        <div>
+          <p class="font-semibold text-slate-700">Chargement des permissions…</p>
+          <p class="text-xs text-slate-400">Veuillez patienter pendant le chargement des données.</p>
+        </div>
+      </div>
+
+      <div
+        v-else-if="permissions.length === 0"
+        class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center"
+      >
+        <div class="flex size-20 items-center justify-center rounded-full bg-slate-50 text-3xl text-slate-400">
+          <font-awesome-icon icon="fa-solid fa-list-ul" />
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-lg font-semibold text-slate-800">Aucune permission</h3>
+          <p class="text-sm text-slate-500">
+            Créez votre première permission pour contrôler l’accès aux fonctionnalités.
+          </p>
+        </div>
+        <router-link
+          :to="{ name: 'dashboard-permissions-create' }"
+          class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+        >
+          <font-awesome-icon icon="fa-solid fa-plus" />
+          Créer une permission
+        </router-link>
+      </div>
+
+      <div v-else class="grid gap-4 px-4 py-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <article
+          v-for="permission in permissions"
+          :key="permission.id"
+          class="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+        >
+          <div>
+            <h3 class="text-base font-semibold text-slate-800">{{ permission.name }}</h3>
+            <p class="mt-1 text-xs text-slate-400">ID : {{ permission.id }}</p>
+          </div>
+
+          <div class="mt-5 flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100"
+              @click="deletePermission(permission.id)"
+            >
+              <font-awesome-icon icon="fa-solid fa-trash" />
+              Supprimer
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
-<script>
-import permissionService from '@/services/permissionService';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faPlus, faTrash, faListUl } from '@fortawesome/free-solid-svg-icons';
+<script setup>
+import { onMounted, ref } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import permissionService from '@/services/permissionService'
 
-export default {
-  components: {
-    FontAwesomeIcon
-  },
-  data() {
-    return {
-      permissions: [],
-      faPlus,
-      faTrash,
-      faListUl
-    };
-  },
-  async created() {
-    await this.fetchPermissions();
-  },
-  methods: {
-    async fetchPermissions() {
-      try {
-        const response = await permissionService.getAll();
-        this.permissions = response.data;
-      } catch (error) {
-        console.error("Failed to fetch permissions:", error);
-      }
-    },
-    async deletePermission(id) {
-      if (confirm("Êtes-vous sûr de vouloir supprimer cette permission ?")) {
-        try {
-          await permissionService.delete(id);
-          this.fetchPermissions();
-        } catch (error) {
-          console.error("Failed to delete permission:", error);
-        }
-      }
-    }
+defineOptions({ name: 'PermissionListView', components: { FontAwesomeIcon } })
+
+const permissions = ref([])
+const loading = ref(false)
+
+const fetchPermissions = async () => {
+  loading.value = true
+  try {
+    const response = await permissionService.getAll()
+    permissions.value = Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    console.error('Impossible de récupérer les permissions :', error)
+    permissions.value = []
+  } finally {
+    loading.value = false
   }
-};
+}
+
+const deletePermission = async (id) => {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette permission ?')) return
+  try {
+    await permissionService.delete(id)
+    await fetchPermissions()
+  } catch (error) {
+    console.error('Impossible de supprimer la permission :', error)
+    alert('Impossible de supprimer la permission.')
+  }
+}
+
+onMounted(fetchPermissions)
 </script>
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
-body {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fa;
-  color: #4a4a4a;
-  line-height: 1.5;
-  min-height: 100vh;
-  padding: 1.5rem;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  background: #ffffff;
-  padding: 0.5rem;
-  border-radius: 8px;
-  box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
-}
-
-h2 {
-  color: #363636;
-  font-size: 1.75rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.create-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #485fc7;
-  color: #ffffff;
-  padding: 0.75rem 1.5rem;
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.create-btn:hover {
-  background-color: #3a51bb;
-  transform: translateY(-1px);
-}
-
-.permissions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.permission-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s ease;
-  border: 1px solid #dbdbdb;
-}
-
-.permission-card:hover {
-  box-shadow: 0 1.5em 2.5em -0.125em rgba(10, 10, 10, 0.12), 0 0 0 1px rgba(10, 10, 10, 0.04);
-  transform: translateY(-3px);
-}
-
-.permission-details {
-  flex-grow: 1;
-  margin-bottom: 1.25rem;
-}
-
-.permission-name {
-  font-weight: 600;
-  font-size: 1.125rem;
-  color: #363636;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.permission-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid #dbdbdb;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.delete-btn {
-  background-color: rgba(241, 70, 104, 0.1);
-  color: #f14668;
-}
-
-.delete-btn:hover {
-  background-color: #f14668;
-  color: #ffffff;
-}
-
-.empty-state {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 3rem 2rem;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.02);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.empty-state i {
-  font-size: 3.5rem;
-  color: #dbdbdb;
-  margin-bottom: 0.5rem;
-}
-
-.empty-state p {
-  color: #7a7a7a;
-  font-size: 1.125rem;
-  max-width: 500px;
-  line-height: 1.5;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .permissions-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  h2 {
-    font-size: 1.5rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .permissions-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .create-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  body {
-    padding: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 0;
-  }
-
-  .permission-card {
-    padding: 1.25rem;
-  }
-
-  .empty-state {
-    padding: 2rem 1rem;
-  }
-
-  .empty-state i {
-    font-size: 3rem;
-  }
-
-  .empty-state p {
-    font-size: 1rem;
-  }
-}
+<style scoped>
 </style>

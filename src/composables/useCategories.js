@@ -1,8 +1,6 @@
 import { ref } from 'vue'
 import axios from 'axios'
-
-const rawApiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-const API_BASE_URL = rawApiBaseUrl.replace(/\/?$/, '')
+import { API_BASE_URL } from '@/utils/api'
 
 export function useCategories() {
   const categories = ref([])
@@ -13,17 +11,17 @@ export function useCategories() {
   const productCatalog = ref({})
 
   const loadCategories = async () => {
-    console.log('loadCategories: Starting function execution')
+    console.log('loadCategories : démarrage de l\'exécution')
 
     try {
       const token = localStorage.getItem('token')
-      console.log('loadCategories: Token retrieved:', token ? 'Present' : 'Missing')
+      console.log('loadCategories : jeton récupéré :', token ? 'Présent' : 'Absent')
       if (!token) {
-        console.log('loadCategories: No token found, returning early')
+        console.log('loadCategories : aucun jeton trouvé, arrêt anticipé')
         return
       }
 
-      console.log('loadCategories: Making /me API call')
+      console.log('loadCategories : appel de l\'API /me')
       const userResponse = await axios.get(`${API_BASE_URL}/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -32,14 +30,14 @@ export function useCategories() {
       })
 
       const user = userResponse.data.user
-      console.log('loadCategories: User data received:', user)
+      console.log('loadCategories : données utilisateur reçues :', user)
 
       if (!user.point_of_sale_id) {
-        console.log('loadCategories: No point_of_sale_id in user data, returning early')
+        console.log('loadCategories : aucun point_of_sale_id dans les données utilisateur, arrêt anticipé')
         return
       }
 
-      console.log('loadCategories: Making /categories API call with point_of_sale_id:', user.point_of_sale_id)
+      console.log('loadCategories : appel de l\'API /categories avec le point_of_sale_id :', user.point_of_sale_id)
       const response = await axios.get(`${API_BASE_URL}/categories`, {
         params: {
           'with_products': 1,
@@ -53,12 +51,12 @@ export function useCategories() {
       })
 
       const rawCategories = Array.isArray(response.data) ? response.data : response.data.data || []
-      console.log('loadCategories: Raw categories received:', rawCategories.length, 'categories')
+      console.log('loadCategories : catégories brutes reçues :', rawCategories.length, 'catégories')
 
       const categoryPrinterMap = { ...categoryPrinterTypes.value }
       const aggregatedProducts = []
 
-      console.log('loadCategories: Processing categories for printer types')
+      console.log('loadCategories : traitement des catégories pour déterminer les types d\'imprimante')
       rawCategories.forEach(category => {
         if (!category || !category.id) return
         const printerTypeId = resolveCategoryPrinterTypeId(category)
@@ -66,9 +64,9 @@ export function useCategories() {
           categoryPrinterMap[category.id] = printerTypeId
         }
       })
-      console.log('loadCategories: Category printer map after processing:', categoryPrinterMap)
+      console.log('loadCategories : correspondance catégorie/imprimante après traitement :', categoryPrinterMap)
 
-      console.log('loadCategories: Normalizing products')
+      console.log('loadCategories : normalisation des produits')
       rawCategories.forEach(category => {
         const fallbackPrinterTypeId = resolveCategoryPrinterTypeId(category) ?? (category?.id ? categoryPrinterMap[category.id] : null)
         if (Array.isArray(category?.products)) {
@@ -79,19 +77,19 @@ export function useCategories() {
           })
         }
       })
-      console.log('loadCategories: Aggregated products count:', aggregatedProducts.length)
+      console.log('loadCategories : nombre de produits agrégés :', aggregatedProducts.length)
 
       categories.value = rawCategories
       categoryPrinterTypes.value = categoryPrinterMap
       products.value = aggregatedProducts
       filteredProducts.value = aggregatedProducts
 
-      console.log('loadCategories: Function completed successfully')
+      console.log('loadCategories : exécution terminée avec succès')
     } catch (error) {
-      console.error('loadCategories: Error occurred:', error)
-      console.error('loadCategories: Error response:', error.response?.data)
-      console.error('loadCategories: Error status:', error.response?.status)
-      console.error('loadCategories: Error message:', error.message)
+      console.error('loadCategories : une erreur est survenue :', error)
+      console.error('loadCategories : réponse d\'erreur :', error.response?.data)
+      console.error('loadCategories : statut d\'erreur :', error.response?.status)
+      console.error('loadCategories : message d\'erreur :', error.message)
     }
   }
 
@@ -215,6 +213,7 @@ export function useCategories() {
     const normalizedProduct = {
       ...baseProduct,
       stock: stock,
+      category_name: category?.name ?? product?.category_name ?? product?.category?.name ?? '—',
     }
 
     normalizedProduct.isAvailable = checkProductAvailability(normalizedProduct)

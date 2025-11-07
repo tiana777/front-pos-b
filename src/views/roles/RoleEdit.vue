@@ -1,495 +1,337 @@
 <template>
-  <div class="container is-fluid mt-5 role-management-page">
-    <div class="columns is-centered">
-      <div class="column is-10-desktop is-12-mobile">
-        <div class="card">
-          <header class="card-header has-background-primary-light">
-            <div class="card-header-title is-flex is-align-items-center">
-              <span class="icon has-text-primary mr-3">
-                <font-awesome-icon icon="user-cog" size="lg" />
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Administration</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="fa-solid fa-user-gear" class="text-indigo-500" />
+          Modifier le rôle
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Ajustez le nom du rôle et gérez les permissions qui définissent les accès de votre équipe.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <router-link
+          :to="{ name: 'dashboard-roles' }"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+        >
+          <font-awesome-icon icon="fa-solid fa-arrow-left" />
+          Retour
+        </router-link>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          @click="deleteRole"
+          :disabled="isDeleting || role?.name === 'admin'"
+        >
+          <font-awesome-icon icon="fa-solid fa-trash" />
+          Supprimer
+        </button>
+      </div>
+    </header>
+
+    <div
+      v-if="loading"
+      class="flex flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-sm"
+    >
+      <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+      <div>
+        <p class="font-semibold text-slate-700">Chargement du rôle…</p>
+        <p class="text-xs text-slate-400">Nous récupérons les informations du rôle et ses permissions.</p>
+      </div>
+    </div>
+
+    <div v-else class="space-y-6">
+      <div
+        v-if="error"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600"
+      >
+        <div class="flex items-center gap-2">
+          <font-awesome-icon icon="fa-solid fa-triangle-exclamation" />
+          <span>{{ error }}</span>
+        </div>
+        <button
+          type="button"
+          class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-600 transition hover:bg-rose-100"
+          @click="error = null"
+        >
+          Fermer
+        </button>
+      </div>
+
+      <div v-if="role" class="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <section class="space-y-6 rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div class="border-b border-slate-100 px-6 py-4">
+            <h2 class="text-base font-semibold text-slate-800">Informations du rôle</h2>
+          </div>
+          <div class="space-y-6 px-6 pb-6">
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-slate-600">Nom du rôle</label>
+              <div class="relative">
+                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <font-awesome-icon icon="fa-solid fa-tag" />
+                </span>
+                <input
+                  v-model="role.name"
+                  type="text"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 pl-9 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+                  :disabled="role.name === 'admin'"
+                  placeholder="Nom du rôle"
+                />
+              </div>
+              <p v-if="role.name === 'admin'" class="flex items-center gap-2 text-xs font-semibold text-amber-500">
+                <font-awesome-icon icon="fa-solid fa-lock" />
+                Le rôle administrateur ne peut pas être renommé.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              @click="updateRole"
+              :disabled="isSaving || role.name === 'admin'"
+            >
+              <font-awesome-icon :icon="isSaving ? 'fa-solid fa-spinner' : 'fa-solid fa-floppy-disk'" :class="{ 'animate-spin': isSaving }" />
+              {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
+            </button>
+          </div>
+
+          <div class="border-t border-slate-100 px-6 py-4">
+            <h3 class="text-base font-semibold text-slate-800">Permissions actuelles</h3>
+            <p class="mt-1 text-xs text-slate-400">Retirez des permissions pour limiter les actions autorisées.</p>
+          </div>
+          <div class="px-6 pb-6">
+            <div
+              v-if="role.permissions && role.permissions.length > 0"
+              class="flex flex-wrap gap-2"
+            >
+              <span
+                v-for="permission in role.permissions"
+                :key="permission.id"
+                class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1 text-xs font-semibold text-indigo-600"
+              >
+                <font-awesome-icon icon="fa-solid fa-shield-check" />
+                {{ permission.name }}
+                <button
+                  type="button"
+                  class="rounded-full border border-indigo-100 px-1 text-[11px] text-indigo-500 transition hover:bg-white"
+                  @click="revokePermission(permission.id)"
+                  :disabled="isRevoking"
+                >
+                  <font-awesome-icon icon="fa-solid fa-xmark" />
+                </button>
               </span>
-              <span>Modifier le Rôle</span>
             </div>
-          </header>
-
-          <div class="card-content">
-            <!-- Loading State -->
-            <div v-if="loading" class="has-text-centered py-6">
-              <div class="button is-loading is-large is-primary is-outlined"></div>
-              <p class="mt-3 has-text-black">Chargement du rôle...</p>
-            </div>
-
-            <!-- Error State -->
-            <div v-else-if="error" class="notification is-danger">
-              <button class="delete" @click="error = null"></button>
-              <span class="icon">
-                <font-awesome-icon icon="exclamation-triangle" />
-              </span>
-              {{ error }}
-            </div>
-
-            <!-- Content -->
-            <div v-else-if="role" class="content">
-              <!-- Role Name Form -->
-              <div class="box">
-                <h3 class="title is-4 has-text-primary">
-                  <span class="icon">
-                    <font-awesome-icon icon="tag" />
-                  </span>
-                  Informations du rôle
-                </h3>
-
-                <div class="field">
-                  <label class="label">Nom du rôle</label>
-                  <div class="control has-icons-left">
-                    <input v-model="role.name" type="text" class="input" :class="{ 'is-danger': role.name === 'admin' }"
-                      :disabled="role.name === 'admin'" placeholder="Entrez le nom du rôle">
-                    <span class="icon is-small is-left">
-                      <font-awesome-icon icon="tag" />
-                    </span>
-                  </div>
-                  <p v-if="role.name === 'admin'" class="help is-warning">
-                    <span class="icon is-small">
-                      <font-awesome-icon icon="lock" />
-                    </span>
-                    Le nom du rôle admin ne peut pas être modifié
-                  </p>
-                </div>
-
-                <div class="field is-grouped">
-                  <div class="control">
-                    <button @click="updateRole" class="button is-primary" :class="{ 'is-loading': isSaving }"
-                      :disabled="isSaving || role.name === 'admin'">
-                      <span class="icon">
-                        <font-awesome-icon icon="save" />
-                      </span>
-                      <span>{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Current Permissions -->
-              <div class="box">
-                <h3 class="title is-4 has-text-info">
-                  <span class="icon">
-                    <font-awesome-icon icon="shield-alt" />
-                  </span>
-                  Permissions actuelles
-                </h3>
-
-                <div v-if="role.permissions && role.permissions.length > 0" class="tags are-medium">
-                  <span v-for="permission in role.permissions" :key="permission.id"
-                    class="tag is-info is-light is-rounded">
-                    <span class="icon is-small">
-                      <font-awesome-icon icon="check-circle" />
-                    </span>
-                    <span>{{ permission.name }}</span>
-                    <button @click="revokePermission(permission.id)" class="delete is-small ml-2"
-                      :disabled="isRevoking"></button>
-                  </span>
-                </div>
-
-                <div v-else class="notification is-light">
-                  <span class="icon">
-                    <font-awesome-icon icon="info-circle" />
-                  </span>
-                  Aucune permission associée à ce rôle
-                </div>
-              </div>
-
-              <!-- Add Permission -->
-              <div class="box">
-                <h3 class="title is-4 has-text-success">
-                  <span class="icon">
-                    <font-awesome-icon icon="plus-circle" />
-                  </span>
-                  Ajouter des permissions
-                </h3>
-
-                <div v-if="availablePermissions.length > 0">
-                  <div class="permissions-checkboxes">
-                    <div v-for="permission in availablePermissions" :key="permission.id" class="field">
-                      <div class="control">
-                        <label class="checkbox permission-checkbox">
-                          <input type="checkbox" :value="permission.name" v-model="selectedPermissions"
-                            :disabled="isAssigning">
-                          <span class="checkmark"></span>
-                          {{ permission.name }}
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="field is-grouped mt-4">
-                    <div class="control">
-                      <button @click="assignPermissions" class="button is-success"
-                        :class="{ 'is-loading': isAssigning }"
-                        :disabled="selectedPermissions.length === 0 || isAssigning">
-                        <span class="icon">
-                          <font-awesome-icon icon="plus" />
-                        </span>
-                        <span>Ajouter les permissions sélectionnées</span>
-                      </button>
-                    </div>
-                    <div class="control">
-                      <button @click="clearSelection" class="button is-light" :disabled="isAssigning">
-                        <span class="icon">
-                          <font-awesome-icon icon="times" />
-                        </span>
-                        <span>Effacer la sélection</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="notification is-light">
-                  <span class="icon">
-                    <font-awesome-icon icon="check-circle" />
-                  </span>
-                  Toutes les permissions disponibles ont été ajoutées à ce rôle
-                </div>
-              </div>
-
-              <!-- Actions -->
-              <div class="field is-grouped is-grouped-right">
-                <div class="control">
-                  <router-link to="/roles" class="button is-light">
-                    <span class="icon">
-                      <font-awesome-icon icon="arrow-left" />
-                    </span>
-                    <span>Retour</span>
-                  </router-link>
-                </div>
-                <div class="control">
-                  <button @click="deleteRole" class="button is-danger" :class="{ 'is-loading': isDeleting }"
-                    :disabled="isDeleting || role.name === 'admin'">
-                    <span class="icon">
-                      <font-awesome-icon icon="trash" />
-                    </span>
-                    <span>Supprimer</span>
-                  </button>
-                </div>
-              </div>
+            <div
+              v-else
+              class="flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500"
+            >
+              <font-awesome-icon icon="fa-solid fa-circle-info" />
+              Aucune permission n’est encore associée à ce rôle.
             </div>
           </div>
-        </div>
+        </section>
+
+        <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div class="border-b border-slate-100 px-6 py-4">
+            <h2 class="text-base font-semibold text-slate-800">Ajouter des permissions</h2>
+            <p class="mt-1 text-xs text-slate-400">Sélectionnez des permissions à ajouter puis validez.</p>
+          </div>
+
+          <div class="space-y-6 px-6 pb-6">
+            <div
+              v-if="availablePermissions.length > 0"
+              class="max-h-[340px] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+            >
+              <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <label
+                  v-for="permission in availablePermissions"
+                  :key="permission.id"
+                  class="flex items-center gap-3 rounded-2xl border border-transparent bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+                >
+                  <input
+                    v-model="selectedPermissions"
+                    type="checkbox"
+                    :value="permission.name"
+                    class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200"
+                    :disabled="isAssigning"
+                  />
+                  <span class="truncate">{{ permission.name }}</span>
+                </label>
+              </div>
+            </div>
+            <div
+              v-else
+              class="flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500"
+            >
+              <font-awesome-icon icon="fa-solid fa-circle-check" />
+              Toutes les permissions disponibles sont déjà attribuées à ce rôle.
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                @click="assignPermissions"
+                :disabled="selectedPermissions.length === 0 || isAssigning"
+              >
+                <font-awesome-icon :icon="isAssigning ? 'fa-solid fa-spinner' : 'fa-solid fa-plus'" :class="{ 'animate-spin': isAssigning }" />
+                Ajouter la sélection
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+                @click="clearSelection"
+                :disabled="selectedPermissions.length === 0 || isAssigning"
+              >
+                <font-awesome-icon icon="fa-solid fa-xmark" />
+                Effacer la sélection
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import roleService from '@/services/roleService'
 import permissionService from '@/services/permissionService'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-export default {
-  name: 'RoleEdit',
-  components: {
-    FontAwesomeIcon
-  },
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
+defineOptions({ name: 'RoleEdit', components: { FontAwesomeIcon } })
 
-    const role = ref(null)
-    const availablePermissions = ref([])
-    const selectedPermissions = ref([])
-    const loading = ref(true)
-    const error = ref(null)
-    const isSaving = ref(false)
-    const isAssigning = ref(false)
-    const isRevoking = ref(false)
-    const isDeleting = ref(false)
+const router = useRouter()
+const route = useRoute()
 
-    const fetchRole = async () => {
-      try {
-        loading.value = true
-        const response = await roleService.getById(route.params.id)
-        role.value = response.data
-      } catch (err) {
-        console.error('Erreur lors de la récupération du rôle:', err)
-        error.value = 'Impossible de charger le rôle. Veuillez réessayer.'
-      } finally {
-        loading.value = false
-      }
-    }
+const role = ref(null)
+const availablePermissions = ref([])
+const selectedPermissions = ref([])
+const loading = ref(true)
+const error = ref(null)
+const isSaving = ref(false)
+const isAssigning = ref(false)
+const isRevoking = ref(false)
+const isDeleting = ref(false)
 
-    const fetchAvailablePermissions = async () => {
-      try {
-        const response = await permissionService.getAll()
-        // Filter out permissions already assigned to this role
-        if (role.value && role.value.permissions) {
-          availablePermissions.value = response.data.filter(permission => {
-            return !role.value.permissions.some(p => p.id === permission.id)
-          })
-        } else {
-          availablePermissions.value = response.data
-        }
-      } catch (err) {
-        console.error('Erreur lors de la récupération des permissions:', err)
-      }
-    }
-
-    const updateRole = async () => {
-      if (role.value.name === 'admin') {
-        error.value = "Le rôle admin ne peut pas être modifié"
-        return
-      }
-
-      try {
-        isSaving.value = true
-        await roleService.update(role.value.id, { name: role.value.name })
-        // Show success message (you can use a toast library here)
-        console.log('Rôle mis à jour avec succès')
-      } catch (err) {
-        console.error('Erreur lors de la mise à jour du rôle:', err)
-        error.value = err.response?.data?.error || 'Erreur lors de la mise à jour'
-      } finally {
-        isSaving.value = false
-      }
-    }
-
-    const assignPermissions = async () => {
-      if (selectedPermissions.value.length === 0) return
-
-      try {
-        isAssigning.value = true
-
-        // Assign each selected permission
-        for (const permissionName of selectedPermissions.value) {
-          await roleService.assignPermission(role.value.id, permissionName)
-        }
-
-        // Refresh data
-        await fetchRole()
-        await fetchAvailablePermissions()
-
-        selectedPermissions.value = []
-        console.log('Permissions ajoutées avec succès')
-      } catch (err) {
-        console.error('Erreur lors de l\'ajout des permissions:', err)
-        error.value = err.response?.data?.error || 'Erreur lors de l\'ajout'
-      } finally {
-        isAssigning.value = false
-      }
-    }
-
-    const clearSelection = () => {
-      selectedPermissions.value = []
-    }
-
-    const revokePermission = async (permissionId) => {
-      try {
-        isRevoking.value = true
-        await roleService.revokePermission(role.value.id, permissionId)
-
-        // Refresh data
-        await fetchRole()
-        await fetchAvailablePermissions()
-
-        console.log('Permission retirée avec succès')
-      } catch (err) {
-        console.error('Erreur lors du retrait de la permission:', err)
-        error.value = err.response?.data?.error || 'Erreur lors du retrait'
-      } finally {
-        isRevoking.value = false
-      }
-    }
-
-    const deleteRole = async () => {
-      if (role.value.name === 'admin') {
-        error.value = "Le rôle admin ne peut pas être supprimé"
-        return
-      }
-
-      if (!confirm(`Êtes-vous sûr de vouloir supprimer le rôle "${role.value.name}"?`)) {
-        return
-      }
-
-      try {
-        isDeleting.value = true
-        await roleService.delete(role.value.id)
-        console.log('Rôle supprimé avec succès')
-        router.push('/roles')
-      } catch (err) {
-        console.error('Erreur lors de la suppression du rôle:', err)
-        if (err.response?.status === 403) {
-          error.value = "Ce rôle est encore attribué à des utilisateurs et ne peut être supprimé"
-        } else {
-          error.value = err.response?.data?.error || 'Erreur lors de la suppression'
-        }
-      } finally {
-        isDeleting.value = false
-      }
-    }
-
-    onMounted(async () => {
-      await fetchRole()
-      await fetchAvailablePermissions()
-    })
-
-    return {
-      role,
-      availablePermissions,
-      selectedPermissions,
-      loading,
-      error,
-      isSaving,
-      isAssigning,
-      isRevoking,
-      isDeleting,
-      fetchRole,
-      fetchAvailablePermissions,
-      updateRole,
-      assignPermissions,
-      clearSelection,
-      revokePermission,
-      deleteRole
-    }
+const fetchRole = async () => {
+  try {
+    loading.value = true
+    const response = await roleService.getById(route.params.id)
+    role.value = response.data
+  } catch (err) {
+    console.error('Erreur lors de la récupération du rôle:', err)
+    error.value = 'Impossible de charger le rôle. Veuillez réessayer.'
+  } finally {
+    loading.value = false
   }
 }
+
+const fetchAvailablePermissions = async () => {
+  try {
+    const response = await permissionService.getAll()
+    if (role.value?.permissions) {
+      availablePermissions.value = response.data.filter(
+        (permission) => !role.value.permissions.some((p) => p.id === permission.id)
+      )
+    } else {
+      availablePermissions.value = response.data
+    }
+  } catch (err) {
+    console.error('Erreur lors de la récupération des permissions:', err)
+  }
+}
+
+const updateRole = async () => {
+  if (role.value?.name === 'admin') {
+    error.value = 'Le rôle admin ne peut pas être modifié.'
+    return
+  }
+
+  try {
+    isSaving.value = true
+    await roleService.update(role.value.id, { name: role.value.name })
+  } catch (err) {
+    console.error('Erreur lors de la mise à jour du rôle:', err)
+    error.value = err.response?.data?.error || 'Erreur lors de la mise à jour du rôle.'
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const assignPermissions = async () => {
+  if (selectedPermissions.value.length === 0) return
+
+  try {
+    isAssigning.value = true
+    for (const permissionName of selectedPermissions.value) {
+      await roleService.assignPermission(role.value.id, permissionName)
+    }
+
+    await fetchRole()
+    await fetchAvailablePermissions()
+    selectedPermissions.value = []
+  } catch (err) {
+    console.error("Erreur lors de l'ajout des permissions:", err)
+    error.value = err.response?.data?.error || "Erreur lors de l'ajout des permissions."
+  } finally {
+    isAssigning.value = false
+  }
+}
+
+const clearSelection = () => {
+  selectedPermissions.value = []
+}
+
+const revokePermission = async (permissionId) => {
+  try {
+    isRevoking.value = true
+    await roleService.revokePermission(role.value.id, permissionId)
+    await fetchRole()
+    await fetchAvailablePermissions()
+  } catch (err) {
+    console.error('Erreur lors du retrait de la permission:', err)
+    error.value = err.response?.data?.error || 'Erreur lors du retrait de la permission.'
+  } finally {
+    isRevoking.value = false
+  }
+}
+
+const deleteRole = async () => {
+  if (role.value?.name === 'admin') {
+    error.value = 'Le rôle admin ne peut pas être supprimé.'
+    return
+  }
+
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer le rôle "${role.value?.name}" ?`)) {
+    return
+  }
+
+  try {
+    isDeleting.value = true
+    await roleService.delete(role.value.id)
+    router.push({ name: 'dashboard-roles' })
+  } catch (err) {
+    console.error('Erreur lors de la suppression du rôle:', err)
+    if (err.response?.status === 403) {
+      error.value = 'Ce rôle est encore attribué à des utilisateurs et ne peut être supprimé.'
+    } else {
+      error.value = err.response?.data?.error || 'Erreur lors de la suppression.'
+    }
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchRole()
+  await fetchAvailablePermissions()
+})
 </script>
 
 <style scoped>
-/* Additional responsive styles */
-@media screen and (max-width: 768px) {
-  .container {
-    padding: 0.5rem;
-  }
-
-  .card-content {
-    padding: 5rem;
-  }
-
-  .box {
-    padding: 1.5rem;
-  }
-
-  .field.has-addons {
-    flex-direction: column;
-  }
-
-  .field.has-addons .control {
-    width: 100%;
-  }
-
-  .field.is-grouped {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .field.is-grouped .control {
-    width: 100%;
-  }
-}
-
-.permissions-checkboxes {
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid #dbdbdb;
-  border-radius: 6px;
-  padding: 1rem;
-  background-color: #fafafa;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-}
-
-.permissions-checkboxes .field {
-  margin-bottom: 0.75rem;
-}
-
-.permissions-checkboxes .field:last-child {
-  margin-bottom: 0;
-}
-
-.permission-checkbox {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 500;
-  color: #363636;
-  padding: 0.5rem;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
-
-.permission-checkbox:hover {
-  background-color: #f0f0f0;
-}
-
-.permission-checkbox input[type="checkbox"] {
-  margin-right: 0.75rem;
-  transform: scale(1.2);
-}
-
-.permission-checkbox input[type="checkbox"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.permission-checkbox input[type="checkbox"]:disabled+span+span {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-@media screen and (max-width: 768px) {
-  .container {
-    padding: 0.5rem;
-  }
-
-  .card-content {
-    padding: 1rem;
-  }
-
-  .box {
-    padding: 1.5rem;
-  }
-
-  .field.has-addons {
-    flex-direction: column;
-  }
-
-  .field.has-addons .control {
-    width: 100%;
-  }
-
-  .field.is-grouped {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .field.is-grouped .control {
-    width: 100%;
-  }
-
-  .permissions-checkboxes {
-    max-height: 250px;
-    padding: 0.75rem;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .tags {
-    justify-content: center;
-  }
-
-  .tag {
-    font-size: 0.8rem;
-  }
-
-  .permissions-checkboxes {
-    max-height: 200px;
-    padding: 0.5rem;
-  }
-
-  .permission-checkbox {
-    padding: 0.4rem;
-    font-size: 0.9rem;
-  }
-}
 </style>

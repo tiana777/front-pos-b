@@ -1,224 +1,331 @@
 <template>
-  <Profile />
+  <div class="flex flex-col gap-4 pb-6">
+    <Profile v-if="!embedded" class="mb-2" />
 
-  <div class="table-sale">
-    <!-- Header avec informations de table -->
-    <div class="table-sale-header">
-      <div class="table-info-section">
-        <div v-if="selectedTable" class="current-table-info">
-          <div class="table-display">
-            <i class="fas fa-table"></i>
-            <span class="table-number">{{ selectedTable.table_number }}</span>
-            <span v-if="selectedTable.name" class="table-name">- {{ selectedTable.name }}</span>
-          </div>
-          <div class="table-status" :class="selectedTable.status">
-            <i :class="getStatusIcon(selectedTable.status)"></i>
-            {{ getStatusText(selectedTable.status) }}
+    <section
+      class="sticky top-[3rem] z-30 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:top-[3.25rem] lg:top-[3.5rem]"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <FontAwesomeIcon icon="fa-solid fa-table" />
+          </span>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Table en service</p>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <span class="text-lg font-semibold text-slate-900">
+                {{ selectedTable ? `Table ${selectedTable.table_number}` : 'Aucune table sélectionnée' }}
+              </span>
+              <span v-if="selectedTable?.name" class="text-sm text-slate-500">— {{ selectedTable.name }}</span>
+              <span
+                v-if="selectedTable"
+                class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold"
+                :class="statusBadgeClass(selectedTable.status)"
+              >
+                <FontAwesomeIcon :icon="getStatusIcon(selectedTable.status)" />
+                {{ getStatusText(selectedTable.status) }}
+              </span>
+            </div>
+            <p v-if="selectedTable" class="text-xs text-slate-400">
+              {{ selectedTable?.point_of_sale?.name || 'Point de vente non défini' }}
+            </p>
           </div>
         </div>
-        <div v-else class="no-table-selected">
-          <i class="fas fa-table"></i>
-          <span>Aucune table sélectionnée</span>
-        </div>
-        <div class="table-actions">
-          <button @click="openTableSelector" class="btn-table-select">
-            <i class="fas fa-table"></i>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-600">
+            Articles : <span class="text-slate-900">{{ cart.length }}</span>
+          </span>
+          <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-600">
+            Total : <span class="text-slate-900">{{ formatPrice(totalPrice) }}</span>
+          </span>
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+            @click="openTableSelector"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-table-list" />
             {{ selectedTable ? 'Changer de table' : 'Sélectionner une table' }}
           </button>
         </div>
       </div>
 
-      <div class="sale-info">
-        <div class="sale-summary">
-          <span class="summary-label">Articles:</span>
-          <span class="summary-value">{{ cart.length }}</span>
-        </div>
-        <div class="sale-total">
-          <span class="total-label">Total:</span>
-          <span class="total-value">{{ formatPrice(totalPrice) }}</span>
-        </div>
+      <div
+        v-if="currentPendingOrder"
+        class="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700"
+      >
+        <FontAwesomeIcon icon="fa-solid fa-clock-rotate-left" />
+        Commande en attente n° {{ currentPendingOrder.reference || currentPendingOrder.id }}
       </div>
-    </div>
+    </section>
 
-    <!-- Contenu principal -->
-    <div class="table-sale-content">
-      <!-- Catégories -->
-      <div class="categories-section">
-        <div class="section-header">
-          <h3><i class="fas fa-list"></i> Catégories</h3>
-        </div>
-        <div class="categories-list">
-          <button
-            v-for="category in categories"
-            :key="category.id"
-            @click="loadProducts(category)"
-            :class="[
-              'category-btn',
-              activeCategory?.id === category.id ? 'active' : '',
-              isInteractionLocked ? 'disabled' : ''
-            ]"
-            :disabled="isInteractionLocked"
-          >
-            <i class="fas fa-folder"></i>
-            {{ category.name }}
-          </button>
-        </div>
-      </div>
+    <div class="grid gap-4 min-h-[calc(100vh-6.5rem)] lg:grid-cols-[minmax(0,1fr)_320px]">
+      <section
+        class="sticky top-[5.25rem] flex max-h-[calc(100vh-6.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:top-[5.5rem] lg:top-[5.75rem]"
+      >
+        <div class="flex flex-col gap-3 border-b border-slate-100 pb-3">
+          <header class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
+                <FontAwesomeIcon icon="fa-solid fa-boxes" />
+                Produits
+              </h2>
+              <p class="text-xs text-slate-400">Ajoutez des articles au panier de la table sélectionnée.</p>
+            </div>
+            <div class="relative w-full sm:max-w-xs">
+              <FontAwesomeIcon
+                icon="fa-solid fa-search"
+                class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                placeholder="Rechercher un produit..."
+                v-model="searchQuery"
+                @input="filterProducts"
+                :disabled="isInteractionLocked"
+                class="w-full rounded-full border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
+            </div>
+          </header>
 
-      <!-- Produits -->
-      <div class="products-section">
-        <div class="section-header">
-          <h3><i class="fas fa-boxes"></i> Produits</h3>
-          <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              v-model="searchQuery"
-              @input="filterProducts"
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              class="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="[
+                activeCategory ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-indigo-500 text-white shadow'
+              ]"
+              @click="showAllProducts"
+            >
+              Toutes
+            </button>
+            <button
+              v-for="category in categories"
+              :key="category.id"
+              type="button"
+              class="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition"
+              :class="[
+                activeCategory?.id === category.id
+                  ? 'bg-indigo-500 text-white shadow'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              ]"
               :disabled="isInteractionLocked"
-            />
+              @click="loadProducts(category)"
+            >
+              {{ category.name }}
+            </button>
+          </div>
+
+          <div
+            v-if="currentPendingOrder"
+            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-clock-rotate-left" />
+            Commande en attente n° {{ currentPendingOrder.reference || currentPendingOrder.id }}
           </div>
         </div>
-        <div class="products-grid">
-          <div
-            v-for="product in filteredProducts"
-            :key="product.id"
-            @click="(!isInteractionLocked && canSelectProduct(product)) ? addToCart(product, $event) : null"
-            :class="['product-card', getProductClass(product), isInteractionLocked ? 'locked' : '']"
-          >
-            <div class="product-card-inner">
-              <div v-if="isProductPopular(product)" class="product-popular">
-                Populaire
-              </div>
-              <div v-if="isProductOnPromotion(product)" class="product-promotion">
-                Promo
-              </div>
-              <div class="product-card-media">
-                <img
-                  :src="`http://localhost:8000/storage/products/${product.image}`"
-                  :alt="product.name"
-                  @error="handleImageError"
-                  :class="{ 'locked-image': isInteractionLocked }"
-                />
-              </div>
-              <div class="product-info">
-                <h4>{{ product.name }}</h4>
-                <div class="product-stock" v-if="product.stock !== null && product.stock !== undefined">
-                  Stock: {{ product.stock }}
+
+        <div class="mt-3 flex-1 overflow-hidden">
+          <div v-if="filteredProducts.length" class="h-full overflow-y-auto pr-1">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <button
+                v-for="product in filteredProducts"
+                :key="product.id"
+                type="button"
+                :disabled="isInteractionLocked || !canSelectProduct(product)"
+                :class="productCardClasses(product)"
+                @click="addToCart(product, $event)"
+              >
+                <div class="relative overflow-hidden rounded-2xl bg-slate-100">
+                  <img
+                    :src="getProductImageUrl(product)"
+                    :alt="product.name"
+                    class="aspect-square w-full object-cover transition duration-300 group-hover:scale-105"
+                    @error="handleImageError"
+                  />
+                  <span
+                    v-if="!canSelectProduct(product)"
+                    class="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-triangle-exclamation" />
+                    Rupture
+                  </span>
+                  <span
+                    v-else-if="isProductOnPromotion(product)"
+                    class="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-600"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-fire" />
+                    Promo
+                  </span>
+                  <span
+                    v-else-if="isProductPopular(product)"
+                    class="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-600"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-star" />
+                    Populaire
+                  </span>
                 </div>
-                <p class="product-price">{{ formatPrice(product.price) }}</p>
-              </div>
+                <div class="mt-3 space-y-1 text-left">
+                  <p class="text-sm font-semibold text-slate-900">{{ product.name }}</p>
+                  <p class="text-xs text-slate-400">{{ product.category_name || '—' }}</p>
+                  <div class="flex items-center justify-between text-sm font-semibold text-slate-900">
+                    <span class="flex items-baseline gap-1">
+                      {{ formatPrice(product.price) }}
+                      <span class="text-xs font-medium text-slate-400">/portion</span>
+                    </span>
+                    <span
+                      v-if="product.stock !== null && product.stock !== undefined"
+                      class="text-xs font-medium text-slate-400"
+                    >
+                      Stock: {{ product.stock }}
+                    </span>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Panier -->
-      <div class="cart-section">
-        <div class="section-header">
-          <h3><i class="fas fa-shopping-cart"></i> Panier</h3>
-          <button v-if="cart.length" @click="clearCart" class="btn-clear-cart" :disabled="isInteractionLocked">
-            <i class="fas fa-trash"></i>
+          <div
+            v-else
+            class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-500"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-boxes" class="mb-3 text-2xl text-slate-300" />
+            Aucun produit disponible pour cette sélection.
+          </div>
+        </div>
+      </section>
+
+      <aside
+        class="sticky top-[5.25rem] flex max-h-[calc(100vh-6.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:top-[5.5rem] lg:top-[5.75rem]"
+      >
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
+            <FontAwesomeIcon icon="fa-solid fa-shopping-cart" />
+            Panier
+          </h2>
+          <button
+            v-if="cart.length"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
+            @click="clearCart"
+            :disabled="isInteractionLocked"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-trash" />
             Vider
           </button>
         </div>
 
-        <div v-if="cart.length > 0" class="cart-content">
-          <table class="cart-items">
-            <tbody>
-              <tr
-                v-for="item in cart"
-                :key="item.id"
-                class="cart-item"
-              >
-                <td class="item-name">{{ item.name }}</td>
-                <td class="item-decrement">
-                  <button @click="decrementQuantity(item)" class="btn-quantity" :disabled="isInteractionLocked">
-                    -
-                  </button>
-                </td>
-                <td class="item-quantity">{{ item.quantity }}</td>
-                <td class="item-increment">
-                  <button @click="incrementQuantity(item)" class="btn-quantity" :disabled="isInteractionLocked">
-                    +
-                  </button>
-                </td>
-                <td class="item-total">{{ formatPrice(item.price * item.quantity) }}</td>
-                <td class="item-remove">
-                  <button @click="removeItem(item)" class="btn-remove" :disabled="isInteractionLocked" title="Supprimer">
-                    <font-awesome-icon icon="fa-solid fa-trash" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="cart-footer">
-            <div class="cart-total">
-              <span class="total-label">Total:</span>
-              <span class="total-amount">{{ formatPrice(totalPrice)}}Ar</span>
-            </div>
-
-            <!-- Boutons d'actions du panier -->
-            <div class="cart-actions">
-              <!-- Boutons pour les commandes en attente -->
-              <div class="action-row">
+        <div class="mt-3 flex-1 overflow-hidden">
+          <div v-if="cart.length" class="h-full space-y-3 overflow-y-auto pr-1">
+            <div
+              v-for="item in cart"
+              :key="item.id"
+              class="rounded-2xl border border-slate-100 bg-slate-50/60 p-3"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold text-slate-800">{{ item.name }}</p>
+                  <p class="text-xs text-slate-400">{{ formatPrice(item.price) }}</p>
+                </div>
                 <button
-                  v-if="cart.length > 0 && !currentPendingOrder"
-                  @click="holdOrder"
-                  class="btn-hold-order"
+                  type="button"
+                  class="text-slate-400 transition hover:text-rose-500 disabled:opacity-60"
+                  @click="removeItem(item)"
+                  :disabled="isInteractionLocked"
                 >
-                  <font-awesome-icon icon="fa-solid fa-receipt" />
-                  Envoyer & imprimer
+                  <FontAwesomeIcon icon="fa-solid fa-xmark" />
                 </button>
-
-                <button
-                  v-if="currentPendingOrder && isInteractionLocked"
-                  @click="beginAddToPending"
-                  class="btn-add-to-order"
-                >
-                  <i class="fas fa-plus"></i>
-                  Ajouter
-                </button>
-
-                <button
-                  v-if="currentPendingOrder && isAddingToPending"
-                  @click="confirmAddToPending"
-                  class="btn-add-to-order"
-                  :disabled="cart.length === 0"
-                >
-                  <i class="fas fa-check"></i>
-                  Commander & imprimer
-                </button>
-
               </div>
-
-              <!-- Bouton principal de validation (checkout) -->
-              <div class="action-row">
-                <button
-                  v-if="cart.length > 0 || currentPendingOrder"
-                  @click="handleCheckout"
-                  class="btn-checkout"
-                  :class="{ 'pending-order': currentPendingOrder }"
-                >
-                  <i class="fas fa-check-circle"></i>
-                  {{ currentPendingOrder ? 'Valider commande' : 'Valider la commande' }}
-                </button>
+              <div class="mt-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600 disabled:opacity-60"
+                    @click="decrementQuantity(item)"
+                    :disabled="isInteractionLocked"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-minus" />
+                  </button>
+                  <span class="text-sm font-semibold text-slate-700">{{ item.quantity }}</span>
+                  <button
+                    type="button"
+                    class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600 disabled:opacity-60"
+                    @click="incrementQuantity(item)"
+                    :disabled="isInteractionLocked"
+                  >
+                    <FontAwesomeIcon icon="fa-solid fa-plus" />
+                  </button>
+                </div>
+                <span class="text-sm font-semibold text-indigo-600">
+                  {{ formatPrice(item.price * item.quantity) }}
+                </span>
               </div>
             </div>
           </div>
+
+          <div
+            v-else
+            class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-400"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-shopping-cart" class="mb-3 text-2xl" />
+            Panier vide
+            <p class="mt-1 text-xs">Sélectionnez une table et ajoutez des produits.</p>
+          </div>
         </div>
 
-        <div v-else class="empty-cart">
-          <i class="fas fa-shopping-cart"></i>
-          <p>Panier vide</p>
-          <small>Sélectionnez une table et ajoutez des produits</small>
+        <div class="mt-3 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+          <div class="flex items-center justify-between text-sm font-semibold text-slate-700">
+            <span>Total</span>
+            <span class="text-indigo-600">{{ formatPrice(totalPrice) }}</span>
+          </div>
+
+          <div class="flex flex-col gap-2 pt-2">
+            <button
+              v-if="cart.length > 0 && !currentPendingOrder"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+              @click="holdOrder"
+              :disabled="!selectedTable || isInteractionLocked"
+            >
+              <FontAwesomeIcon icon="fa-solid fa-receipt" />
+              Envoyer & imprimer
+            </button>
+
+            <button
+              v-if="currentPendingOrder && isInteractionLocked"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+              @click="beginAddToPending"
+            >
+              <FontAwesomeIcon icon="fa-solid fa-plus" />
+              Ajouter de nouveaux articles
+            </button>
+
+            <button
+              v-if="currentPendingOrder && isAddingToPending"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:opacity-60"
+              @click="confirmAddToPending"
+              :disabled="cart.length === 0"
+            >
+              <FontAwesomeIcon icon="fa-solid fa-check" />
+              Commander & imprimer
+            </button>
+
+            <button
+              v-if="cart.length > 0 || currentPendingOrder"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400"
+              @click="handleCheckout"
+              :disabled="!selectedTable"
+            >
+              <FontAwesomeIcon icon="fa-solid fa-check-circle" />
+              {{ currentPendingOrder ? 'Valider commande' : 'Valider la commande' }}
+            </button>
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
 
-    <!-- Modals -->
     <TableSelectorModal
       :is-open="showTableSelector"
       @close="closeTableSelector"
@@ -242,9 +349,9 @@
       @close-modal="closeInvoiceModal"
       @openPaymentModal="openPaymentModal"
     />
-
   </div>
 </template>
+
 
 <script>
 import axios from 'axios'
@@ -254,11 +361,9 @@ import InvoiceModal from './InvoiceModal.vue'
 import Profile from './Profile.vue'
 import placeholderImage from '../assets/avatar.png'
 import { useAuth } from '@/composables/useAuth'
-import { useCategories } from '@/composables/useCategories'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-const rawApiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-const API_BASE_URL = rawApiBaseUrl.replace(/\/?$/, '')
+import { API_BASE_URL, API_URL } from '@/utils/api'
 
 export default {
   name: 'TableSale',
@@ -273,11 +378,18 @@ export default {
     tableId: {
       type: [Number, String],
       default: null
+    },
+    embedded: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
     return {
-      ...useCategories(),
+      categories: [],
+      products: [],
+      filteredProducts: [],
+      activeCategory: null,
       cart: [],
       searchQuery: '',
       selectedTable: null,
@@ -319,8 +431,59 @@ export default {
     }
   },
   methods: {
+    showAllProducts() {
+      this.activeCategory = null
+      if (Array.isArray(this.products)) {
+        this.filteredProducts = this.products.map((product) => ({
+          ...product,
+          category_name:
+            product.category_name ??
+            product?.category?.name ??
+            this.categories.find((cat) => cat.id === (product.category_id ?? product?.category?.id))?.name ??
+            '—',
+        }))
+      } else {
+        this.filteredProducts = []
+      }
+      if (this.searchQuery) {
+        this.filterProducts()
+      }
+    },
 
-      async handleTableIdChange(newVal) {
+    statusBadgeClass(status) {
+      switch (status) {
+        case 'available':
+          return 'border-emerald-200 bg-emerald-50 text-emerald-600'
+        case 'occupied':
+          return 'border-amber-200 bg-amber-50 text-amber-700'
+        case 'reserved':
+          return 'border-indigo-200 bg-indigo-50 text-indigo-600'
+        case 'out_of_order':
+          return 'border-rose-200 bg-rose-50 text-rose-600'
+        default:
+          return 'border-slate-200 bg-slate-50 text-slate-500'
+      }
+    },
+
+    productCardClasses(product) {
+      const base =
+        'product-card group flex flex-col rounded-3xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200'
+      if (this.isInteractionLocked || !this.canSelectProduct(product)) {
+        return `${base} border-rose-200 opacity-60 cursor-not-allowed`
+      }
+      return `${base} border-slate-100 hover:border-indigo-200`
+    },
+
+    getProductImageUrl(product) {
+      const raw = product?.image || product?.product?.image
+      if (!raw) return placeholderImage
+      if (/^https?:\/\//i.test(raw)) return raw
+      if (raw.startsWith('storage/')) return `${API_URL}/${raw}`
+      if (raw.startsWith('products/')) return `${API_URL}/storage/${raw}`
+      return `${API_URL}/storage/products/${raw}`
+    },
+
+    async handleTableIdChange(newVal) {
         if (newVal === undefined || newVal === null || newVal === '') {
           return
         }
@@ -385,7 +548,7 @@ export default {
     },
 
     syncRouteWithTable(tableId) {
-      if (!this.$route || this.$route.name !== 'table-order') {
+      if (!this.$route || this.$route.name !== 'dashboard-table-order') {
         return
       }
 
@@ -395,7 +558,7 @@ export default {
         if (currentParam === undefined) {
           return
         }
-        this.$router.replace({ name: 'table-order', params: {} })
+        this.$router.replace({ name: 'dashboard-table-order', params: {} })
         return
       }
 
@@ -404,13 +567,15 @@ export default {
       }
 
       this.$router.replace({
-        name: 'table-order',
+        name: 'dashboard-table-order',
         params: { tableId }
       })
     },
 
     formatPrice(price) {
-      return `${parseFloat(price).toFixed(0)} `
+      const value = Number.parseFloat(price)
+      if (!Number.isFinite(value)) return '—'
+      return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ar`
     },
 
     resolveCategoryPrinterTypeId(category) {
@@ -703,6 +868,7 @@ export default {
           printer_type_id: printerTypeId,
           price,
           stock,
+          category_name: category?.name ?? product.category_name ?? product?.category?.name ?? '—',
         }
 
         normalized.isAvailable = this.checkProductAvailability(normalized)
@@ -1788,701 +1954,68 @@ export default {
 </script>
 
 <style scoped>
-.table-sale {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f8fafc;
-  padding-top: 5rem;
+.product-card.adding-to-cart {
+  animation: cartPulse 0.4s ease;
 }
 
-.table-sale-header {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.table-info-section {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.current-table-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.table-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.table-number {
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.table-name {
-  color: #64748b;
-}
-
-.table-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.table-status.available {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-  color: #065f46;
-  border: 1px solid #10b981;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-  animation: pulse-available 3s infinite;
-}
-
-@keyframes pulse-available {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-  }
-  50% {
-    box-shadow: 0 2px 12px rgba(16, 185, 129, 0.3);
-  }
-}
-
-.table-status.occupied {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #92400e;
-  border: 1px solid #f59e0b;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
-  animation: pulse-occupied-header 2s infinite;
-}
-
-@keyframes pulse-occupied-header {
-  0%, 100% {
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
-  }
-  50% {
-    box-shadow: 0 2px 15px rgba(245, 158, 11, 0.3);
-  }
-}
-
-.table-status.reserved {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  color: #1e40af;
-  border: 1px solid #3b82f6;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
-}
-
-.table-status.reserved::after {
-  content: '⏰';
-  margin-left: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.table-status.out_of_order {
-  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  color: #dc2626;
-  border: 1px solid #ef4444;
-  opacity: 0.8;
-  position: relative;
-}
-
-.table-status.out_of_order::before {
-  content: '🚫';
-  margin-right: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.table-status.out_of_order::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 60%;
-  height: 2px;
-  background: #dc2626;
-  z-index: 1;
-}
-
-.no-table-selected {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #64748b;
-  font-style: italic;
-}
-
-.table-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-table-select, .btn-table-clear {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-table-select {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.btn-table-select:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-}
-
-.btn-table-clear {
-  background: white;
-  color: #dc2626;
-  border-color: #dc2626;
-}
-
-.btn-table-clear:hover {
-  background: #dc2626;
-  color: white;
-}
-
-.sale-info {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.sale-summary, .sale-total {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.summary-label, .total-label {
-  color: #64748b;
-  font-weight: 500;
-}
-
-.summary-value {
-  font-weight: 600;
-  color: #2563eb;
-}
-
-.total-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #dc2626;
-}
-
-.table-sale-content {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 250px 1fr 450px;
-  gap: 1rem;
-  padding: 1rem;
-  overflow: hidden;
-}
-
-.categories-section, .products-section, .cart-section {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.section-header {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-header h3 {
-  margin: 0;
-  color: #1e293b;
-  font-size: 1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.categories-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem;
-}
-
-.category-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: white;
-  color: #374151;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 0.5rem;
-}
-
-.category-btn:hover {
-  background: #f8fafc;
-  border-color: #d1d5db;
-}
-
-.category-btn.active {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.category-btn.disabled,
-.category-btn:disabled {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.category-btn.disabled:hover,
-.category-btn:disabled:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-
-.search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-box i {
-  position: absolute;
-  left: 0.75rem;
-  color: #9ca3af;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-}
-
-.search-box input:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.search-box input:disabled {
-  background: #f9fafb;
-  border-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.products-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1.5rem;
-  align-items: stretch;
-}
-
-.product-card {
-  position: relative;
-  width: 100%;
-  padding-top: 100%;
-  animation: fadeInUp 0.4s ease-out;
-}
-
-.product-card:nth-child(even) {
-  animation-delay: 0.1s;
-}
-
-.product-card:nth-child(3n) {
-  animation-delay: 0.2s;
-}
-
-.product-card-inner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.product-card:hover .product-card-inner {
-  border-color: #2563eb;
-  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.15);
-  transform: translateY(-4px);
-}
-
-.product-card.locked {
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.product-card.locked .product-card-inner {
-  filter: grayscale(0.3);
-}
-
-.product-card.locked .product-card-inner::before,
-.product-card.locked .product-card-inner::after {
-  opacity: 0;
-}
-
-.product-card:active .product-card-inner {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-}
-
-.product-card-media {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-}
-
-.product-card-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.3s ease;
-}
-
-.product-card-media img.locked-image {
-  filter: grayscale(0.3);
-}
-
-.product-card:hover .product-card-media img {
-  transform: scale(1.05);
-}
-
-.product-info {
-  padding: 1rem;
-  background: white;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.product-info h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  flex: 1 1 auto;
-}
-
-.product-price {
-  margin: 0;
-  color: #2563eb;
-  font-weight: 700;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  margin-top: auto;
-}
-
-.product-price::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 1rem;
-  right: 1rem;
-  height: 2px;
-  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
-  transform: scaleX(0);
-  transition: transform 0.3s ease;
-}
-
-.product-card:hover .product-price::after {
-  transform: scaleX(1);
-}
-
-.product-card-inner::before {
-  content: '';
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
-  background: rgba(37, 99, 235, 0.1);
-  border-radius: 50%;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.3s ease;
-}
-
-.product-card:hover .product-card-inner::before {
-  opacity: 1;
-  transform: scale(1);
-  background: rgba(37, 99, 235, 0.2);
-}
-
-.product-card-inner::after {
-  content: '+';
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
-  background: #2563eb;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: all 0.3s ease;
-}
-
-.product-card:hover .product-card-inner::after {
-  opacity: 1;
-  transform: scale(1);
-}
-
-/* Indicateur de stock */
-.product-stock {
-  position: absolute;
-  top: -0.5rem;
-  right: -0.5rem;
-  background: #f3f4f6;
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  z-index: 5;
-}
-
-.product-card.available .product-stock {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #a7f3d0;
-}
-
-.product-card.out-of-stock .product-stock {
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fca5a5;
-}
-
-/* Indicateurs spéciaux */
-.product-popular,
-.product-promotion {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  background: #f59e0b;
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  z-index: 5;
-}
-
-.product-promotion {
-  background: #dc2626;
-}
-
-.product-popular::after {
-  content: '🔥';
-  margin-left: 0.25rem;
-}
-
-.product-promotion::after {
-  content: '💰';
-  margin-left: 0.25rem;
-}
-
-/* État disponible / rupture */
-.product-card.available .product-card-inner {
-  border-color: #10b981;
-}
-
-.product-card.available:hover .product-card-inner {
-  border-color: #059669;
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
-}
-
-.product-card.available .product-card-inner::after {
-  background: #10b981;
-}
-
-.product-card.out-of-stock .product-card-inner {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.product-card.out-of-stock .product-card-inner::before {
-  opacity: 0;
-}
-
-.product-card.out-of-stock .product-card-inner::after {
-  content: 'Rupture';
-  background: rgba(220, 38, 38, 0.9);
-  top: 50%;
-  right: auto;
-  left: 50%;
-  width: auto;
-  height: auto;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  opacity: 1;
-  transform: translate(-50%, -50%);
-  font-size: 0.75rem;
-}
-
-.product-card.out-of-stock:hover .product-card-inner {
-  transform: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-color: #d1d5db;
-}
-
-.product-card.out-of-stock:hover .product-card-inner::after {
-  transform: translate(-50%, -50%);
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Style pour les produits sans image */
-.product-card-media img[src*="avatar.png"],
-.product-card-media img:not([src]) {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.product-card-media img[src*="avatar.png"]::after,
-.product-card-media img:not([src])::after {
-  content: '📦';
-  font-size: 2rem;
-  opacity: 0.5;
-}
-
-/* Améliorations pour les écrans tactiles */
-@media (hover: none) and (pointer: coarse) {
-  .product-card {
-    min-height: 200px;
-    border-width: 3px;
-  }
-
-  .product-card:active {
-    transform: scale(0.98);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-  }
-
-  .product-card::after {
-    opacity: 0.8;
-    transform: scale(1);
-    background: #10b981;
-  }
-
-  .product-card::before {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-
-  .product-info {
-    padding: 1.25rem;
-  }
-
-  .product-info h4 {
-    font-size: 1rem;
-    height: auto;
-    -webkit-line-clamp: unset;
-  }
-}
-
-/* Animation de chargement pour les produits */
-.product-card.loading .product-card-inner {
-  pointer-events: none;
-}
-
-.product-card.loading .product-card-media img {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
+@keyframes cartPulse {
   0% {
-    background-position: 200% 0;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25);
   }
   100% {
-    background-position: -200% 0;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
   }
 }
 
-/* Animations pour les notifications */
+.add-to-cart-notification {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.95);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 18px 40px rgba(99, 102, 241, 0.35);
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 1.8s forwards;
+}
+
+.add-to-cart-notification i {
+  font-size: 0.9rem;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
 @keyframes slideInFromRight {
   from {
-    transform: translateX(100%);
+    transform: translateX(20px);
     opacity: 0;
   }
   to {
@@ -2492,650 +2025,9 @@ export default {
 }
 
 @keyframes slideOutToRight {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
   to {
-    transform: translateX(100%);
+    transform: translateX(20px);
     opacity: 0;
   }
 }
-
-/* Animation pour l'ajout au panier */
-.product-card.adding-to-cart .product-card-inner {
-  animation: addToCartPulse 0.6s ease-out;
-}
-
-@keyframes addToCartPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-}
-
-.cart-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-
-}
-
-.cart-items {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0;
-}
-
-.cart-items tbody {
-  display: block;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.cart-items tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-}
-
-.cart-items td {
-  padding: 0.5rem 0.25rem;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.cart-item {
-  min-height: 40px;
-}
-
-.item-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex: 1;
-}
-
-.item-name {
-  font-weight: 500;
-  color: #1e293b;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 40%;
-}
-
-.item-decrement,
-.item-increment {
-  width: 40px;
-  text-align: center;
-}
-
-.item-quantity {
-  width: 40px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.item-total {
-  text-align: right;
-  font-weight: 600;
-  color: #2563eb;
-  width: 20%;
-}
-
-.item-remove {
-  width: 40px;
-  text-align: center;
-}
-
-.btn-quantity {
-  width: 32px;
-  height: 32px;
-  border: 2px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
-  color: #374151;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.btn-quantity:hover {
-  background: #f8fafc;
-  border-color: #9ca3af;
-}
-
-.item-quantity {
-  min-width: 2rem;
-  text-align: center;
-  font-weight: 600;
-}
-
-.item-total {
-  text-align: right;
-  font-weight: 600;
-  color: #2563eb;
-  width: 20%;
-}
-
-.btn-remove {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 4px;
-  background: #dc2626;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  transition: background 0.2s;
-}
-
-.btn-remove:hover {
-  background: #b91c1c;
-}
-
-.btn-quantity:disabled,
-.btn-remove:disabled,
-.btn-clear-cart:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.cart-footer {
-  border-top: 1px solid #e2e8f0;
-  padding: 1rem;
-}
-
-.cart-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.total-label {
-  color: #374151;
-}
-
-.total-amount {
-  color: #dc2626;
-}
-
-.btn-checkout {
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  transition: all 0.3s ease;
-  flex: 1;
-  min-height: 48px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.btn-checkout {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: 2px solid transparent;
-}
-
-.btn-checkout:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-}
-
-.btn-checkout.pending-order {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  position: relative;
-}
-
-.btn-checkout.pending-order::after {
-  content: '📋';
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #fbbf24;
-  color: white;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
-  animation: pulse-pending 2s infinite;
-}
-
-@keyframes pulse-pending {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
-  }
-  50% {
-    transform: scale(1.1);
-    box-shadow: 0 2px 12px rgba(251, 191, 36, 0.6);
-  }
-}
-
-.btn-checkout.pending-order:hover {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
-}
-
-.btn-hold-order, .btn-add-to-order {
-  padding: 0.75rem 1rem;
-  border: 2px solid;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  min-height: 44px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.btn-hold-order:disabled, .btn-add-to-order:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.btn-hold-order {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: white;
-  border-color: #f59e0b;
-}
-
-.btn-hold-order:hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
-}
-
-.btn-add-to-order {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-  color: white;
-  border-color: #3b82f6;
-}
-
-.btn-add-to-order:hover {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.cart-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.cart-actions .action-row {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.cart-actions .action-row:last-child {
-  justify-content: center;
-}
-
-/* Responsive layout for cart actions */
-@media (min-width: 768px) {
-  .cart-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
-
-  .cart-actions .action-row {
-    grid-column: span 2;
-  }
-
-  .cart-actions .action-row:last-child {
-    grid-column: span 2;
-    justify-content: center;
-  }
-}
-
-.btn-clear-cart {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid #dc2626;
-  border-radius: 6px;
-  background: white;
-  color: #dc2626;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-clear-cart:hover {
-  background: #dc2626;
-  color: white;
-}
-
-.empty-cart {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #9ca3af;
-  text-align: center;
-}
-
-.empty-cart i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.empty-cart p {
-  font-size: 1.125rem;
-  margin-bottom: 0.5rem;
-}
-
-.empty-cart small {
-  font-size: 0.875rem;
-}
-
-@media (max-width: 1200px) {
-  .table-sale-content {
-    grid-template-columns: 200px 1fr 300px;
-  }
-}
-
-@media (max-width: 768px) {
-  .table-sale-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  .table-info-section {
-    justify-content: space-between;
-  }
-
-  .table-sale-content {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-  }
-
-  .categories-section {
-    max-height: 200px;
-  }
-
-  .products-section {
-    max-height: 300px;
-  }
-
-  .cart-section {
-    max-height: 350px;
-  }
-
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 1rem;
-  }
-
-  .product-card {
-    aspect-ratio: 1 / 1;
-  }
-
-  .product-card-media img {
-    flex: 1 1 auto;
-  }
-
-  .product-info {
-    padding: 0.75rem;
-  }
-
-  .product-info h4 {
-    font-size: 0.875rem;
-    height: 2.1rem;
-  }
-
-  .product-stock {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-  }
-
-  .product-popular, .product-promotion {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-  }
-}
-
-/* Améliorations pour les très petits écrans */
-@media (max-width: 480px) {
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.75rem;
-  }
-
-  .product-card {
-    aspect-ratio: 1 / 1;
-  }
-
-  .product-card-media img {
-    flex: 1 1 auto;
-  }
-
-  .product-info h4 {
-    font-size: 0.8rem;
-    height: 1.8rem;
-  }
-
-  .product-price {
-    font-size: 1rem;
-  }
-
-  .table-sale-header {
-    padding: 0.75rem 1rem;
-  }
-
-  .table-sale-content {
-    padding: 0.75rem;
-    gap: 0.75rem;
-  }
-}
-
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 1100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.navbar-start {
-  display: flex;
-  align-items: center;
-}
-
-.menu-toggle {
-  width: 3rem;
-  height: 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-}
-
-.menu-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-}
-
-.navbar-link {
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.75rem 1rem;
-  color: white;
-  border-radius: 0.5rem;
-  transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.navbar-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.icon {
-  margin-right: 5px;
-}
-
-.logout-icon {
-  margin-left: 10px;
-  cursor: pointer;
-  color: #dc2626;
-}
-
-.logout-icon:hover {
-  color: #b91c1c;
-}
-
-.has-dropdown:hover .navbar-dropdown {
-  display: block;
-}
-
-.navbar-item.has-text-danger {
-  color: red;
-}
-
-.menu-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-}
-
-.side-menu {
-  position: fixed;
-  top: 100px;
-  left: -280px;
-  width: 280px;
-  height: calc(100vh - 60px);
-  background: #f5f5f5;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease;
-  color: black;
-  z-index: 1100;
-}
-
-.side-menu.is-open {
-  transform: translateX(280px);
-}
-
-.menu-header {
-  background: linear-gradient(135deg, #4361ee, #3a0ca3);
-  color: white;
-  padding: 1rem 1.5rem;
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.25rem;
-  text-align: center;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(67, 97, 238, 0.4);
-  user-select: none;
-  transition: background-color 0.3s ease;
-}
-
-.menu-header:hover {
-  background: linear-gradient(135deg, #3a0ca3, #4361ee);
-  box-shadow: 0 6px 10px rgba(58, 12, 163, 0.6);
-  cursor: pointer;
-}
-
-.menu-content {
-  padding: 1rem;
-  color: black;
-}
-
-.menu-button {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 10px;
-  font-weight: bold;
-  background-color: #ddd;
-  color: black;
-  border: none;
-  cursor: pointer;
-}
-
-.menu-divider {
-  margin: 1rem 0;
-  border: 0;
-  border-top: 1px solid #ccc;
-}
-
-.admin-title {
-  background: linear-gradient(135deg, #4361ee, #3a0ca3);
-  color: white;
-  padding: 1rem 1.5rem;
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.25rem;
-  text-align: center;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(67, 97, 238, 0.4);
-  user-select: none;
-  transition: background-color 0.3s ease;
-}
-
-.admin-title:hover {
-  background: linear-gradient(135deg, #3a0ca3, #4361ee);
-  box-shadow: 0 6px 10px rgba(58, 12, 163, 0.6);
-  cursor: pointer;
-}
-
 </style>

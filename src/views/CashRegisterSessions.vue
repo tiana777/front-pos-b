@@ -1,33 +1,33 @@
 <template>
   <div class="cash-register-sessions">
-    <h1>Cash Register Sessions</h1>
+    <h1>Sessions de caisse</h1>
 
     <div class="filter-bar">
-      <label>Filter by Status:</label>
+      <label>Filtrer par statut :</label>
       <select v-model="filterStatus" @change="fetchSessions">
-        <option value="all">All</option>
-        <option value="open">Open</option>
-        <option value="closed">Closed</option>
+        <option value="all">Toutes</option>
+        <option value="open">Ouvertes</option>
+        <option value="closed">Fermées</option>
       </select>
       <button @click="showNewSessionForm = true" v-if="hasPermission('cash_register_sessions.create')">
-        Open New Session
+        Ouvrir une nouvelle session
       </button>
       <span v-else class="permission-denied">
-        You don't have permission to create sessions
+        Vous n'avez pas l'autorisation de créer des sessions
       </span>
     </div>
 
-    <div v-if="loading">Loading sessions...</div>
+    <div v-if="loading">Chargement des sessions...</div>
     <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
 
     <table v-if="sessions.length > 0" class="sessions-table">
       <thead>
         <tr>
           <th class="has-text-black">ID</th>
-          <th class="has-text-black">User</th>
-          <th class="has-text-black">Status</th>
-          <th class="has-text-black">Opened At</th>
-          <th class="has-text-black">Closed At</th>
+          <th class="has-text-black">Utilisateur</th>
+          <th class="has-text-black">Statut</th>
+          <th class="has-text-black">Ouverture</th>
+          <th class="has-text-black">Clôture</th>
           <th class="has-text-black">Actions</th>
         </tr>
       </thead>
@@ -35,13 +35,13 @@
         <tr v-for="session in sessions" :key="session.id">
           <td class="has-text-black">{{ session.id }}</td>
           <td class="has-text-black">{{ session.user.name }}</td>
-          <td class="has-text-black">{{ session.is_closed ? 'Closed' : 'Open' }}</td>
+          <td class="has-text-black">{{ session.is_closed ? 'Fermée' : 'Ouverte' }}</td>
           <td class="has-text-black">{{ formatDate(session.opened_at) }}</td>
           <td class="has-text-black">{{ session.closed_at ? formatDate(session.closed_at) : '-' }}</td>
           <td class="has-text-black">
-            <button @click="viewSession(session)">View</button>
-            <button v-if="!session.is_closed" @click="closeSession(session)">Close</button>
-            <button v-else @click="reopenSession(session)">Reopen</button>
+            <button @click="viewSession(session)">Voir</button>
+            <button v-if="!session.is_closed" @click="closeSession(session)">Clôturer</button>
+            <button v-else @click="reopenSession(session)">Rouvrir</button>
           </td>
         </tr>
       </tbody>
@@ -49,30 +49,30 @@
 
     <div v-if="showNewSessionForm" class="modal">
       <div class="modal-content">
-        <h2>Open New Session</h2>
+        <h2>Ouvrir une nouvelle session</h2>
         <form @submit.prevent="openNewSession">
           <div>
-            <label for="cash_register_id">Cash Register ID:</label>
+            <label for="cash_register_id">Id de caisse :</label>
             <input type="number" v-model.number="newSessionData.cash_register_id" required />
           </div>
           <div>
-            <label for="user_id">User ID:</label>
+            <label for="user_id">Id utilisateur :</label>
             <input type="number" v-model.number="newSessionData.user_id" required />
           </div>
           <div>
-            <label for="starting_amount">Starting Amount:</label>
+            <label for="starting_amount">Montant initial :</label>
             <input type="number" step="0.01" v-model.number="newSessionData.starting_amount" required min="0" />
           </div>
           <div>
-            <label for="expected_cash_amount">Expected Cash Amount:</label>
+            <label for="expected_cash_amount">Montant espèces attendu :</label>
             <input type="number" step="0.01" v-model.number="newSessionData.expected_cash_amount" required min="0" />
           </div>
           <div>
-            <label for="note">Note:</label>
+            <label for="note">Note :</label>
             <textarea v-model="newSessionData.note" rows="3" cols="30"></textarea>
           </div>
-          <button type="submit">Open Session</button>
-          <button type="button" @click="showNewSessionForm = false">Cancel</button>
+          <button type="submit">Ouvrir la session</button>
+          <button type="button" @click="showNewSessionForm = false">Annuler</button>
         </form>
         <div v-if="formErrorMessage" class="error">{{ formErrorMessage }}</div>
       </div>
@@ -80,11 +80,11 @@
 
     <div v-if="selectedSession" class="modal">
       <div class="modal-content">
-        <h2>Session Details - ID: {{ selectedSession.id }}</h2>
-        <p>User: {{ selectedSession.user.name }}</p>
-        <p>Status: {{ selectedSession.is_closed ? 'Closed' : 'Open' }}</p>
-        <p>Opened At: {{ formatDate(selectedSession.opened_at) }}</p>
-        <p>Closed At: {{ selectedSession.closed_at ? formatDate(selectedSession.closed_at) : '-' }}</p>
+        <h2>Détails de la session — ID : {{ selectedSession.id }}</h2>
+        <p>Utilisateur : {{ selectedSession.user.name }}</p>
+        <p>Statut : {{ selectedSession.is_closed ? 'Fermée' : 'Ouverte' }}</p>
+        <p>Ouverte le : {{ formatDate(selectedSession.opened_at) }}</p>
+        <p>Fermée le : {{ selectedSession.closed_at ? formatDate(selectedSession.closed_at) : '-' }}</p>
 
         <h3>Transactions</h3>
         <ul>
@@ -93,34 +93,34 @@
           </li>
         </ul>
 
-        <h3>Discrepancies</h3>
+        <h3>Écarts</h3>
         <ul>
           <li v-for="discrepancy in selectedSession.discrepancies" :key="discrepancy.id">
             {{ discrepancy.description }} - {{ discrepancy.amount }}
           </li>
         </ul>
 
-        <h3>Add Discrepancy</h3>
+        <h3>Ajouter un écart</h3>
         <form @submit.prevent="addDiscrepancy">
           <div>
-            <label for="description">Description:</label>
+            <label for="description">Description :</label>
             <input type="text" v-model="discrepancyFormData.description" required />
           </div>
           <div>
-            <label for="amount">Amount:</label>
+            <label for="amount">Montant :</label>
             <input type="number" step="0.01" v-model.number="discrepancyFormData.amount" required />
           </div>
-          <button type="submit">Add Discrepancy</button>
+          <button type="submit">Ajouter l'écart</button>
         </form>
         <div v-if="discrepancyErrorMessage" class="error">{{ discrepancyErrorMessage }}</div>
 
-        <h3>Summary</h3>
-        <p>Total Transactions: {{ summary.total_transactions }}</p>
-        <p>Total Discrepancies: {{ summary.total_discrepancies }}</p>
+        <h3>Récapitulatif</h3>
+        <p>Total transactions : {{ summary.total_transactions }}</p>
+        <p>Total des écarts : {{ summary.total_discrepancies }}</p>
 
-        <button @click="closeSession(selectedSession)" v-if="!selectedSession.is_closed">Close Session</button>
-        <button @click="reopenSession(selectedSession)" v-else>Reopen Session</button>
-        <button @click="closeDetails">Close</button>
+        <button @click="closeSession(selectedSession)" v-if="!selectedSession.is_closed">Clôturer la session</button>
+        <button @click="reopenSession(selectedSession)" v-else>Rouvrir la session</button>
+        <button @click="closeDetails">Fermer</button>
       </div>
     </div>
   </div>
@@ -175,7 +175,7 @@ export default {
         const response = await axios.get(url)
         this.sessions = response.data
       } catch (error) {
-        this.errorMessage = 'Failed to load sessions.'
+        this.errorMessage = 'Impossible de charger les sessions.'
       } finally {
         this.loading = false
       }
@@ -192,7 +192,7 @@ export default {
     async openNewSession() {
       this.formErrorMessage = ''
       try {
-        console.log('Opening new session with data:', this.newSessionData)
+        console.log('Ouverture d\'une nouvelle session avec les données :', this.newSessionData)
 
         const response = await axios.post('http://127.0.0.1:8000/api/cash-register-sessions',
           {
@@ -222,8 +222,8 @@ export default {
         }
 
       } catch (error) {
-        console.error('Failed to open session:', error)
-        this.formErrorMessage = error.response?.data?.message || 'Failed to open session.'
+        console.error('Impossible d\'ouvrir la session :', error)
+        this.formErrorMessage = error.response?.data?.message || 'Impossible d\'ouvrir la session.'
       }
     }
     ,
@@ -245,7 +245,7 @@ export default {
           this.fetchSummary(session.id)
         }
       } catch (error) {
-        alert(error.response?.data?.message || 'Failed to close session.')
+        alert(error.response?.data?.message || 'Impossible de clôturer la session.')
       }
     },
     async reopenSession(session) {
@@ -260,7 +260,7 @@ export default {
           this.fetchSummary(session.id)
         }
       } catch (error) {
-        alert(error.response?.data?.message || 'Failed to reopen session.')
+        alert(error.response?.data?.message || 'Impossible de rouvrir la session.')
       }
     },
     async addDiscrepancy() {
@@ -271,7 +271,7 @@ export default {
         this.discrepancyFormData = { description: '', amount: 0 }
         this.fetchSummary(this.selectedSession.id)
       } catch (error) {
-        this.discrepancyErrorMessage = error.response?.data?.message || 'Failed to add discrepancy.'
+        this.discrepancyErrorMessage = error.response?.data?.message || 'Impossible d\'ajouter l\'écart.'
       }
     },
     async fetchSummary(sessionId) {
@@ -279,7 +279,7 @@ export default {
         const response = await axios.get(`/api/cash-register-sessions/${sessionId}/summary`)
         this.summary = response.data
       } catch (error) {
-        // ignore summary fetch errors
+        // Ignore les erreurs lors de la récupération du récapitulatif
       }
     },
   },

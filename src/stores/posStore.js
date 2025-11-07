@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 
 export const usePosStore = defineStore('pos', {
   state: () => ({
@@ -12,7 +13,7 @@ export const usePosStore = defineStore('pos', {
       try {
         this.loading = true
         const token = localStorage.getItem('token')
-        const response = await axios.get('http://localhost:8000/api/point-of-sales', {
+        const response = await axios.get(`${API_BASE_URL}/point-of-sales`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         this.pointOfSales = response.data.data ? response.data.data : response.data

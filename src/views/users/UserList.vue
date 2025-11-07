@@ -1,150 +1,168 @@
 <template>
-  <div style="position: relative;">*
-    <Profile />
-  </div>
-  <div class="user-list">
-    <!-- Include POS Component -->
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Administration</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="users" class="text-indigo-500" />
+          Gestion des utilisateurs
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Gérez les comptes et les rôles associés à votre point de vente.
+        </p>
+      </div>
+      <router-link
+        :to="{ name: 'dashboard-users-create' }"
+        class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+      >
+        <font-awesome-icon icon="plus" />
+        Nouvel utilisateur
+      </router-link>
+    </header>
 
-    <div class="container">
-      <div class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">
-            <font-awesome-icon icon="users" class="title-icon" />
-            <span>Gestion des Utilisateurs</span>
-          </h1>
-          <p class="page-subtitle">Gérez les utilisateurs et leurs rôles dans le système</p>
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-slate-800">Liste des utilisateurs</h2>
+          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            {{ users.length }} utilisateur{{ users.length > 1 ? 's' : '' }}
+          </span>
         </div>
-        <router-link to="/users/create" class="btn btn-primary">
+      </div>
+
+      <div v-if="loading" class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-sm text-slate-500">
+        <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+        <div>
+          <p class="font-semibold text-slate-700">Chargement des utilisateurs…</p>
+          <p class="text-xs text-slate-400">Veuillez patienter pendant le chargement des données.</p>
+        </div>
+      </div>
+
+      <div
+        v-else-if="users.length === 0"
+        class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center"
+      >
+        <div class="flex size-20 items-center justify-center rounded-full bg-slate-50 text-3xl text-slate-400">
+          <font-awesome-icon icon="users" />
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-lg font-semibold text-slate-800">Aucun utilisateur</h3>
+          <p class="text-sm text-slate-500">
+            Créez votre premier utilisateur pour gérer l’accès et les droits.
+          </p>
+        </div>
+        <router-link
+          :to="{ name: 'dashboard-users-create' }"
+          class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+        >
           <font-awesome-icon icon="plus" />
-          <span>Nouvel Utilisateur</span>
+          Créer un utilisateur
         </router-link>
       </div>
 
-      <div class="content-card">
-        <!-- Loading State -->
-        <div v-if="loading" class="loading-container">
-          <div class="loading-spinner">
-            <div class="spinner"></div>
-            <div class="loading-text">
-              <h3>Chargement des utilisateurs...</h3>
-              <p>Veuillez patienter pendant le chargement des données</p>
-            </div>
-          </div>
+      <div v-else class="overflow-hidden">
+        <div
+          class="hidden items-center border-b border-slate-100 bg-slate-50 px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 md:grid md:grid-cols-[1.1fr,1.4fr,1.6fr,1.2fr,auto]"
+        >
+          <span>Point de vente</span>
+          <span>Utilisateur</span>
+          <span>Email</span>
+          <span>Rôles</span>
+          <span class="text-right">Actions</span>
         </div>
 
-        <!-- Empty State -->
-        <div v-else-if="users.length === 0" class="empty-container">
-          <div class="empty-state">
-            <div class="empty-icon">
-              <font-awesome-icon icon="users" />
+        <ul class="divide-y divide-slate-100">
+          <li
+            v-for="user in users"
+            :key="user.id"
+            class="grid gap-4 px-4 py-4 md:grid-cols-[1.1fr,1.4fr,1.6fr,1.2fr,auto] md:items-center md:px-6"
+          >
+            <div class="flex items-center gap-3">
+              <div class="flex size-10 items-center justify-center rounded-full bg-indigo-50 text-sm font-semibold text-indigo-600">
+                {{ (user.point_of_sale_name || '?').charAt(0).toUpperCase() }}
+              </div>
+              <div>
+                <p class="font-semibold text-slate-800">
+                  {{ user.point_of_sale_name || 'Non défini' }}
+                </p>
+                <p class="text-xs text-slate-400">
+                  ID POS : {{ user.point_of_sale_id || '—' }}
+                </p>
+              </div>
             </div>
-            <h3>Aucun utilisateur trouvé</h3>
-            <p>Commencez par créer votre premier utilisateur pour gérer l'accès au système</p>
-            <router-link to="/users/create" class="btn btn-primary">
-              <font-awesome-icon icon="plus" />
-              <span>Créer un utilisateur</span>
-            </router-link>
-          </div>
-        </div>
 
-        <!-- Users Table -->
-        <div v-else class="table-section">
-          <div class="table-header">
-            <h3>Liste des utilisateurs</h3>
-            <div class="table-stats">
-              <span class="stat-item">
-                <strong>{{ users.length }}</strong> utilisateur{{ users.length > 1 ? 's' : '' }}
+            <div class="flex items-center gap-3">
+              <div
+                class="flex size-10 items-center justify-center rounded-full text-sm font-semibold text-white"
+                :style="{ backgroundColor: getAvatarColor(user.name) }"
+                aria-hidden="true"
+              >
+                {{ user.name?.charAt(0)?.toUpperCase() || '?' }}
+              </div>
+              <div>
+                <p class="font-semibold text-slate-800">{{ user.name || 'Nom non défini' }}</p>
+                <p class="text-xs text-slate-400">ID: {{ user.id }}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm text-slate-600">
+              <font-awesome-icon icon="envelope" class="hidden text-slate-400 md:inline" />
+              <span class="break-all">{{ user.email }}</span>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="role in user.roles"
+                :key="role"
+                class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600"
+              >
+                {{ role }}
+              </span>
+              <span
+                v-if="!user.roles || user.roles.length === 0"
+                class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500"
+              >
+                Aucun rôle
               </span>
             </div>
-          </div>
 
-          <div class="table-wrapper">
-            <table class="users-table">
-              <thead>
-                <tr>
-                  <th class="col-user">Point de vente</th>
-                  <th class="col-user">Utilisateur</th>
-                  <th class="col-email">Email</th>
-                  <th class="col-roles">Rôles</th>
-                  <th class="col-date">Date de création</th>
-                  <th class="col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="user in users" :key="user.id" class="user-row">
-                  <td class="user-cell">
-                    <div class="user-info">
-
-                      <div class="user-details">
-                        <div class="user-name">{{ user.point_of_sale_name || 'Non défini' }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="user-cell">
-                    <div class="user-info">
-                      <div class="user-avatar" :style="{ backgroundColor: getAvatarColor(user.name) }">
-                        {{ user.name?.charAt(0)?.toUpperCase() || '?' }}
-                      </div>
-                      <div class="user-details">
-                        <div class="user-name">{{ user.name || 'Non défini' }}</div>
-                        <div class="user-id">ID: {{ user.id }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="email-cell">
-                    <div class="email-wrapper">
-                      <font-awesome-icon icon="envelope" class="email-icon" />
-                      <span>{{ user.email }}</span>
-                    </div>
-                  </td>
-                  <td class="roles-cell">
-                    <div class="roles-wrapper">
-                      <span v-for="role in user.roles" :key="role" class="role-badge">
-                        {{ role }}
-                      </span>
-                      <span v-if="!user.roles || user.roles.length === 0" class="no-roles">
-                        Aucun rôle
-                      </span>
-                    </div>
-                  </td>
-                  <td class="date-cell">
-                    <div class="date-wrapper">
-                      <font-awesome-icon icon="calendar" class="date-icon" />
-                      <span>{{ formatDate(user.created_at) }}</span>
-                    </div>
-                  </td>
-                  <td class="actions-cell">
-                    <div class="action-group">
-                      <router-link :to="`/users/${user.id}/edit`" class="btn btn-icon btn-edit"
-                        title="Modifier l'utilisateur">
-                        <font-awesome-icon icon="pencil" />
-                      </router-link>
-                      <button @click="deleteUser(user.id)" class="btn btn-icon btn-delete"
-                        title="Supprimer l'utilisateur">
-                        <font-awesome-icon icon="trash" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+            <div class="flex items-center justify-between gap-3 md:justify-end">
+              <div class="text-xs text-slate-400 md:hidden">
+                {{ formatDate(user.created_at) }}
+              </div>
+              <div class="hidden text-sm text-slate-500 md:block">
+                {{ formatDate(user.created_at) }}
+              </div>
+              <div class="flex gap-2">
+                <router-link
+                  :to="{ name: 'dashboard-users-edit', params: { id: user.id } }"
+                  class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                  title="Modifier l'utilisateur"
+                >
+                  <font-awesome-icon icon="pencil" />
+                </router-link>
+                <button
+                  type="button"
+                  class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
+                  @click="deleteUser(user.id)"
+                  title="Supprimer l'utilisateur"
+                >
+                  <font-awesome-icon icon="trash" />
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
       </div>
-    </div>
+    </section>
   </div>
-
 </template>
 
 <script>
 import userService from '@/services/userService'
 
-
 export default {
   name: 'UserList',
-  components: {
-
-  },
   data() {
     return {
       users: [],
@@ -159,14 +177,13 @@ export default {
       try {
         this.loading = true
         const response = await userService.getAll()
-        let users = response.data
+        const users = Array.isArray(response.data) ? response.data : []
 
-        // Load roles for each user
         const usersWithRoles = await Promise.all(
           users.map(async (user) => {
             try {
               const rolesResponse = await userService.getRoles(user.id)
-              const roles = rolesResponse.data || []
+              const roles = Array.isArray(rolesResponse.data) ? rolesResponse.data : []
               return {
                 ...user,
                 roles: roles.map(role => role.name || role)
@@ -196,7 +213,7 @@ export default {
           await this.loadUsers()
         } catch (error) {
           console.error('Erreur lors de la suppression:', error)
-          alert('Erreur lors de la suppression de l\'utilisateur')
+          alert("Erreur lors de la suppression de l'utilisateur")
         }
       }
     },
@@ -224,465 +241,4 @@ export default {
 </script>
 
 <style scoped>
-.user-list {
-  min-height: 100vh;
-  background-color: #f8fafc;
-  padding: 5rem 2rem 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Header Styles */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  gap: 1rem;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.title-icon {
-  color: #3b82f6;
-  font-size: 1.5rem;
-}
-
-.page-subtitle {
-  font-size: 1rem;
-  color: #64748b;
-  margin: 0;
-}
-
-/* Card Styles */
-.content-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
-
-/* Loading State */
-.loading-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-}
-
-.loading-spinner {
-  text-align: center;
-}
-
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #e2e8f0;
-  border-top: 4px solid #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem;
-}
-
-.loading-text h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-}
-
-.loading-text p {
-  color: #64748b;
-  margin: 0;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Empty State */
-.empty-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-}
-
-.empty-state {
-  text-align: center;
-  max-width: 400px;
-}
-
-.empty-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 1.5rem;
-  background-color: #f1f5f9;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748b;
-  font-size: 2rem;
-}
-
-.empty-state h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 0.5rem 0;
-}
-
-.empty-state p {
-  color: #64748b;
-  margin: 0 0 2rem 0;
-}
-
-/* Table Section */
-.table-section {
-  padding: 0;
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.table-header h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0;
-}
-
-.table-stats {
-  font-size: 0.875rem;
-  color: #64748b;
-}
-
-.stat-item strong {
-  color: #1e293b;
-}
-
-/* Table Styles */
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.users-table th {
-  background-color: #f8fafc;
-  font-weight: 600;
-  padding: 1rem 1.5rem;
-  text-align: left;
-  font-size: 0.875rem;
-  color: #374151;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.users-table td {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  color: #374151;
-}
-
-.user-row:hover {
-  background-color: #f8fafc;
-}
-
-/* Column Styles */
-.col-user {
-  width: 25%;
-}
-
-.col-email {
-  width: 25%;
-}
-
-.col-roles {
-  width: 20%;
-}
-
-.col-date {
-  width: 15%;
-}
-
-.col-actions {
-  width: 15%;
-  text-align: right;
-}
-
-/* User Cell */
-.user-cell {
-  vertical-align: middle;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
-  color: white;
-  flex-shrink: 0;
-}
-
-.user-details {
-  min-width: 0;
-}
-
-.user-name {
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.125rem;
-}
-
-.user-id {
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-/* Email Cell */
-.email-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #374151;
-}
-
-.email-icon {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-/* Roles Cell */
-.roles-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.role-badge {
-  background-color: #e0e7ff;
-  color: #3730a3;
-  padding: 0.25rem 0.625rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.no-roles {
-  color: #9ca3af;
-  font-style: italic;
-  font-size: 0.875rem;
-}
-
-/* Date Cell */
-.date-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #374151;
-}
-
-.date-icon {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-/* Actions Cell */
-.actions-cell {
-  text-align: right;
-}
-
-.action-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-/* Button Styles */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.625rem 1.25rem;
-  border: 1px solid;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  gap: 0.5rem;
-}
-
-.btn-icon {
-  padding: 0.5rem;
-  width: 36px;
-  height: 36px;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
-  border-color: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.btn-edit {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
-  color: #374151;
-}
-
-.btn-edit:hover {
-  background-color: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-.btn-delete {
-  background-color: #fee2e2;
-  border-color: #fca5a5;
-  color: #dc2626;
-}
-
-.btn-delete:hover {
-  background-color: #fecaca;
-  border-color: #f87171;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-
-  .col-user,
-  .col-email {
-    width: 30%;
-  }
-
-  .col-roles {
-    width: 25%;
-  }
-
-  .col-date,
-  .col-actions {
-    width: auto;
-  }
-}
-
-@media (max-width: 768px) {
-  .user-list {
-    padding: 1rem;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1rem;
-  }
-
-  .page-title {
-    font-size: 1.75rem;
-  }
-
-  .table-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 1rem;
-  }
-
-  .users-table {
-    font-size: 0.875rem;
-  }
-
-  .users-table th,
-  .users-table td {
-    padding: 0.75rem;
-  }
-
-  .col-user,
-  .col-email,
-  .col-roles,
-  .col-date,
-  .col-actions {
-    width: auto;
-  }
-
-  .user-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .user-avatar {
-    width: 32px;
-    height: 32px;
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .table-wrapper {
-    margin: 0 -1rem;
-  }
-
-  .users-table {
-    font-size: 0.8125rem;
-  }
-
-  .action-group {
-    flex-direction: column;
-  }
-
-  .btn-icon {
-    width: 32px;
-    height: 32px;
-  }
-}
 </style>

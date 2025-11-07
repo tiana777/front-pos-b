@@ -168,6 +168,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 import Profile from './Profile.vue'
 import { useCashTransactionStore } from '@/stores/cashTransactionStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -291,7 +292,7 @@ const goTo = (routeName) => {
 
 const fetchActiveSession = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-session/my-active-session`, {
       headers: authHeaders()
     })
     session.value = data?.data || data || null
@@ -308,7 +309,7 @@ const fetchSales = async () => {
   }
 
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/sales/current-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/sales/current-session`, {
       params: {
         user_id: user.value.id,
         cash_register_session_id: session.value.id

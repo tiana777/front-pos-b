@@ -153,6 +153,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL, API_URL } from '@/utils/api'
 
 const props = defineProps({
   isOpen: Boolean
@@ -177,7 +178,7 @@ const fileInput = ref(null)
 const fetchCategories = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get('http://127.0.0.1:8000/api/categories', {
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     categories.value = response.data
@@ -210,7 +211,7 @@ watch(
 )
 
 const imageUrl = computed(() => {
-  return localProduct.imagePreview || 'http://localhost:8000/storage/products/default-product-image.jpg'
+  return localProduct.imagePreview || `${API_URL}/storage/products/default-product-image.jpg`
 })
 
 const onImageChange = (event) => {
@@ -263,7 +264,7 @@ const addProduct = async () => {
       category_id: localProduct.category_id,
       image: localProduct.image ? await convertFileToBase64(localProduct.image) : null
     }
-    const response = await axios.post('http://127.0.0.1:8000/api/products', payload, {
+    const response = await axios.post(`${API_BASE_URL}/products`, payload, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     })
     const updatedProductData = {

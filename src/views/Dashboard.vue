@@ -14,62 +14,89 @@
         sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
       ]"
     >
-      <div class="flex items-center gap-3 px-6 pt-6" :class="isSidebarCollapsed ? 'lg:px-4 lg:justify-center' : ''">
-        <img
-          src="../assets/logo.png"
-          alt="Logo"
-          class="h-11 w-auto object-contain"
-          :class="isSidebarCollapsed ? 'lg:h-10' : ''"
-        />
-        <div v-if="!isSidebarCollapsed">
-          <p class="text-lg font-semibold text-slate-900">TailAdmin</p>
-          <p class="text-xs text-slate-400">POS Dashboard</p>
+      <div class="flex h-full flex-col">
+        <div
+          class="flex items-center gap-3 px-6 pt-6 shrink-0"
+          :class="isSidebarCollapsed ? 'lg:px-4 lg:justify-center' : ''"
+        >
+          <img
+            src="../assets/logoigp.jpg"
+            alt="Logo International Gastronomy Pizza"
+            class="h-11 w-auto rounded-lg object-cover"
+            :class="isSidebarCollapsed ? 'lg:h-10' : ''"
+          />
+          <div v-if="!isSidebarCollapsed">
+            <p class="text-lg font-semibold text-slate-900">IGP POS</p>
+            <p class="text-xs text-slate-400">Dashboard restaurants</p>
+          </div>
         </div>
-      </div>
 
-      <nav :class="['mt-8 flex-1 overflow-y-auto pb-8', isSidebarCollapsed ? 'px-2' : 'px-4']">
-        <div v-for="section in navigationSections" :key="section.title" class="mb-8">
-          <p
-            class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400"
-            :class="isSidebarCollapsed ? 'lg:hidden' : ''"
-          >
-            {{ section.title }}
-          </p>
-          <ul class="mt-4 space-y-1">
-            <li v-for="item in section.items" :key="item.label">
-              <button
-                type="button"
-                :class="[
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
-                  isActive(item) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100',
-                  isSidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-0 lg:py-3' : ''
-                ]"
-                @click="handleNavigation(item)"
-              >
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-lg"
-                  :class="isActive(item) ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-500'"
+        <nav :class="['mt-8 flex-1 overflow-y-auto pb-8', isSidebarCollapsed ? 'px-2' : 'px-4']">
+          <div v-for="section in navigationSections" :key="section.title" class="mb-8">
+            <p
+              class="px-2 text-xs font-semibold uppercase tracking-wide text-slate-400"
+              :class="isSidebarCollapsed ? 'lg:hidden' : ''"
+            >
+              {{ section.title }}
+            </p>
+            <ul class="mt-4 space-y-1">
+              <li v-for="item in section.items" :key="item.label" class="space-y-1">
+                <button
+                  type="button"
+                  :class="[
+                    'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
+                    isActive(item) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100',
+                    isSidebarCollapsed ? 'lg:justify-center lg:gap-0 lg:px-0 lg:py-3' : ''
+                  ]"
+                  @click="handleNavigation(item)"
                 >
-                  <FontAwesomeIcon :icon="item.icon" class="text-base" />
-                </span>
-                <span :class="['flex-1 text-left', isSidebarCollapsed ? 'lg:hidden' : '']">{{ item.label }}</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-      </nav>
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-lg"
+                    :class="isActive(item) ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-500'"
+                  >
+                    <FontAwesomeIcon :icon="item.icon" class="text-base" />
+                  </span>
+                  <span :class="['flex-1 text-left', isSidebarCollapsed ? 'lg:hidden' : '']">{{ item.label }}</span>
+                  <FontAwesomeIcon
+                    v-if="item.children && !isSidebarCollapsed"
+                    :icon="faChevronDown"
+                    :class="[
+                      'text-xs text-slate-400 transition-transform',
+                      isMenuExpanded(item) ? 'rotate-180 text-indigo-500' : ''
+                    ]"
+                  />
+                </button>
 
-      <div v-if="!isSidebarCollapsed" class="border-t border-slate-200 px-6 py-6">
-        <div class="rounded-2xl bg-slate-50 px-4 py-4">
-          <p class="text-sm font-semibold text-slate-700">Upgrade to Pro</p>
-          <p class="mt-1 text-xs text-slate-500">Unlock advanced analytics and automation features.</p>
-          <button
-            type="button"
-            class="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            Upgrade
-          </button>
-        </div>
+                <transition name="fade">
+                  <ul
+                    v-if="item.children && isMenuExpanded(item) && !isSidebarCollapsed"
+                    class="space-y-1 pl-14"
+                  >
+                    <li v-for="child in item.children" :key="child.label">
+                      <button
+                        type="button"
+                        :class="[
+                          'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition',
+                          isActive(child) ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-100'
+                        ]"
+                        @click="handleNavigation(child)"
+                      >
+                        <span
+                          class="flex h-8 w-8 items-center justify-center rounded-md"
+                          :class="isActive(child) ? 'bg-white text-indigo-600 shadow-sm' : 'bg-slate-100 text-slate-500'"
+                        >
+                          <FontAwesomeIcon :icon="child.icon" class="text-sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ child.label }}</span>
+                      </button>
+                    </li>
+                  </ul>
+                </transition>
+              </li>
+            </ul>
+          </div>
+        </nav>
+
       </div>
     </aside>
 
@@ -155,7 +182,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterView } from 'vue-router'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
@@ -179,6 +206,7 @@ import {
   faUserGroup,
   faChartLine,
   faLayerGroup,
+  faListCheck
 } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '@/composables/useAuth'
 
@@ -192,6 +220,7 @@ const sidebarCollapsed = ref(false)
 const searchQuery = ref('')
 const userMenuOpen = ref(false)
 const userMenuRef = ref(null)
+const expandedMenus = ref(new Set())
 
 const isDesktop = ref(false)
 
@@ -244,57 +273,67 @@ onBeforeUnmount(() => {
   }
 })
 
+const filterAdminItems = (items) =>
+  items
+    .filter((item) => !item.adminOnly || isAdmin.value)
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter((child) => !child.adminOnly || isAdmin.value),
+          }
+        : item,
+    )
+
 const navigationSections = computed(() => {
-  const base = [
+  const menuItems = filterAdminItems([
+    { label: 'Dashboard', name: 'dashboard-overview', icon: faGaugeHigh },
+    { label: 'Vente directe', name: 'dashboard-direct', icon: faCashRegister },
     {
-      title: 'Menu',
-      items: [
-        { label: 'Dashboard', name: 'dashboard-overview', icon: faGaugeHigh },
-        { label: 'Vente directe', name: 'dashboard-direct', icon: faCashRegister },
-        { label: 'Service à table', name: 'dashboard-table', icon: faTableCellsLarge },
-        { label: 'Produits', name: 'dashboard-product', icon: faBoxesStacked },
-        { label: 'Catégories', name: 'dashboard-categories', icon: faLayerGroup },
-        { label: 'Ventes', name: 'dashboard-ventes', icon: faChartLine },
-        { label: 'Mes ventes', name: 'dashboard-user-sales', icon: faReceipt },
-        { label: 'Retour', name: 'dashboard-retour', icon: faArrowRotateLeft },
+      label: 'Service Salle',
+      name: 'service-salle',
+      icon: faTableCellsLarge,
+      children: [
+        { label: 'Salle', name: 'dashboard-table', icon: faTableCellsLarge },
+        { label: 'Gestion des tables', name: 'dashboard-table-manage', icon: faListCheck },
       ],
     },
-    {
-      title: 'Outils',
-      items: [
-        { label: 'Point de vente', name: 'dashboard-point-of-sale', icon: faStore },
-        { label: 'Imprimantes', name: 'dashboard-printers', icon: faPrint },
-        { label: 'Sessions caisse', name: 'dashboard-cash-register-sessions', icon: faClipboardList },
-      ],
-    },
-    {
-      title: 'Administration',
-      items: isAdmin.value
-        ? [
-            {
-              label: 'Rôles',
-              name: 'dashboard-roles',
-              icon: faUsersGear,
-              names: ['dashboard-roles', 'dashboard-roles-create', 'dashboard-roles-edit'],
-            },
-            {
-              label: 'Permissions',
-              name: 'dashboard-permissions',
-              icon: faKey,
-              names: ['dashboard-permissions', 'dashboard-permissions-create'],
-            },
-            {
-              label: 'Utilisateurs',
-              name: 'dashboard-users',
-              icon: faUserGroup,
-              names: ['dashboard-users', 'dashboard-users-create', 'dashboard-users-edit', 'dashboard-users-roles'],
-            },
-          ]
-        : [],
-    },
+    { label: 'Produits', name: 'dashboard-product', icon: faBoxesStacked },
+    { label: 'Catégories', name: 'dashboard-categories', icon: faLayerGroup },
+    { label: 'Ventes', name: 'dashboard-ventes', icon: faChartLine, adminOnly: true },
+    { label: 'Mes ventes', name: 'dashboard-user-sales', icon: faReceipt },
+    { label: 'Remise à zéro', name: 'dashboard-retour', icon: faArrowRotateLeft },
+  ])
+
+  const toolItems = filterAdminItems([
+    { label: 'Point de vente', name: 'dashboard-point-of-sale', icon: faStore, adminOnly: true },
+    { label: 'Imprimantes', name: 'dashboard-printers', icon: faPrint },
+    { label: 'Sessions caisse', name: 'dashboard-cash-register-sessions', icon: faClipboardList },
+    { label: 'Utilisateurs', name: 'dashboard-users', icon: faUserGroup, adminOnly: true },
+    ...(isAdmin.value
+      ? [
+          {
+            label: 'Rôles',
+            name: 'dashboard-roles',
+            icon: faUsersGear,
+            names: ['dashboard-roles', 'dashboard-roles-create', 'dashboard-roles-edit'],
+          },
+          {
+            label: 'Permissions',
+            name: 'dashboard-permissions',
+            icon: faKey,
+            names: ['dashboard-permissions', 'dashboard-permissions-create'],
+          },
+        ]
+      : []),
+  ])
+
+  const sections = [
+    { title: 'Menu', items: menuItems },
+    { title: 'Outils', items: toolItems },
   ]
 
-  return base.filter((section) => section.items.length > 0)
+  return sections.filter((section) => section.items.length > 0)
 })
 
 const toggleSidebar = () => {
@@ -318,6 +357,22 @@ const toggleUserMenu = () => {
   userMenuOpen.value = !userMenuOpen.value
 }
 
+const toggleMenu = (item) => {
+  if (!item?.name) return
+  const updated = new Set(expandedMenus.value)
+  if (updated.has(item.name)) {
+    updated.delete(item.name)
+  } else {
+    updated.add(item.name)
+  }
+  expandedMenus.value = updated
+}
+
+const isMenuExpanded = (item) => {
+  if (!item?.name) return false
+  return expandedMenus.value.has(item.name)
+}
+
 const navigateTo = (name) => {
   closeSidebar()
   closeUserMenu()
@@ -325,6 +380,11 @@ const navigateTo = (name) => {
 }
 
 const handleNavigation = (item) => {
+  if (item?.children?.length) {
+    toggleMenu(item)
+    return
+  }
+
   closeSidebar()
   closeUserMenu()
   if (item?.name) {
@@ -344,6 +404,9 @@ const logout = () => {
 
 const isActive = (item) => {
   const currentName = route.name ? route.name.toString() : ''
+  if (item.children?.length) {
+    return item.children.some((child) => isActive(child))
+  }
   if (item.matchPrefix) {
     return currentName.startsWith(item.matchPrefix)
   }
@@ -356,16 +419,50 @@ const isActive = (item) => {
   return false
 }
 
+const expandMenuForRoute = () => {
+  const currentName = route.name ? route.name.toString() : ''
+  const updated = new Set(expandedMenus.value)
+
+  navigationSections.value.forEach((section) => {
+    section.items.forEach((item) => {
+      if (!item.children?.length || !item.name) return
+      const matches = item.children.some((child) => {
+        if (child.matchPrefix) {
+          return currentName.startsWith(child.matchPrefix)
+        }
+        if (Array.isArray(child.names)) {
+          return child.names.includes(currentName)
+        }
+        return child.name === currentName
+      })
+      if (matches) {
+        updated.add(item.name)
+      }
+    })
+  })
+
+  expandedMenus.value = updated
+}
+
+watch(
+  () => route.name,
+  () => {
+    expandMenuForRoute()
+  },
+  { immediate: true }
+)
+
 const currentPageTitle = computed(() => {
   const currentName = route.name ? route.name.toString() : ''
   const titles = {
     'dashboard-overview': 'Dashboard',
     'dashboard-direct': 'Vente directe',
-    'dashboard-table': 'Service à table',
+    'dashboard-table': 'Salle',
+    'dashboard-table-manage': 'Gestion des tables',
     'dashboard-product': 'Produits',
     'dashboard-ventes': 'Ventes',
     'dashboard-user-sales': 'Mes ventes',
-    'dashboard-retour': 'Retour',
+    'dashboard-retour': 'Remise à zéro',
     'dashboard-printers': 'Imprimantes',
     'dashboard-cash-register-sessions': 'Sessions caisse',
     'dashboard-point-of-sale': 'Point de vente',

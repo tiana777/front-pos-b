@@ -200,6 +200,7 @@ defineOptions({ name: 'UserProfile' })
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 import { useAuth } from '@/composables/useAuth'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
@@ -256,7 +257,7 @@ const breadcrumbLabels = {
   direct: 'Vente directe',
   table: 'Service à table',
   'table-sales': 'Ventes par table',
-  'table-order': 'Commande table',
+  'dashboard-table-order': 'Commande table',
   'tables-manage': 'Gestion des tables',
   'tables-layout': 'Plan de salle',
   'tables-selector': 'Sélecteur de table',
@@ -326,7 +327,7 @@ const fetchUserProfile = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    const response = await axios.get('http://127.0.0.1:8000/api/me', {
+    const response = await axios.get(`${API_BASE_URL}/me`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     })
     user.value = response.data.user

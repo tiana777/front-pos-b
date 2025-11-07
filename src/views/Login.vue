@@ -1,69 +1,117 @@
 <template>
-<div class="text-gray-900 flex justify-center">
-    <div class="max-w-screen-xl m-0 sm:m-10 bg-white shadow sm:rounded-lg flex justify-center flex-1">
-        <div class="lg:w-1/2 xl:w-5/12 p-6 sm:p-12 bg-red-500 rounded-l-lg">
+  <div class="min-h-screen bg-slate-100">
+    <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+      <div class="grid w-full grid-cols-1 gap-8 rounded-3xl border border-slate-200 bg-white/90 shadow-2xl backdrop-blur lg:grid-cols-2">
+        <div class="flex flex-col justify-between rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-slate-900 p-8 text-white lg:p-12">
+          <div class="flex items-center gap-3">
+            <img src="../assets/logoigp.jpg" alt="Logo International Gastronomy Pizza" class="h-14 w-auto rounded-xl bg-white/10 p-1 shadow" />
             <div>
-                <img src="../assets/new-logo.png"
-                    class="w-32 mx-auto" />
+              <p class="text-sm uppercase tracking-[0.3em] text-white/70">International Gastronomy Pizza</p>
+              <p class="text-xl font-semibold">Système de caisse intégré</p>
             </div>
-            <div class="mt-12 flex flex-col items-center">
-                <h1 class="text-2xl xl:text-3xl text-gray-100 font-extrabold">
-                    Connexion
-                </h1>
-                <div class="w-full flex-1 mt-8">
-                    <div class="mx-auto max-w-xs">
-                        <input
-                            ref="emailInput"
-                            v-model="email" placeholder="Entrez votre identifiant"
-                            class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white"
-                            type="email"
-                             @focus="showKeyboard('email')" />
-                        <input
-                            ref="passwordInput"
-                            type="password" v-model="password"
-                            class="w-full px-8 py-4 rounded-lg font-medium bg-gray-100 border border-gray-200 placeholder-gray-500 text-sm focus:outline-none focus:border-gray-400 focus:bg-white mt-5"
-                            placeholder="Mot de passe"
-                            @focus="showKeyboard('password')" />
-                        <button
-                            class="mt-5 tracking-wide font-semibold bg-gray-500 text-gray-100 w-full py-4 rounded-lg hover:bg-gray-700 transition-all duration-300 ease-in-out flex items-center justify-center focus:shadow-outline focus:outline-none"
-                            @click="login">
-                            <span class="ml-3">
-                                Se connecter
-                            </span>
-                        </button>
+          </div>
+          <div class="mt-16 space-y-6">
+            <div>
+              <p class="text-sm uppercase tracking-[0.2em] text-white/60">Bienvenue</p>
+              <h1 class="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">Laissez parler la performance de vos pizzerias</h1>
+            </div>
+            <ul class="space-y-3 text-sm text-white/80">
+              <li class="flex items-center gap-3">
+                <span class="flex size-9 items-center justify-center rounded-full bg-white/10">
+                  <i class="fas fa-bolt text-white"></i>
+                </span>
+                Commandes directes et en salle synchronisées
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="flex size-9 items-center justify-center rounded-full bg-white/10">
+                  <i class="fas fa-lock text-white"></i>
+                </span>
+                Sessions caisse sécurisées
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="flex size-9 items-center justify-center rounded-full bg-white/10">
+                  <i class="fas fa-chart-line text-white"></i>
+                </span>
+                Indicateurs de performance en temps réel
+              </li>
+            </ul>
+          </div>
+          <div class="mt-12 rounded-2xl border border-white/20 bg-white/10 p-6 text-sm text-white/70">
+            <p class="font-medium text-white">Astuce</p>
+            <p class="mt-1 leading-relaxed">Vos raccourcis préférés sont accessibles dès la connexion via le tableau de bord. Pensez à associer votre machine à la caisse avant d’ouvrir une session.</p>
+          </div>
+        </div>
 
-                        <p v-if="error" class="has-text-danger mt-3 has-text-centered">{{ error }}</p>
-                        <p class="mt-6 text-xs text-gray-600 text-center">
-                            I agree to abide by templatana's
-                            <a href="#" class="border-b border-gray-500 border-dotted">
-                                Terms of Service
-                            </a>
-                            and its
-                            <a href="#" class="border-b border-gray-500 border-dotted">
-                                Privacy Policy
-                            </a>
-                        </p>
-                    </div>
-                </div>
+        <div class="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-12">
+          <div class="mb-10">
+            <p class="text-sm font-semibold uppercase tracking-[0.4em] text-indigo-500">Connexion</p>
+            <h2 class="mt-3 text-3xl font-semibold text-slate-900">Accéder à votre espace</h2>
+            <p class="mt-2 text-sm text-slate-500">Identifiez-vous pour retrouver vos sessions, vos ventes et les actions rapides d’IGP POS.</p>
+          </div>
+
+          <div class="space-y-5">
+            <div class="space-y-2">
+              <label for="email" class="text-sm font-medium text-slate-600">Identifiant</label>
+              <input
+                id="email"
+                ref="emailInput"
+                v-model="email"
+                type="email"
+                placeholder="prenom.nom@entreprise.com"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                @focus="showKeyboard('email')"
+              />
             </div>
-        </div>
-        <div class="flex-1 text-center hidden lg:flex">
-            <div class="m-12 xl:m-16 w-full bg-[url('../assets/logoigp.jpg')] bg-cover bg-center bg-no-repeat">
+
+            <div class="space-y-2">
+              <label for="password" class="text-sm font-medium text-slate-600">Mot de passe</label>
+              <input
+                id="password"
+                ref="passwordInput"
+                type="password"
+                v-model="password"
+                placeholder="••••••••"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                @focus="showKeyboard('password')"
+              />
             </div>
+
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              @click="login"
+            >
+              <i class="fas fa-right-to-bracket mr-2"></i>
+              Se connecter
+            </button>
+
+            <p v-if="error" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+              {{ error }}
+            </p>
+          </div>
+
+          <div class="mt-10 text-xs text-slate-400">
+            <p>En vous connectant, vous acceptez les conditions d’utilisation et la politique de confidentialité d’IGP POS.</p>
+          </div>
         </div>
+      </div>
     </div>
-</div>
-<Keyboard v-if="keyboardVisible" @key-pressed="handleKeyPress" @close="closeKeyboard" />
-
-
+    <Keyboard
+      v-if="keyboardVisible"
+      :initial-position="keyboardPosition"
+      @key-pressed="handleKeyPress"
+      @close="closeKeyboard"
+    />
+  </div>
 </template>
 
 <script setup>
 defineOptions({ name: 'LoginPage' })
-import { ref } from 'vue'
+import { ref, nextTick, onBeforeUnmount } from 'vue'
 import Keyboard from '../components/tools/Keyboard.vue'
 import axios from 'axios'
 import { onMounted } from 'vue'
+import { API_BASE_URL } from '@/utils/api'
 
 const email = ref('')
 const password = ref('')
@@ -71,6 +119,10 @@ const error = ref('')
 const keyboardVisible = ref(false)
 const activeField = ref(null)
 const user = ref(null)
+const keyboardPosition = ref(null)
+
+const emailInput = ref(null)
+const passwordInput = ref(null)
 
 const login = async () => {
   error.value = '';
@@ -81,7 +133,7 @@ const login = async () => {
   }
 
   try {
-    const response = await axios.post('http://127.0.0.1:8000/api/login', {
+    const response = await axios.post(`${API_BASE_URL}/login`, {
       email: email.value,
       password: password.value
     });
@@ -101,10 +153,7 @@ const login = async () => {
       user.value = response.data.user;
 
       // Redirection
-      const userRoles = response.data.user.roles || []
-      const isAdmin = userRoles.includes('admin')
-      const redirectPath = isAdmin ? '/direct' : (localStorage.getItem('last_visited_url') || '/cash-printer')
-      window.location.href = redirectPath;
+      window.location.href = '/dashboard'
     } else {
       error.value = "Réponse du serveur invalide";
     }
@@ -131,6 +180,9 @@ initUser();
 function showKeyboard(field) {
   activeField.value = field
   keyboardVisible.value = true
+  nextTick(() => {
+    updateKeyboardPosition()
+  })
 }
 
 function handleKeyPress(key) {
@@ -146,9 +198,47 @@ function handleKeyPress(key) {
 function closeKeyboard() {
   keyboardVisible.value = false
   activeField.value = null
+  keyboardPosition.value = null
+}
+
+function updateKeyboardPosition() {
+  if (!keyboardVisible.value) return
+  const target = activeField.value === 'password' ? passwordInput.value : emailInput.value
+  const viewportHeight = window.innerHeight
+  const viewportWidth = window.innerWidth
+  const keyboardHeight = 280
+  const keyboardWidth = 640
+  const margin = 16
+
+  if (target) {
+    const rect = target.getBoundingClientRect()
+    let top = rect.bottom + margin
+    if (viewportHeight - rect.bottom < keyboardHeight + margin) {
+      top = viewportHeight - keyboardHeight - margin
+    }
+
+    let left = rect.left + rect.width / 2 - keyboardWidth / 2
+
+    if (left < margin) left = margin
+    if (left + keyboardWidth + margin > viewportWidth) {
+      left = viewportWidth - keyboardWidth - margin
+    }
+
+    keyboardPosition.value = { top: Math.max(margin, top), left: Math.max(margin, left) }
+  } else {
+    keyboardPosition.value = {
+      top: viewportHeight - keyboardHeight - margin,
+      left: Math.max(margin, viewportWidth / 2 - keyboardWidth / 2)
+    }
+  }
+}
+
+const handleResize = () => {
+  updateKeyboardPosition()
 }
 
 onMounted(() => {
+  window.addEventListener('resize', handleResize, { passive: true })
   const token = localStorage.getItem('token')
   const tokenExpiration = localStorage.getItem('token_expiration')
 
@@ -165,15 +255,14 @@ onMounted(() => {
     }
 
     // Tente de récupérer l'URL précédente ou redirige vers /direct par défaut
-    const lastVisited = localStorage.getItem('last_visited_url') || '/direct'
-    window.location.href = lastVisited
+    window.location.href = '/dashboard'
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
-.round {
-  border-top-left-radius: 1rem;
-  border-bottom-left-radius: 1rem;
-}
 </style>

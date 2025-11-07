@@ -2,7 +2,7 @@
   <div class="permission-create">
     <div class="header">
       <h2>Créer une nouvelle permission</h2>
-      <router-link to="/permissions" class="btn btn-back">
+      <router-link :to="{ name: 'dashboard-permissions' }" class="btn btn-back">
         <FontAwesomeIcon :icon="faArrowLeft" />
         <span>Retour à la liste</span>
       </router-link>
@@ -50,7 +50,7 @@
       <FontAwesomeIcon :icon="faCheckCircle" />
       {{ successMessage }}
       <div class="mt-3">
-        <router-link :to="`/permissions`" class="btn btn-sm btn-outline-success">
+        <router-link :to="{ name: 'dashboard-permissions' }" class="btn btn-sm btn-outline-success">
           <FontAwesomeIcon :icon="faList" />
           Voir toutes les permissions
         </router-link>

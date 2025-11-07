@@ -56,7 +56,7 @@
                 <div class="field is-grouped is-grouped-right">
 
                   <div class="control">
-                    <router-link to="/roles" class="button is-light is-large">
+                    <router-link :to="{ name: 'dashboard-roles' }" class="button is-light is-large">
                       <i class="fas fa-arrow-left me-1"></i> Annuler
                     </router-link>
                   </div>
@@ -146,7 +146,7 @@ export default {
             await roleService.assignPermission(roleResponse.data.id, permissionName)
           }
         }
-        this.$router.push('/roles')
+        this.$router.push({ name: 'dashboard-roles' })
       } catch (error) {
         console.error('Erreur lors de la création du rôle:', error)
         this.error = 'Erreur lors de la création du rôle. Veuillez réessayer.'

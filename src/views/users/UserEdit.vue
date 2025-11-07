@@ -1,124 +1,192 @@
 <template>
-  <section class="hero is-fullheight custom-background">
-    <div class="hero-body">
-      <div class="container">
-        <div class="box login-box">
-          <div class="is-flex is-align-items-center is-justify-content-space-between">
-            <button class="button is-light" @click="goBack">
-              <font-awesome-icon icon="arrow-left" class="me-2" />
-              Retour
-            </button>
-            <h1 class="title has-text-centered mb-0">Modifier l'Utilisateur</h1>
-            <div style="width: 100px;"></div> <!-- Spacer for centering -->
-          </div>
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Administration</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="fa-solid fa-user-pen" class="text-indigo-500" />
+          Modifier l’utilisateur
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Ajustez les informations du compte et rattachez-le aux rôles et points de vente appropriés.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <router-link
+          :to="{ name: 'dashboard-users' }"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+        >
+          <font-awesome-icon icon="fa-solid fa-arrow-left" />
+          Retour
+        </router-link>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+          @click="resetForm"
+          :disabled="loading"
+        >
+          <font-awesome-icon icon="fa-solid fa-rotate" />
+          Réinitialiser
+        </button>
+      </div>
+    </header>
 
-          <div v-if="loading" class="has-text-centered">
-            <div class="button is-loading is-large is-text">Chargement...</div>
-          </div>
-
-          <div v-else>
-            <div class="field">
-              <label class="label">Nom d'utilisateur</label>
-              <div class="control">
-                <input class="input" type="text" v-model="user.name" placeholder="Entrez le nom" required
-                  :class="{ 'is-danger': errors.name }" />
-                <p v-if="errors.name" class="help is-danger">{{ errors.name }}</p>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">Email</label>
-              <div class="control">
-                <input class="input" type="email" v-model="user.email" placeholder="Entrez l'email" required
-                  :class="{ 'is-danger': errors.email }" />
-                <p v-if="errors.email" class="help is-danger">{{ errors.email }}</p>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">Mot de passe</label>
-              <div class="control">
-                <input class="input" type="password" v-model="user.password"
-                  placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)"
-                  :class="{ 'is-danger': errors.password }" />
-                <p v-if="errors.password" class="help is-danger">{{ errors.password }}</p>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">Confirmer le mot de passe</label>
-              <div class="control">
-                <input class="input" type="password" v-model="user.password_confirmation"
-                  placeholder="Confirmez le mot de passe" :class="{ 'is-danger': errors.password_confirmation }" />
-                <p v-if="errors.password_confirmation" class="help is-danger">{{ errors.password_confirmation }}</p>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">Rôle</label>
-              <div class="control">
-                <div class="select is-fullwidth" :class="{ 'is-danger': errors.role }">
-                  <select v-model="user.role">
-                    <option value="">Sélectionner un rôle</option>
-                    <option v-for="role in roles" :key="role.id" :value="role.name">
-                      {{ role.name }}
-                    </option>
-                  </select>
-                </div>
-                <p v-if="errors.role" class="help is-danger">{{ errors.role }}</p>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">Point de vente</label>
-              <div class="control">
-                <div class="select is-fullwidth" :class="{ 'is-danger': errors.point_of_sale_id }">
-                  <select v-model="user.point_of_sale_id">
-                    <option value="">Sélectionner un point de vente</option>
-                    <option v-for="pos in pointsOfSale" :key="pos.id" :value="pos.id">
-                      {{ pos.name }}
-                    </option>
-                  </select>
-                </div>
-                <p v-if="errors.point_of_sale_id" class="help is-danger">{{ errors.point_of_sale_id }}</p>
-              </div>
-            </div>
-
-            <div class="field mt-4">
-              <button class="button is-dark is-fullwidth" @click="updateUser" :disabled="loading || !isFormValid"
-                :class="{ 'is-loading': loading }">
-                Mettre à jour
-              </button>
-            </div>
-
-            <div class="field">
-              <button class="button is-light is-fullwidth" @click="resetForm" :disabled="loading">
-                Réinitialiser
-              </button>
-            </div>
-
-            <div v-if="error" class="notification is-danger mt-3">
-              <button class="delete" @click="error = ''"></button>
-              {{ error }}
-            </div>
-
-            <div v-if="success" class="notification is-success mt-3">
-              <button class="delete" @click="success = ''"></button>
-              {{ success }}
-            </div>
-          </div>
-        </div>
+    <div
+      v-if="loading"
+      class="flex flex-col items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500 shadow-sm"
+    >
+      <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+      <div>
+        <p class="font-semibold text-slate-700">Chargement de l’utilisateur…</p>
+        <p class="text-xs text-slate-400">Nous récupérons les informations du profil.</p>
       </div>
     </div>
-  </section>
+
+    <div v-else class="space-y-6">
+      <div
+        v-if="error"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600"
+      >
+        <div class="flex items-center gap-2">
+          <font-awesome-icon icon="fa-solid fa-triangle-exclamation" />
+          <span>{{ error }}</span>
+        </div>
+        <button
+          type="button"
+          class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-600 transition hover:bg-rose-100"
+          @click="error = ''"
+        >
+          Fermer
+        </button>
+      </div>
+
+      <div
+        v-if="success"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-600"
+      >
+        <div class="flex items-center gap-2">
+          <font-awesome-icon icon="fa-solid fa-circle-check" />
+          <span>{{ success }}</span>
+        </div>
+        <button
+          type="button"
+          class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600 transition hover:bg-emerald-100"
+          @click="success = ''"
+        >
+          Fermer
+        </button>
+      </div>
+
+      <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div class="grid gap-6 px-6 py-6 sm:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Nom d’utilisateur</label>
+            <input
+              v-model="user.name"
+              type="text"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              placeholder="Entrez le nom de l’utilisateur"
+              :class="{ 'border-rose-300': errors.name }"
+            />
+            <p v-if="errors.name" class="text-xs font-semibold text-rose-500">{{ errors.name }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Email</label>
+            <input
+              v-model="user.email"
+              type="email"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              placeholder="prenom.nom@entreprise.com"
+              :class="{ 'border-rose-300': errors.email }"
+            />
+            <p v-if="errors.email" class="text-xs font-semibold text-rose-500">{{ errors.email }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Nouveau mot de passe</label>
+            <input
+              v-model="user.password"
+              type="password"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              placeholder="Laisser vide pour ne pas changer"
+              :class="{ 'border-rose-300': errors.password }"
+            />
+            <p v-if="errors.password" class="text-xs font-semibold text-rose-500">{{ errors.password }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Confirmer le mot de passe</label>
+            <input
+              v-model="user.password_confirmation"
+              type="password"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              placeholder="Confirmez le mot de passe"
+              :class="{ 'border-rose-300': errors.password_confirmation }"
+            />
+            <p v-if="errors.password_confirmation" class="text-xs font-semibold text-rose-500">
+              {{ errors.password_confirmation }}
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Rôle</label>
+            <select
+              v-model="user.role"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.role }"
+            >
+              <option value="">Sélectionner un rôle</option>
+              <option v-for="role in roles" :key="role.id" :value="role.name">
+                {{ role.name }}
+              </option>
+            </select>
+            <p v-if="errors.role" class="text-xs font-semibold text-rose-500">{{ errors.role }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Point de vente</label>
+            <select
+              v-model="user.point_of_sale_id"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.point_of_sale_id }"
+            >
+              <option value="">Sélectionner un point de vente</option>
+              <option v-for="pos in pointsOfSale" :key="pos.id" :value="pos.id">
+                {{ pos.name }}
+              </option>
+            </select>
+            <p v-if="errors.point_of_sale_id" class="text-xs font-semibold text-rose-500">
+              {{ errors.point_of_sale_id }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            @click="updateUser"
+            :disabled="loading || !isFormValid"
+          >
+            <font-awesome-icon :icon="loading ? 'fa-solid fa-spinner' : 'fa-solid fa-floppy-disk'" :class="{ 'animate-spin': loading }" />
+            {{ loading ? 'Mise à jour…' : 'Mettre à jour' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import userService from '@/services/userService'
 import roleService from '@/services/roleService'
 import pointOfSaleService from '@/services/pointOfSaleService'
-import { useRoute, useRouter } from 'vue-router'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+
+defineOptions({ name: 'UserEdit', components: { FontAwesomeIcon } })
 
 const route = useRoute()
 const router = useRouter()
@@ -165,15 +233,12 @@ const loadUser = async () => {
     originalUser.value = { ...userResponse.data }
     roles.value = rolesResponse.data
 
-    // Set the current role based on user's existing roles
-    if (userRolesResponse.data && userRolesResponse.data.length > 0) {
+    if (Array.isArray(userRolesResponse.data) && userRolesResponse.data.length > 0) {
       user.value.role = userRolesResponse.data[0].name
     }
 
-    // Load points of sale
     const posResponse = await pointOfSaleService.getAll()
     pointsOfSale.value = posResponse.data || posResponse
-
   } catch (err) {
     error.value = 'Erreur lors du chargement des données.'
     console.error(err)
@@ -200,10 +265,10 @@ const validateForm = () => {
   }
 
   if (!user.value.email.trim()) {
-    errors.value.email = 'L\'email est requis'
+    errors.value.email = "L'email est requis"
     isValid = false
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.value.email)) {
-    errors.value.email = 'L\'email n\'est pas valide'
+    errors.value.email = "L'email n'est pas valide"
     isValid = false
   }
 
@@ -226,10 +291,12 @@ const validateForm = () => {
 }
 
 const isFormValid = computed(() => {
-  return user.value.name.trim() &&
+  return (
+    user.value.name.trim() &&
     user.value.email.trim() &&
     user.value.role &&
-    (user.value.password === user.value.password_confirmation)
+    user.value.password === user.value.password_confirmation
+  )
 })
 
 const updateUser = async () => {
@@ -240,7 +307,6 @@ const updateUser = async () => {
   success.value = ''
 
   try {
-    // Update user basic info
     const updateData = {
       id: user.value.id,
       name: user.value.name,
@@ -248,7 +314,6 @@ const updateUser = async () => {
       point_of_sale_id: user.value.point_of_sale_id
     }
 
-    // Only include password if provided
     if (user.value.password) {
       updateData.password = user.value.password
       updateData.password_confirmation = user.value.password_confirmation
@@ -256,20 +321,17 @@ const updateUser = async () => {
 
     await userService.update(updateData)
 
-    // Assign role if provided
     if (user.value.role) {
       await userService.assignRole(user.value.id, user.value.role)
     }
 
-    success.value = 'Utilisateur mis à jour avec succès!'
+    success.value = 'Utilisateur mis à jour avec succès !'
 
-    // Redirect after 2 seconds
     setTimeout(() => {
-      router.push('/users')
-    }, 2000)
-
+      router.push({ name: 'dashboard-users' })
+    }, 1500)
   } catch (err) {
-    error.value = err.response?.data?.message || 'Erreur lors de la mise à jour de l\'utilisateur.'
+    error.value = err.response?.data?.message || "Erreur lors de la mise à jour de l'utilisateur."
     console.error(err)
   } finally {
     loading.value = false
@@ -290,84 +352,8 @@ const resetForm = () => {
   success.value = ''
 }
 
-const goBack = () => {
-  router.push('/users')
-}
-
 onMounted(loadUser)
 </script>
 
 <style scoped>
-.custom-background {
-  background: linear-gradient(135deg, #ff7e5f, #feb47b);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-box {
-  max-width: 400px;
-  margin: auto;
-  padding: 2rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.title {
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
-}
-
-.label {
-  color: #34495e;
-  font-weight: 500;
-}
-
-.input {
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  padding: 12px 15px;
-  transition: all 0.3s;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.input:focus {
-  border-color: #4361ee;
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-}
-
-.button.is-dark {
-  background: linear-gradient(to right, #2c3e50, #4a6582);
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.button.is-dark:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.has-text-danger {
-  font-weight: 500;
-  background: rgba(239, 71, 111, 0.1);
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.notification {
-  border-radius: 8px;
-}
-
-.select select {
-  border-radius: 8px;
-}
 </style>

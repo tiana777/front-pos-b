@@ -1,34 +1,32 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/80" @click="closeModal"></div>
-    <div class="relative z-10 flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-      <header class="flex items-center justify-between border-b bg-black px-6 py-4">
-        <p class="text-lg font-semibold text-white">
-          <font-awesome-icon icon="fa-solid fa-credit-card" class="mr-2" />
-          Mode de paiement
-        </p>
-        <button class="text-white/80 hover:text-white" aria-label="close" @click="closeModal">&times;</button>
+  <div v-if="isOpen" class="payment-overlay" @click.self="closeModal">
+    <section class="payment-card">
+      <header class="payment-header">
+        <div class="title">
+          <font-awesome-icon icon="fa-solid fa-credit-card" />
+          <span>Mode de paiement</span>
+        </div>
+        <button type="button" class="icon ghost" @click="closeModal" aria-label="Fermer">
+          <font-awesome-icon icon="fa-solid fa-xmark" />
+        </button>
       </header>
 
-      <section class="flex-1 overflow-y-auto bg-gray-50 px-6 py-4">
-        <!-- Montant total + remises -->
-        <div class="mb-4 space-y-3">
-          <div>
-            <label class="mb-2 block font-semibold">Total initial</label>
-            <div class="relative">
-              <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :value="formatPrice(totalAmount)" readonly disabled>
-            </div>
+      <section class="payment-body">
+        <div class="amount-panel">
+          <div class="amount-field">
+            <label>Total initial</label>
+            <div class="field-value muted">{{ formatPrice(totalAmount) }}</div>
           </div>
 
-          <div>
-            <label class="mb-2 block font-semibold">Remise rapide</label>
-            <div class="flex flex-wrap gap-2">
+          <div class="amount-field">
+            <label>Remise rapide</label>
+            <div class="chip-group">
               <button
                 v-for="option in discountOptions"
                 :key="option"
                 type="button"
-                class="rounded-full px-3 py-1 text-sm font-semibold transition"
-                :class="selectedDiscount === option ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                class="chip"
+                :class="{ active: selectedDiscount === option }"
                 @click="selectDiscount(option)"
               >
                 {{ option }}%
@@ -36,277 +34,266 @@
             </div>
           </div>
 
-          <div>
-            <label class="mb-2 block font-semibold">Total après remise</label>
-            <div class="relative">
-              <input class="w-full rounded border border-gray-300 bg-gray-100 px-3 py-3 text-lg font-bold text-red-600 focus:border-blue-500 focus:outline-none" :value="formatPrice(discountedTotal)" readonly disabled>
-            </div>
+          <div class="amount-field">
+            <label>Total après remise</label>
+            <div class="field-value highlight">{{ formatPrice(discountedTotal) }}</div>
           </div>
         </div>
 
-        <!-- Référence TPE -->
-        <div class="mb-5" v-if="selectedPayment === 'TPE'">
-          <label class="mb-2 block font-semibold">Référence</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg focus:border-blue-500 focus:outline-none" v-model="cardNumber" placeholder="1234 5678 9012 3456" type="text" maxlength="19" ref="cardNumberInput">
+        <div class="details-grid full-row" v-if="selectedPayment === 'TPE'">
+          <label>Référence TPE</label>
+          <input
+            type="text"
+            v-model="cardNumber"
+            placeholder="1234 5678 9012 3456"
+            maxlength="19"
+            ref="cardNumberInput"
+          />
         </div>
 
-        <!-- Montant reçu -->
-        <div class="mb-5" v-if="selectedPayment === 'Espèce'">
-          <label class="mb-2 block font-semibold">Montant reçu</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" v-model="amountReceived" @input="calculateChange" placeholder="0.00" ref="amountReceivedInput">
+        <div class="details-grid" v-if="selectedPayment === 'Espèce'">
+          <label>Montant reçu</label>
+          <input
+            type="text"
+            v-model="amountReceived"
+            @input="calculateChange"
+            placeholder="0"
+            ref="amountReceivedInput"
+          />
         </div>
 
-        <!-- Numéro mobile -->
-        <div class="mb-5" v-if="isMobilePayment">
-          <label class="mb-2 block font-semibold">Numéro de téléphone</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg focus:border-blue-500 focus:outline-none" v-model="phoneNumber" placeholder="034 12 345 67" type="tel" ref="phoneInput">
+        <div class="details-grid" v-if="isMobilePayment">
+          <label>Numéro de téléphone</label>
+          <input
+            type="tel"
+            v-model="phoneNumber"
+            placeholder="034 12 345 67"
+            ref="phoneInput"
+          />
         </div>
 
-        <!-- Monnaie à rendre -->
-        <div class="mb-5" v-if="!isMobilePayment">
-          <label class="mb-2 block font-semibold">Monnaie à rendre</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-3 text-lg font-bold focus:border-blue-500 focus:outline-none" :class="changeAmount >= 0 ? 'text-green-600' : 'text-red-600'" :value="formatPrice(Math.abs(changeAmount))" readonly>
+        <div class="details-grid" v-if="selectedPayment && !isMobilePayment">
+          <label>Monnaie à rendre</label>
+          <div class="field-value" :class="{ positive: changeAmount >= 0, negative: changeAmount < 0 }">
+            {{ formatPrice(Math.abs(changeAmount)) }}
+          </div>
         </div>
 
-        <!-- Options de paiement et pavé numérique -->
-        <div class="mt-4 flex flex-col gap-4 md:flex-row">
-          <div class="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
+        <div class="payment-layout">
+          <div class="methods">
             <button
-              v-for="(payment, index) in payments"
-              :key="index"
+              v-for="payment in payments"
+              :key="payment.name"
+              type="button"
+              class="method"
+              :class="{ active: selectedPayment === payment.name }"
               @click="selectPaymentMethod(payment.name)"
-              class="relative inline-flex min-h-20 flex-col items-center justify-center rounded-md border px-3 py-2 text-sm font-medium shadow-sm transition hover:bg-gray-50"
-              :class="selectedPayment === payment.name ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-white text-gray-700 border-gray-200'"
             >
-              <div class="mb-1 text-lg" :class="selectedPayment === payment.name ? 'text-white' : 'text-gray-700'">
-                <font-awesome-icon :icon="getPaymentIcon(payment.name)" />
-              </div>
-              <div class="font-medium">{{ payment.name }}</div>
-              <div v-if="selectedPayment === payment.name" class="absolute right-1 top-1 text-white">
-                <font-awesome-icon icon="fa-solid fa-check-circle" />
-              </div>
+              <font-awesome-icon :icon="getPaymentIcon(payment.name)" />
+              <span>{{ payment.name }}</span>
+              <font-awesome-icon
+                v-if="selectedPayment === payment.name"
+                icon="fa-solid fa-check-circle"
+                class="check"
+              />
             </button>
           </div>
 
-          <div class="grid w-full max-w-[220px] grid-cols-3 gap-2 rounded bg-white p-2 shadow" :class="{ '': isMobilePayment }">
+          <div class="keypad">
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('7')">7</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('8')">8</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('9')">9</button>
-
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('4')">4</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('5')">5</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('6')">6</button>
-
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('1')">1</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('2')">2</button>
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('3')">3</button>
-
             <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('0')">0</button>
-            <button v-if="isMobilePayment" :class="keypadButtonClass(false)" @click="appendToField(' ')">Espace</button>
-            <button v-else :class="keypadButtonClass(true)" disabled>
-              <font-awesome-icon icon="fa-solid fa-circle" />
+            <button
+              v-if="isMobilePayment"
+              class="keypad-button"
+              @click="appendToField(' ')">
+              Espace
             </button>
-
-            <button class="col-span-1 aspect-square w-full rounded border border-red-300 bg-red-100 text-red-700 transition hover:bg-red-200 active:bg-red-300" @click="clearField">
+            <button v-else class="keypad-button" disabled>•</button>
+            <button class="keypad-button danger" @click="clearField">
               <font-awesome-icon icon="fa-solid fa-delete-left" />
             </button>
           </div>
         </div>
       </section>
 
-      <footer class="flex items-center justify-between border-t px-6 py-4">
-        <button class="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100" @click="closeModal">
-          <font-awesome-icon icon="fa-solid fa-times" />
+      <footer class="payment-footer">
+        <button type="button" class="ghost" @click="closeModal">
+          <font-awesome-icon icon="fa-solid fa-xmark" />
           Annuler
         </button>
-        <button class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60" :disabled="!isPaymentValid" @click="confirmPayment">
+        <button
+          type="button"
+          class="primary"
+          :disabled="!isPaymentValid"
+          @click="confirmPayment"
+        >
           <font-awesome-icon icon="fa-solid fa-check" />
           Confirmer le paiement
         </button>
       </footer>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, defineProps, defineEmits, watch, nextTick } from 'vue';
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { ref, computed, defineProps, defineEmits, watch, nextTick } from 'vue'
+import { library } from '@fortawesome/fontawesome-svg-core'
 import {
   faCreditCard,
   faCheckCircle,
-  faTimes,
+  faXmark,
   faCheck,
   faMoneyBillWave,
+  faHandHoldingDollar,
   faMobileScreen,
   faCashRegister,
   faDeleteLeft,
   faCircle
-} from '@fortawesome/free-solid-svg-icons';
+} from '@fortawesome/free-solid-svg-icons'
 
-// Ajout des icônes à la bibliothèque
-library.add(
-  faCreditCard,
-  faCheckCircle,
-  faTimes,
-  faCheck,
-  faMoneyBillWave,
-  faMobileScreen,
-  faCashRegister,
-  faDeleteLeft,
-  faCircle
-);
-
+library.add(faCreditCard, faCheckCircle, faXmark, faCheck, faMoneyBillWave, faHandHoldingDollar, faMobileScreen, faCashRegister, faDeleteLeft, faCircle)
 
 const props = defineProps({
   isOpen: Boolean,
   totalAmount: {
     type: Number,
     default: 0,
-    validator: value => !isNaN(value)
+    validator: value => !Number.isNaN(value)
   }
-});
+})
 
-const emits = defineEmits(['close-modal', 'confirm-payment']);
+const emits = defineEmits(['close-modal', 'confirm-payment'])
 
-// Références
 const payments = ref([
+  { name: 'Espèce', icon: 'fa-solid fa-hand-holding-dollar' },
   { name: 'TPE', icon: 'fa-solid fa-credit-card' },
   { name: 'Orange Money', icon: 'fa-solid fa-mobile-screen' },
   { name: 'MVola', icon: 'fa-solid fa-mobile-screen' },
-  { name: 'Espèce', icon: 'fa-solid fa-money-bill-wave' },
   { name: 'Airtel Money', icon: 'fa-solid fa-mobile-screen' }
-]);
+])
 
-const amountReceivedInput = ref(null);
-const cardNumberInput = ref(null);
-const phoneInput = ref(null);
-const selectedPayment = ref('');
-const amountReceived = ref('');
-const changeAmount = ref(0);
-const phoneNumber = ref('');
-const cardNumber = ref('');
-const isProcessing = ref(false);
-const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money'];
-const discountOptions = [0, 50, 100];
-const selectedDiscount = ref(0);
+const amountReceivedInput = ref(null)
+const cardNumberInput = ref(null)
+const phoneInput = ref(null)
+const selectedPayment = ref('')
+const amountReceived = ref('')
+const changeAmount = ref(0)
+const phoneNumber = ref('')
+const cardNumber = ref('')
+const isProcessing = ref(false)
+const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
+const discountOptions = [0, 50, 100]
+const selectedDiscount = ref(0)
 
-// Computed
-const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value));
+const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value))
 const isValidPhoneNumber = computed(() => {
-  if (!isMobilePayment.value) return true;
-  return phoneNumber.value.replace(/\D/g, '').length >= 10;
-});
+  if (!isMobilePayment.value) return true
+  return phoneNumber.value.replace(/\D/g, '').length >= 10
+})
+
 const discountedTotal = computed(() => {
   const base = Math.round(props.totalAmount || 0)
   const discount = Math.max(0, Math.min(100, selectedDiscount.value))
   return Math.round(base * (100 - discount) / 100)
-});
+})
 
 const isPaymentValid = computed(() => {
-  if (!selectedPayment.value) return false;
-  if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16;
-  if (isMobilePayment.value) return isValidPhoneNumber.value;
-  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value;
-  return true;
-});
+  if (!selectedPayment.value) return false
+  if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16
+  if (isMobilePayment.value) return isValidPhoneNumber.value
+  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value
+  return true
+})
 
 const isCashPadLocked = computed(() => {
-  if (selectedPayment.value !== 'Espèce') return false;
-  return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value && discountedTotal.value > 0;
-});
+  if (selectedPayment.value !== 'Espèce') return false
+  return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value && discountedTotal.value > 0
+})
 
-// Méthodes
 const formatPrice = (price) => {
   const amount = Math.round(Number(price) || 0)
-  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)
-};
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)} Ar`
+}
 
 const selectPaymentMethod = (method) => {
-  selectedPayment.value = method;
+  selectedPayment.value = method
   nextTick(() => {
-    if (method === 'TPE') cardNumberInput.value?.focus();
-    else if (isMobilePayment.value) phoneInput.value?.focus();
-    else if (method === 'Espèce') amountReceivedInput.value?.focus();
-  });
-};
+    if (method === 'TPE') cardNumberInput.value?.focus()
+    else if (isMobilePayment.value) phoneInput.value?.focus()
+    else if (method === 'Espèce') amountReceivedInput.value?.focus()
+  })
+}
 
 const appendToField = (value) => {
   if (selectedPayment.value === 'TPE') {
-    const current = cardNumber.value.replace(/\D/g, '');
-    if (current.length >= 16 && value !== ' ') return;
-    const newValue = current + (value === ' ' ? '' : value);
-    cardNumber.value = newValue.match(/.{1,4}/g)?.join(' ').substr(0, 19) || '';
-  }
-  else if (isMobilePayment.value) {
-    const current = phoneNumber.value.replace(/\D/g, '');
-    if (current.length >= 10 && value !== ' ') return;
+    const current = cardNumber.value.replace(/\D/g, '')
+    if (current.length >= 16 && value !== ' ') return
+    const newValue = current + (value === ' ' ? '' : value)
+    cardNumber.value = newValue.match(/.{1,4}/g)?.join(' ').slice(0, 19) || ''
+  } else if (isMobilePayment.value) {
+    const current = phoneNumber.value.replace(/\D/g, '')
+    if (current.length >= 10 && value !== ' ') return
     phoneNumber.value = (current + value)
       .replace(/(\d{3})(\d{2})(\d{3})(\d{2})/, '$1 $2 $3 $4')
-      .substr(0, 14);
+      .slice(0, 14)
+  } else if (selectedPayment.value === 'Espèce') {
+    if (value === ' ') return
+    const newValue = amountReceived.value === '0' ? value : amountReceived.value + value
+    amountReceived.value = newValue.replace(/[^0-9]/g, '')
+    calculateChange()
   }
-  else if (selectedPayment.value === 'Espèce') {
-    if (value === ' ') return;
-    const newValue = amountReceived.value === '0' ? value : amountReceived.value + value;
-    amountReceived.value = newValue.replace(/[^0-9]/g, '');
-    calculateChange();
-  }
-};
-
-const appendDecimal = () => {
-  return;
-};
+}
 
 const clearField = () => {
   if (selectedPayment.value === 'TPE') {
-    const current = cardNumber.value.replace(/\D/g, '').slice(0, -1);
-    cardNumber.value = current.match(/.{1,4}/g)?.join(' ') || '';
+    const current = cardNumber.value.replace(/\D/g, '').slice(0, -1)
+    cardNumber.value = current.match(/.{1,4}/g)?.join(' ') || ''
+  } else if (isMobilePayment.value) {
+    phoneNumber.value = phoneNumber.value.slice(0, -1).trim()
+  } else if (selectedPayment.value === 'Espèce') {
+    amountReceived.value = amountReceived.value.slice(0, -1) || '0'
+    calculateChange()
   }
-  else if (isMobilePayment.value) {
-    phoneNumber.value = phoneNumber.value.slice(0, -1).trim();
-  }
-  else if (selectedPayment.value === 'Espèce') {
-    amountReceived.value = amountReceived.value.slice(0, -1) || '0';
-    calculateChange();
-  }
-};
+}
 
 const calculateChange = () => {
-  const received = parseInt(amountReceived.value, 10) || 0;
-  changeAmount.value = received - discountedTotal.value;
-};
+  const received = parseInt(amountReceived.value, 10) || 0
+  changeAmount.value = received - discountedTotal.value
+}
 
 const selectDiscount = (value) => {
-  selectedDiscount.value = value;
-  if (selectedPayment.value === 'Espèce') calculateChange();
-};
+  selectedDiscount.value = value
+  if (selectedPayment.value === 'Espèce') calculateChange()
+}
 
-const getPaymentIcon = (paymentName) => {
-  return payments.value.find(p => p.name === paymentName)?.icon || 'fa-solid fa-credit-card';
-};
+const getPaymentIcon = (paymentName) => payments.value.find(p => p.name === paymentName)?.icon || 'fa-solid fa-credit-card'
 
-const keypadButtonClass = (disabled) => {
-  return [
-    'aspect-square w-full rounded border text-lg transition',
-    disabled
-      ? 'cursor-not-allowed bg-gray-200 text-gray-400 border-gray-200 hover:bg-gray-200 active:bg-gray-200'
-      : 'border-gray-300 hover:bg-gray-100 active:bg-gray-200'
-  ];
-};
+const keypadButtonClass = (disabled) => [
+  'keypad-button',
+  disabled ? 'disabled' : 'active'
+]
 
 const closeModal = () => {
-  selectedPayment.value = '';
-  amountReceived.value = '0';
-  changeAmount.value = 0;
-  phoneNumber.value = '';
-  cardNumber.value = '';
-  selectedDiscount.value = 0;
-  isProcessing.value = false;
-  emits('close-modal');
-};
+  selectedPayment.value = ''
+  amountReceived.value = ''
+  changeAmount.value = 0
+  phoneNumber.value = ''
+  cardNumber.value = ''
+  selectedDiscount.value = 0
+  isProcessing.value = false
+  emits('close-modal')
+}
 
 const confirmPayment = () => {
-  isProcessing.value = true;
+  isProcessing.value = true
   const paymentData = {
     method: selectedPayment.value,
     total: props.totalAmount,
@@ -316,359 +303,377 @@ const confirmPayment = () => {
     phone: isMobilePayment.value ? phoneNumber.value : null,
     received: selectedPayment.value === 'Espèce' ? (parseInt(amountReceived.value, 10) || 0) : null,
     change: parseInt(changeAmount.value, 10) || 0
-  };
-  emits('confirm-payment', paymentData);
-  isProcessing.value = false;
-};
+  }
+  emits('confirm-payment', paymentData)
+  isProcessing.value = false
+}
 
-// Watchers
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
-    amountReceived.value = '0';
-    phoneNumber.value = '';
-    cardNumber.value = '';
-    selectedDiscount.value = 0;
+    amountReceived.value = ''
+    phoneNumber.value = ''
+    cardNumber.value = ''
+    selectedDiscount.value = 0
   }
-});
+})
 </script>
+
 <style scoped>
-.modal-card {
-  max-width: 650px;
-  /* Légèrement plus large */
-  max-height: 95vh;
-  /* Un peu plus de hauteur */
+.payment-overlay {
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-radius: 8px;
-  /* Coins arrondis */
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  /* Ombre portée plus douce */
-}
-
-.modal-card-head {
-  border-bottom: 1px solid #4a4a4a;
-  /* Ligne de séparation plus subtile */
-}
-
-.modal-card-title {
-  font-size: 1.25rem;
-  /* Taille de titre légèrement augmentée */
-}
-
-.modal-card-body {
-  flex-grow: 1;
-  padding: 1.5rem;
-  /* Plus de padding interne */
-  overflow-y: auto;
-  background-color: #f9f9f9;
-  /* Fond légèrement grisé pour le corps */
-}
-
-.field .label {
-  margin-bottom: 0.75rem;
-  /* Espace accru sous les labels */
-  font-size: 0.9rem;
-  color: #363636;
-}
-
-.input.is-large {
-  font-size: 1.3rem;
-  /* Taille de police pour les inputs importants */
-  border-radius: 6px;
-  /* Coins arrondis pour les inputs */
-}
-
-input:disabled,
-input[readonly] {
-  background-color: #f0f0f0;
-  /* Fond plus distinct pour les champs non éditables */
-  cursor: not-allowed;
-}
-
-/* Conteneur des paiements et du clavier */
-.payment-container {
-  display: flex;
-  gap: 1.5rem;
-  /* Espace accru entre les options de paiement et le clavier */
-  align-items: flex-start;
-  /* Aligner en haut pour une meilleure disposition */
-  margin-top: 1rem;
-}
-
-/* Boutons de paiement */
-.payment-options {
-  display: grid;
-  /* Utilisation de grid pour une meilleure flexibilité */
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  /* Colonnes responsives */
-  gap: 0.75rem;
-  /* Espace entre les boutons de paiement */
-  flex: 1;
-}
-
-.payment-option {
-  min-height: 60px;
-  /* Hauteur minimale */
-  padding: 0.75rem;
-  font-size: 0.9rem;
-  /* Taille de police ajustée */
-  background-color: #ffffff;
-  /* Fond blanc */
-  color: #333;
-  /* Texte plus foncé */
-  border: 1px solid #dbdbdb;
-  /* Bordure subtile */
-  border-radius: 6px;
-  /* Coins arrondis */
-  cursor: pointer;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  /* Icône au-dessus du texte */
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1100;
 }
 
-.payment-option:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border-color: #007bff;
+.payment-card {
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 1.5rem;
+  box-shadow: 0 35px 70px rgba(15, 23, 42, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.payment-option.is-active {
-  background-color: #007bff;
-  color: white;
-  border-color: #0056b3;
-  box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+.payment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(140deg, #eef2ff 0%, #f8fafc 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-.payment-option.is-active .payment-name,
-.payment-option.is-active .payment-icon {
-  color: white;
-}
-
-.payment-icon {
-  font-size: 1.2rem;
-  /* Taille d'icône augmentée */
-  margin-bottom: 0.3rem;
-}
-
-.payment-name {
-  font-weight: 500;
-}
-
-.payment-check {
-  color: #2ecc71;
-  /* Vert pour la coche */
+.payment-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  color: #1e293b;
   font-size: 1.1rem;
-  position: absolute;
-  top: 5px;
-  right: 5px;
 }
 
-.payment-option.is-active .payment-check {
-  color: white;
+.payment-header .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 1.4rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
+.payment-header .icon.ghost {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+}
 
-/* Clavier numérique */
-.numeric-keypad {
+.payment-header .icon.ghost:hover {
+  background: rgba(148, 163, 184, 0.28);
+}
+
+.payment-body {
+  padding: 2rem;
+  display: flex;
+  margin-top: -3.5rem;
+  flex-direction: column;
+  gap: 1.75rem;
+  background: rgba(248, 250, 252, 0.9);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.amount-panel {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  /* Passage à 3 colonnes pour le clavier principal */
+  gap: 1.25rem;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+}
+
+.amount-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.amount-field label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.field-value {
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.field-value.muted {
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.field-value.highlight {
+  background: rgba(129, 140, 248, 0.12);
+  color: #4338ca;
+}
+
+.field-value.positive {
+  color: #16a34a;
+}
+
+.field-value.negative {
+  color: #dc2626;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  /* Espace accru entre les touches */
-  padding: 0.5rem;
-  /* Padding réduit car les boutons ont leur propre style */
-  flex: 0 0 220px;
-  /* Largeur fixe pour le clavier */
-  background-color: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.numeric-keypad.is-mobile-payment .keypad-row:nth-child(4) button:nth-child(2) {
-  grid-column: span 1;
-  /* S'assurer que le bouton Espace prend une colonne */
+.chip {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.45rem 0.9rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.16);
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.numeric-keypad.is-mobile-payment .keypad-row:nth-child(4) button:nth-child(1) {
-  grid-column: span 1;
+.chip:hover {
+  transform: translateY(-1px);
+  background: rgba(148, 163, 184, 0.24);
 }
 
+.chip.active {
+  background: rgba(79, 70, 229, 0.9);
+  color: #fff;
+  box-shadow: 0 12px 25px rgba(79, 70, 229, 0.28);
+}
 
-.keypad-row {
-  display: contents;
-  /* Permet aux boutons d'être des enfants directs du grid */
+.details-grid {
+  width: 100%;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.amounts-row {
+  align-items: end;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+}
+
+.details-grid label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.details-grid input {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.details-grid input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.payment-layout {
+  display: grid;
+  gap: 1.5rem;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+@media (min-width: 900px) {
+  .payment-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .details-grid.full-row {
+    grid-column: 1 / -1;
+  }
+}
+
+.methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.method {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.9rem 0.6rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(248, 250, 252, 0.7);
+  color: #475569;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.method:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 35px rgba(79, 70, 229, 0.15);
+}
+
+.method.active {
+  background: rgba(79, 70, 229, 0.95);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 20px 45px rgba(79, 70, 229, 0.28);
+}
+
+.method .check {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.55rem;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  grid-auto-rows: minmax(72px, 1fr);
+  gap: 0.6rem;
+  max-width: 320px;
+  margin: 0 auto;
+  height: 100%;
 }
 
 .keypad-button {
-  font-size: 1.4rem;
-  /* Taille de police augmentée */
-  padding: 0;
-  /* Le padding sera géré par la hauteur/largeur et flex */
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  /* Boutons carrés */
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  /* Coins arrondis */
-  background-color: #fdfdfd;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.8);
+  font-weight: 700;
+  color: #1f2937;
   cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  min-height: 72px;
 }
 
-.keypad-button:hover {
-  background-color: #f0f0f0;
-  border-color: #c0c0c0;
+@media (min-width: 900px) {
+  .keypad { height: 100%; align-content: stretch; }
+  .keypad-button { height: 100%; }
+}
+
+.keypad-button.active:hover {
   transform: translateY(-1px);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(226, 232, 240, 0.9);
 }
 
-.keypad-button:active {
-  background-color: #e0e0e0;
-  transform: translateY(0px);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+.keypad-button.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.keypad-button.is-danger {
-  background-color: #ffdddd;
-  color: #cc0000;
-  border-color: #ffb8b8;
+.keypad-button.danger {
+  background: rgba(248, 113, 113, 0.16);
+  color: #dc2626;
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
-.keypad-button.is-danger:hover {
-  background-color: #ffcccc;
-  color: #b30000;
+.payment-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.5rem 2rem 0.5rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  background: #fff;
 }
 
-.keypad-button.is-success {
-  background-color: #ddffdd;
-  color: #008000;
-  border-color: #b8ffb8;
+.payment-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 9999px;
+  padding: 0.75rem 1.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.keypad-button.is-success:hover {
-  background-color: #ccffcc;
-  color: #006600;
+.payment-footer .ghost {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
 }
 
-.numeric-keypad .keypad-row:last-child .keypad-button:first-child {
-  grid-column: span 1;
-  /* Le bouton Effacer prend une colonne */
+.payment-footer .ghost:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 25px rgba(148, 163, 184, 0.2);
 }
 
-/* Style for the last row in mobile payment mode - Clear button takes one column */
-.numeric-keypad.is-mobile-payment .keypad-row:last-child .keypad-button:first-child {
-  grid-column: span 1;
-  /* En mode paiement mobile, le bouton Effacer prend une colonne */
+.payment-footer .primary {
+  background: rgba(79, 70, 229, 0.95);
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(79, 70, 229, 0.3);
 }
 
-.numeric-keypad.is-mobile-payment .keypad-row:nth-child(4) button:nth-child(2) {
-  /* Espace button */
-  font-size: 0.9rem;
+.payment-footer .primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
-
-.modal-card-foot {
-  background-color: #f0f0f0;
-  /* Fond légèrement différent pour le pied de page */
-  border-top: 1px solid #dbdbdb;
-  /* Ligne de séparation */
-  padding: 1rem 1.5rem;
-  /* Padding ajusté */
+.payment-footer .primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 50px rgba(79, 70, 229, 0.35);
 }
 
-.modal-card-foot .button {
-  font-weight: 500;
-}
-
-
-/* Adaptation mobile */
 @media (max-width: 768px) {
-  .modal-card {
-    width: 98%;
-    /* Presque pleine largeur en mobile */
-    max-height: 98vh;
-    margin: 1vh auto;
+  .payment-card {
+    border-radius: 1rem;
   }
 
-  .modal-card-body {
-    padding: 1rem;
-    /* Padding réduit pour mobile */
-  }
-
-  .payment-container {
+  .payment-layout {
     flex-direction: column;
-    align-items: stretch;
-    /* Étirer les enfants */
-    gap: 1rem;
   }
 
-  .payment-options {
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    /* Ajustement pour mobile */
-    gap: 0.5rem;
-    width: 100%;
+  .amounts-row {
+  align-items: end;
+    grid-template-columns: 1fr;
   }
 
-  .payment-option {
-    min-height: 55px;
-    font-size: 0.85rem;
-  }
-
-  .payment-icon {
-    font-size: 1.1rem;
-  }
-
-  .numeric-keypad {
-    width: 100%;
-    /* Pleine largeur en mobile */
-    flex: 1 0 auto;
-    /* Permettre au clavier de grandir si nécessaire */
-    grid-template-columns: repeat(3, 1fr);
-    /* Maintenir 3 colonnes pour le clavier principal */
-    padding: 0.5rem;
-  }
-
-  .numeric-keypad.is-mobile-payment {
-    grid-template-columns: repeat(3, 1fr);
-    /* S'assurer que le clavier mobile reste à 3 colonnes */
-  }
-
-  .keypad-button {
-    font-size: 1.2rem;
-    /* Taille de police légèrement réduite pour mobile */
-  }
-
-  /* The clear button in the last row for non-mobile payment keypad should span one column */
-  .numeric-keypad .keypad-row:last-child .keypad-button:first-child {
-    grid-column: span 1;
-  }
-
-  /* The clear button in the last row for mobile payment keypad should span one column */
-  .numeric-keypad.is-mobile-payment .keypad-row:last-child .keypad-button:first-child {
-    grid-column: span 1;
-  }
-
-  .numeric-keypad.is-mobile-payment .keypad-row:nth-child(4) button:nth-child(2) {
-    /* Espace button */
-    font-size: 0.8rem;
-  }
-
-
-  .modal-card-foot {
-    padding: 0.75rem 1rem;
-  }
-
-  .modal-card-foot .button {
-    font-size: 0.9rem;
+  .keypad {
+    max-width: none;
   }
 }
 </style>

@@ -88,6 +88,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
 const props = defineProps({
@@ -121,7 +122,7 @@ const { printerTypes, fetchPrinterTypes } = usePrinterTypes()
 const fetchCashRegisters = async () => {
   try {
     const token = localStorage.getItem('token')
-    let url = 'http://localhost:8000/api/cash-registers'
+    let url = `${API_BASE_URL}/cash-registers`
 
     // Filter by selected POS if admin has selected one
     if (props.selectedPOS) {
@@ -170,7 +171,7 @@ const savePrinter = async () => {
     }
 
     const response = await axios.post(
-      'http://localhost:8000/api/printers',
+      `${API_BASE_URL}/printers`,
       printerData,
       { headers: { Authorization: `Bearer ${token}` } }
     )

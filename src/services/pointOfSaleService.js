@@ -1,12 +1,11 @@
 import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+import { API_BASE_URL } from '@/utils/api'
 const token = localStorage.getItem('token')
 
 export default {
   async getAll() {
     try {
-      const response = await axios.get(`${API_URL}/pointofsales`, {
+      const response = await axios.get(`${API_BASE_URL}/pointofsales`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       return response.data
@@ -18,7 +17,7 @@ export default {
 
   async getById(id) {
     try {
-      const response = await axios.get(`${API_URL}/pointofsales/${id}`, {
+      const response = await axios.get(`${API_BASE_URL}/pointofsales/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       return response.data

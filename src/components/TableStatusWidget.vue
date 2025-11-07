@@ -56,6 +56,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 
 export default {
   name: 'TableStatusWidget',
@@ -263,7 +264,7 @@ export default {
       if (!saleId) return null
       try {
         const token = localStorage.getItem('token')
-        const response = await axios.get(`http://127.0.0.1:8000/api/sales/${saleId}`, {
+        const response = await axios.get(`${API_BASE_URL}/sales/${saleId}`, {
           params: { with_lines: 1, with_order_lines: 1 },
           headers: {
             'Authorization': `Bearer ${token}`
@@ -307,7 +308,7 @@ export default {
 
       tableList.forEach(table => {
         if (!table || !table.id) return
-        const url = `http://127.0.0.1:8000/api/tables/${table.id}/pending-orders`
+        const url = `${API_BASE_URL}/tables/${table.id}/pending-orders`
         tasks.push((async () => {
           try {
             const response = await axios.get(url, {
@@ -369,7 +370,7 @@ export default {
       loading.value = true
       try {
         const token = localStorage.getItem('token')
-        const response = await axios.get('http://127.0.0.1:8000/api/tables', {
+        const response = await axios.get(`${API_BASE_URL}/tables`, {
           params: { with_sales: 1 },
           headers: {
             'Authorization': `Bearer ${token}`,

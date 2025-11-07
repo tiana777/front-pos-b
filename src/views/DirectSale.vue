@@ -19,35 +19,6 @@
       @openPaymentModal="openPaymentModal"
     />
 
-    <!-- Main content -->
-    <div class="flex flex-1 fixed top-20 left-0 right-0 bottom-2">
-    </div>
-      <!-- Catégories -->
-      <div class="w-60 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-        <div class="border-b-2 border-blue-600 mb-4 pb-2">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <font-awesome-icon icon="fa-solid fa-list" />
-            Catégories
-          </h2>
-        </div>
-        <div class="flex flex-col gap-2">
-          <button
-            v-for="category in categories"
-            :key="category.id"
-            @click="loadProducts(category)"
-            :class="[
-              'flex items-center gap-2 px-3 py-2 rounded-md text-left transition',
-              activeCategory?.id === category.id
-                ? 'bg-blue-600 text-white'
-                : 'hover:bg-gray-100'
-            ]"
-          >
-            <font-awesome-icon icon="fa-solid fa-folder" />
-            {{ category.name }}
-          </button>
-        </div>
-      </div>
-
     <div class="direct-sale-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
       <!-- Produits -->
       <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
@@ -116,7 +87,7 @@
             >
               <div class="overflow-hidden rounded-2xl bg-slate-100">
                 <img
-                  :src="`http://localhost:8000/storage/${product.image}`"
+                  :src="getProductImageUrl(product)"
                   class="aspect-square w-full object-cover transition duration-300 group-hover:scale-105"
                   @error="handleImageError"
                   loading="lazy"
@@ -172,13 +143,13 @@
                 <p class="text-sm font-semibold text-slate-800">{{ item.name }}</p>
                 <p class="text-xs text-slate-400">{{ formatPrice(item.price) }}</p>
               </div>
-              <button
-                type="button"
-                class="text-slate-400 transition hover:text-rose-500"
-                @click="removeItem(item)"
-              >
-                <FontAwesomeIcon icon="fa-solid fa-times" />
-              </button>
+          <button
+            type="button"
+            class="text-slate-400 transition hover:text-rose-500"
+            @click="removeItem(item)"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-xmark" />
+          </button>
             </div>
             <div class="mt-3 flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -229,13 +200,13 @@
         </div>
       </aside>
     </div>
-  <!-- </div> -->
 </template>
 
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL, API_URL } from '@/utils/api'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
@@ -245,10 +216,10 @@ import {
   faSearch,
   faShoppingCart,
   faTrash,
-  faTimes,
   faMinus,
   faPlus,
-  faCheck
+  faCheck,
+  faXmark
 } from '@fortawesome/free-solid-svg-icons'
 import PaymentModal from './PaymentModal.vue'
 import InvoiceModal from './InvoiceModal.vue'
@@ -263,6 +234,15 @@ const isInvoiceModalOpen = ref(false)
 const cashTransactionStore = useCashTransactionStore()
 
 const { categories, products, filteredProducts, activeCategory, loadCategories, loadProducts } = useCategories()
+
+const getProductImageUrl = (product) => {
+  const raw = product?.image || product?.product?.image
+  if (!raw) return placeholderImage
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (raw.startsWith('storage/')) return `${API_URL}/${raw}`
+  if (raw.startsWith('products/')) return `${API_URL}/storage/${raw}`
+  return `${API_URL}/storage/products/${raw}`
+}
 
 const openPaymentModal = () => {
   isInvoiceModalOpen.value = false
@@ -328,7 +308,7 @@ const handlePaymentConfirmation = async (paymentData) => {
       ticket_number: Number(ticketNumber)
     }
 
-    const response = await axios.post('http://127.0.0.1:8000/api/sales', saleData, {
+    const response = await axios.post(`${API_BASE_URL}/sales`, saleData, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
@@ -344,7 +324,7 @@ const handlePaymentConfirmation = async (paymentData) => {
         price: Math.round(item.price), // Convert to integer
         total: Math.round(item.price * item.quantity) // Convert to integer
       }
-      await axios.post('http://127.0.0.1:8000/api/orderlines', orderLineData, {
+      await axios.post(`${API_BASE_URL}/orderlines`, orderLineData, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
@@ -354,7 +334,7 @@ const handlePaymentConfirmation = async (paymentData) => {
 
     if (sessionData?.id) {
       try {
-        await axios.post('http://127.0.0.1:8000/api/cash-transactions', {
+        await axios.post(`${API_BASE_URL}/cash-transactions`, {
           session_id: sessionData.id,
           type: 'sale',
           amount: finalAmount,
@@ -372,7 +352,7 @@ const handlePaymentConfirmation = async (paymentData) => {
     }
 
     try {
-      await axios.post(`http://127.0.0.1:8000/api/printers/invoice/${saleId}`, {}, {
+      await axios.post(`${API_BASE_URL}/printers/invoice/${saleId}`, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -421,7 +401,7 @@ const authHeaders = () => {
 
 const fetchCurrentSession = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-session/my-active-session`, {
       headers: authHeaders()
     })
     return data?.data || data || null
@@ -432,7 +412,7 @@ const fetchCurrentSession = async () => {
 }
 
 // Add icons to library
-library.add(faList, faFolder, faBoxes, faSearch, faShoppingCart, faTrash, faTimes, faMinus, faPlus, faCheck)
+library.add(faList, faFolder, faBoxes, faSearch, faShoppingCart, faTrash, faMinus, faPlus, faCheck, faXmark)
 
 const cart = ref([])
 const activeCategoryId = ref(null)
@@ -521,7 +501,7 @@ onMounted(async () => {
   }
 
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/categories', {
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
       params: {
         'with_products': 1,
         'point_of_sale_id': user.point_of_sale_id,
@@ -551,7 +531,11 @@ onMounted(async () => {
 })
 
 const handleImageError = (event) => {
-  event.target.src = 'https://via.placeholder.com/160x160?text=Image'
+  if (!event?.target) {
+    return
+  }
+  event.target.onerror = null
+  event.target.src = placeholderImage
 }
 </script>
 

@@ -1,79 +1,19 @@
 <template>
-  <Profile />
   <div class="sales-view">
+    <Profile v-if="!embedded" />
+
     <section class="sales-content">
       <header class="sales-header">
         <div>
-          <h1>Ventes de la session</h1>
-          <p>Consultez les tickets enregistrés pendant la session de caisse en cours.</p>
-  <template v-if="!embedded">
-    <Profile />
-  </template>
-  <div class="sales-list-container">
-    <h1 class="title has-text-black">Ventes</h1>
-    <div class="search-container">
-      <input type="text" v-model="searchQuery" placeholder="Rechercher par ticket, produit, date..."
-        class="search-input" />
-    </div>
-
-    <div class="filters-container">
-      <label for="periodFilter">Période:</label>
-      <select id="periodFilter" v-model="periodFilter" @change="applyPeriodFilter" class="filter-select">
-        <option value="">Toutes</option>
-        <option value="today">Aujourd'hui</option>
-        <option value="thisWeek">Cette semaine</option>
-        <option value="thisMonth">Ce mois</option>
-      </select>
-
-      <label for="startDate">Date début:</label>
-      <input type="date" id="startDate" v-model="startDate" class="filter-date" />
-
-      <label for="endDate">Date fin:</label>
-      <input type="date" id="endDate" v-model="endDate" class="filter-date" />
-    </div>
-    <div v-if="loading" class="loading">Chargement des ventes...</div>
-    <div v-else>
-      <div v-if="filteredSales.length === 0">Aucune vente trouvée.</div>
-      <template v-for="sale in filteredSales" :key="sale?.id">
-        <div v-if="sale" class="sale-card">
-          <div class="sale-header flex-header" @click="toggleSale(sale.id)">
-            <h2 class="sale-title">Ticket: {{ sale?.ticket_number || 'N/A' }} - Total: {{ formatPrice(sale?.total_amount
-              || 0) }} - Date: {{ formatDate(sale?.created_at) }}</h2>
-            <button class="toggle-button">{{ expandedSales.has(sale.id) ? '▲' : '▼' }}</button>
-            <button class="edit-button" @click.stop="editSale(sale.id)">Éditer</button>
-            <button class="delete-button" @click.stop="deleteSale(sale.id)">Supprimer</button>
-          </div>
-
-          <div class="sale-actions">
-
-          </div>
-          <table v-if="expandedSales.has(sale.id)" class="order-lines-table">
-            <thead>
-              <tr>
-                <th class="has-text-black">Produit</th>
-                <th class="has-text-black">Quantité</th>
-                <th class="has-text-black">Prix unitaire</th>
-                <th class="has-text-black">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="line in sale.order_lines" :key="line.id">
-                <td class="has-text-black">{{ line.product?.name || 'N/A' }}</td>
-                <td class="has-text-black">{{ line.quantity }}</td>
-                <td class="has-text-black">{{ formatPrice(line.price) }}</td>
-                <td class="has-text-black">{{ formatPrice(line.total) }}</td>
-              </tr>
-              <tr class="order-lines-total-row">
-                <td colspan="3" style="text-align: right; font-weight: bold;">Total</td>
-                <td style="font-weight: bold;">{{formatPrice(sale.order_lines.reduce((sum, line) => sum + line.total,
-                  0))}}</td>
-              </tr>
-            </tbody>
-          </table>
+          <h1>{{ isAdmin ? 'Toutes les ventes' : 'Ventes de la session' }}</h1>
+          <p v-if="isAdmin">Parcourez l’ensemble des ventes enregistrées et appliquez des filtres par caisse ou point de vente.</p>
+          <p v-else>Consultez les tickets enregistrés pendant la session de caisse en cours.</p>
         </div>
-        <div class="meta" v-if="sessionId">
-          <span>Session #{{ sessionId }}</span>
-          <span v-if="filteredSales.length">{{ filteredSales.length }} vente<span v-if="filteredSales.length > 1">s</span></span>
+        <div class="meta" v-if="(!isAdmin && sessionId) || filteredSales.length">
+          <span v-if="!isAdmin && sessionId">Session #{{ sessionId }}</span>
+          <span v-if="filteredSales.length">
+            {{ filteredSales.length }} vente<span v-if="filteredSales.length > 1">s</span>
+          </span>
         </div>
       </header>
 
@@ -86,12 +26,55 @@
         />
 
         <div class="filters">
+          <label v-if="isAdmin">
+            Point de vente
+            <select v-model="pointOfSaleFilter">
+              <option value="">
+                {{ pointOfSales.length ? 'Tous' : 'Aucun point de vente' }}
+              </option>
+              <option
+                v-for="(pos, index) in pointOfSales"
+                :key="getPointOfSaleId(pos) ?? `pos-${index}`"
+                :value="String(getPointOfSaleId(pos) ?? '')"
+                v-if="getPointOfSaleId(pos) !== null"
+              >
+                {{ formatPointOfSaleName(pos) }}
+              </option>
+            </select>
+          </label>
+
+          <label v-if="isAdmin">
+            Caisse
+            <select v-model="cashRegisterFilter" :disabled="!availableCashRegisters.length">
+              <option value="">
+                {{ availableCashRegisters.length ? 'Toutes' : pointOfSaleFilter ? 'Aucune caisse pour ce point de vente' : 'Aucune caisse' }}
+              </option>
+              <option
+                v-for="(register, index) in availableCashRegisters"
+                :key="getRegisterId(register) ?? `register-${index}`"
+                :value="String(getRegisterId(register) ?? '')"
+                v-if="getRegisterId(register) !== null"
+              >
+                {{ formatRegisterName(register) }}
+              </option>
+            </select>
+          </label>
+
           <label>
-            Début
+            Période
+            <select v-model="periodFilter" @change="applyPeriodFilter">
+              <option value="">Toutes</option>
+              <option value="today">Aujourd'hui</option>
+              <option value="thisWeek">Cette semaine</option>
+              <option value="thisMonth">Ce mois</option>
+            </select>
+          </label>
+          <label>
+            Date début
             <input type="date" v-model="startDate" />
           </label>
           <label>
-            Fin
+            Date fin
             <input type="date" v-model="endDate" />
           </label>
         </div>
@@ -104,33 +87,39 @@
         <div v-else-if="filteredSales.length === 0" class="state empty">Aucune vente trouvée.</div>
 
         <transition-group name="fade" tag="div">
-          <article v-for="sale in filteredSales" :key="sale?.id" class="sale-card">
-            <header class="sale-card__header" @click="toggleSale(sale.id)">
+          <article
+            v-for="sale in filteredSales"
+            :key="sale?.id ?? sale?.ticket_number ?? sale?.created_at"
+            class="sale-card"
+          >
+            <header class="sale-card__header" @click="toggleSale(sale?.id)">
               <div class="info">
                 <h2>Ticket #{{ sale?.ticket_number || 'N/A' }}</h2>
                 <p>
                   Créé le {{ formatDate(sale?.created_at) }} · Total {{ formatPrice(sale?.total_amount || 0) }}
                 </p>
               </div>
-              <div class="status-badge" :class="statusClass(sale.status)">
-                <FontAwesomeIcon :icon="statusIcon(sale.status)" />
-                <span>{{ formatStatus(sale.status) }}</span>
+
+              <div class="status-badge" :class="statusClass(sale?.status)">
+                <FontAwesomeIcon :icon="statusIcon(sale?.status)" />
+                <span>{{ formatStatus(sale?.status) }}</span>
               </div>
+
               <div class="actions">
-                <button class="ghost" @click.stop="editSale(sale.id)">
+                <button class="ghost" @click.stop="editSale(sale?.id)">
                   <FontAwesomeIcon icon="fa-solid fa-pen-to-square" />
                 </button>
-                <button class="ghost danger" @click.stop="deleteSale(sale.id)">
+                <button class="ghost danger" @click.stop="deleteSale(sale?.id)">
                   <FontAwesomeIcon icon="fa-solid fa-trash" />
                 </button>
-                <button class="toggle" @click.stop="toggleSale(sale.id)">
-                  <FontAwesomeIcon :icon="expandedSales.has(sale.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" />
+                <button class="toggle" @click.stop="toggleSale(sale?.id)">
+                  <FontAwesomeIcon :icon="expandedSales.has(sale?.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" />
                 </button>
               </div>
             </header>
 
             <transition name="expand">
-              <div v-if="expandedSales.has(sale.id)" class="sale-card__details">
+              <div v-if="expandedSales.has(sale?.id)" class="sale-card__details">
                 <table>
                   <thead>
                     <tr>
@@ -141,17 +130,17 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="line in sale.order_lines" :key="line.id">
-                      <td>{{ line.product?.name || 'N/A' }}</td>
-                      <td>{{ line.quantity }}</td>
-                      <td>{{ formatPrice(line.price) }}</td>
-                      <td>{{ formatPrice(line.total) }}</td>
+                    <tr v-for="line in sale?.order_lines" :key="line?.id">
+                      <td>{{ line?.product?.name || 'N/A' }}</td>
+                      <td>{{ line?.quantity }}</td>
+                      <td>{{ formatPrice(line?.price) }}</td>
+                      <td>{{ formatPrice(line?.total) }}</td>
                     </tr>
                   </tbody>
                   <tfoot>
                     <tr>
                       <td colspan="3">Total ticket</td>
-                      <td>{{ formatPrice(sale.order_lines.reduce((sum, line) => sum + line.total, 0)) }}</td>
+                      <td>{{ formatPrice(totalLinesAmount(sale)) }}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -160,212 +149,64 @@
           </article>
         </transition-group>
       </div>
-
-      <EditSaleModal v-if="isEditModalOpen" :sale="saleToEdit" @save="saveSale" @close="closeEditModal" />
-  <div class="sales-layout grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,280px)_minmax(0,1fr)]">
-    <aside class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div class="flex items-center justify-between">
-        <h2 class="text-base font-semibold text-slate-800">Filtres</h2>
-        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">{{ filteredSales.length }}</span>
-      </div>
-
-      <div class="mt-4 space-y-3 overflow-y-auto pb-1">
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Recherche</label>
-          <div class="relative mt-1">
-            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-              <FontAwesomeIcon icon="fa-solid fa-magnifying-glass" />
-            </span>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Ticket, produit, date..."
-              class="w-full rounded-full border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Période</label>
-          <select
-            id="periodFilter"
-            v-model="periodFilter"
-            @change="applyPeriodFilter"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-          >
-            <option value="">Toutes</option>
-            <option value="today">Aujourd'hui</option>
-            <option value="thisWeek">Cette semaine</option>
-            <option value="thisMonth">Ce mois</option>
-          </select>
-        </div>
-
-        <div class="grid gap-2">
-          <div>
-            <label for="startDate" class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Date début</label>
-            <input
-              id="startDate"
-              type="date"
-              v-model="startDate"
-              class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-          <div>
-            <label for="endDate" class="block text-xs font-semibold uppercase tracking-wide text-slate-400">Date fin</label>
-            <input
-              id="endDate"
-              type="date"
-              v-model="endDate"
-              class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-        <h1 class="text-base font-semibold text-slate-800">Ventes</h1>
-        <span class="text-xs font-semibold text-slate-400">{{ filteredSales.length }} résultat(s)</span>
-      </div>
-
-      <div class="mt-2.5 flex-1 overflow-hidden">
-        <div
-          v-if="loading"
-          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-10 text-center text-sm text-slate-500"
-        >
-          <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
-          <p class="mt-4 font-medium">Chargement des ventes...</p>
-        </div>
-
-        <template v-else>
-          <div
-            v-if="filteredSales.length === 0"
-            class="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-sm text-slate-500"
-          >
-            Aucune vente trouvée
-          </div>
-
-          <div v-else class="flex h-full flex-col overflow-hidden">
-            <div class="flex-1 overflow-y-auto space-y-3 pr-1">
-              <article
-                v-for="(sale, index) in filteredSales"
-                :key="sale?.id ?? sale?.ticket_number ?? sale?.created_at ?? index"
-                class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
-              >
-                <header class="flex flex-wrap items-center gap-3">
-                  <div class="flex flex-col">
-                    <p class="text-sm font-semibold text-slate-800">Ticket {{ sale.ticket_number || '—' }}</p>
-                    <p class="text-xs text-slate-400">{{ formatDate(sale.created_at) }}</p>
-                  </div>
-                  <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-                    {{ formatPrice(sale.total_amount || 0) }}
-                  </span>
-                  <div class="ml-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                      @click.stop="toggleSale(sale.id)"
-                    >
-                      <FontAwesomeIcon :icon="expandedSales.has(sale.id) ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" />
-                    </button>
-                    <button
-                      type="button"
-                      class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                      @click.stop="editSale(sale.id)"
-                    >
-                      <FontAwesomeIcon icon="fa-solid fa-pen" />
-                    </button>
-                    <button
-                      type="button"
-                      class="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
-                      @click.stop="deleteSale(sale.id)"
-                    >
-                      <FontAwesomeIcon icon="fa-solid fa-trash" />
-                    </button>
-                  </div>
-                </header>
-
-                <transition name="fade">
-                  <div v-if="expandedSales.has(sale.id)" class="mt-3 rounded-2xl border border-slate-100 bg-white">
-                    <table class="w-full text-sm">
-                      <thead class="text-xs uppercase tracking-wide text-slate-400">
-                        <tr class="border-b border-slate-100">
-                          <th class="px-4 py-2 text-left">Produit</th>
-                          <th class="px-4 py-2 text-left">Quantité</th>
-                          <th class="px-4 py-2 text-left">Prix unitaire</th>
-                          <th class="px-4 py-2 text-left">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="line in sale.order_lines"
-                          :key="line.id"
-                          class="border-b border-slate-100 last:border-none"
-                        >
-                          <td class="px-4 py-2 text-slate-600">{{ line.product?.name || 'N/A' }}</td>
-                          <td class="px-4 py-2 text-slate-600">{{ line.quantity }}</td>
-                          <td class="px-4 py-2 text-slate-600">{{ formatPrice(line.price) }}</td>
-                          <td class="px-4 py-2 font-semibold text-slate-700">{{ formatPrice(line.total) }}</td>
-                        </tr>
-                        <tr>
-                          <td colspan="3" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Total
-                          </td>
-                          <td class="px-4 py-3 text-sm font-bold text-slate-800">
-                            {{ formatPrice(totalLinesAmount(sale)) }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </transition>
-              </article>
-            </div>
-          </div>
-        </template>
-      </div>
     </section>
-  </div>
 
-  <EditSaleModal v-if="isEditModalOpen" :sale="saleToEdit" @save="saveSale" @close="closeEditModal" />
+    <EditSaleModal v-if="isEditModalOpen" :sale="saleToEdit" @save="saveSale" @close="closeEditModal" />
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import EditSaleModal from './EditSaleModal.vue'
 import Profile from './Profile.vue'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
-  faPenToSquare,
-  faTrash,
   faChevronDown,
   faChevronUp,
   faCircleCheck,
   faCircleXmark,
-  faClock
+  faClock,
+  faPenToSquare,
+  faTrash
 } from '@fortawesome/free-solid-svg-icons'
+import { useAuth } from '@/composables/useAuth'
+import { API_BASE_URL } from '@/utils/api'
 
-library.add(faPenToSquare, faTrash, faChevronDown, faChevronUp, faCircleCheck, faCircleXmark, faClock)
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+library.add(faChevronDown, faChevronUp, faCircleCheck, faCircleXmark, faClock, faPenToSquare, faTrash)
 
 const props = defineProps({
-  embedded: { type: Boolean, default: false },
+  embedded: { type: Boolean, default: false }
 })
+const embedded = computed(() => props.embedded)
+const { isAdmin, loadUserData, currentUser } = useAuth()
+
 const sales = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
-const expandedSales = ref(new Set())
-
+const periodFilter = ref('')
 const startDate = ref('')
 const endDate = ref('')
-
+const expandedSales = ref(new Set())
 const isEditModalOpen = ref(false)
 const saleToEdit = ref(null)
 const sessionId = ref(null)
 const loadError = ref('')
+const cashRegisterFilter = ref('')
+const pointOfSaleFilter = ref('')
+const cashRegisters = ref([])
+const pointOfSales = ref([])
+
+const authHeaders = () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    const error = new Error('Token manquant. Veuillez vous reconnecter.')
+    error.code = 'NO_TOKEN'
+    throw error
+  }
+  return { Authorization: `Bearer ${token}` }
+}
 
 const openEditModal = (sale) => {
   saleToEdit.value = sale
@@ -378,97 +219,95 @@ const closeEditModal = () => {
 }
 
 const saveSale = async (updatedSale) => {
-  const index = sales.value.findIndex((s) => s.id === updatedSale.id)
+  if (!updatedSale?.id) {
+    closeEditModal()
+    return
+  }
+
+  const index = sales.value.findIndex((s) => s?.id === updatedSale.id)
   if (index !== -1) {
     sales.value[index] = updatedSale
   }
+
   try {
-    const token = localStorage.getItem('token')
-    await axios.put(`http://127.0.0.1:8000/api/sales/${updatedSale.id}`, updatedSale, {
+    await axios.put(`${API_BASE_URL}/sales/${updatedSale.id}`, updatedSale, {
       headers: {
-        Authorization: `Bearer ${token}`,
-      },
+        'Content-Type': 'application/json',
+        ...authHeaders()
+      }
     })
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la vente:', error.response?.data || error.message)
   }
+
   closeEditModal()
 }
 
 const editSale = (saleId) => {
-  const sale = sales.value.find((s) => s.id === saleId)
+  const sale = sales.value.find((s) => s?.id === saleId)
   if (sale) {
     openEditModal(sale)
   }
 }
 
-const applyPeriodFilter = () => {
-  const now = new Date()
-  if (periodFilter.value === 'today') {
-    startDate.value = now.toISOString().slice(0, 10)
-    endDate.value = now.toISOString().slice(0, 10)
-  } else if (periodFilter.value === 'thisWeek') {
-    const firstDayOfWeek = new Date(now)
-    firstDayOfWeek.setDate(now.getDate() - now.getDay())
-    startDate.value = firstDayOfWeek.toISOString().slice(0, 10)
-    endDate.value = new Date().toISOString().slice(0, 10)
-  } else if (periodFilter.value === 'thisMonth') {
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    startDate.value = firstDayOfMonth.toISOString().slice(0, 10)
-    endDate.value = new Date().toISOString().slice(0, 10)
-  } else {
-    startDate.value = ''
-    endDate.value = ''
+const deleteSale = async (saleId) => {
+  if (!saleId) return
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette vente ?')) return
+
+  try {
+    await axios.delete(`${API_BASE_URL}/sales/${saleId}`, {
+      headers: authHeaders()
+    })
+    sales.value = sales.value.filter((s) => s?.id !== saleId)
+    const current = new Set(expandedSales.value)
+    current.delete(saleId)
+    expandedSales.value = current
+  } catch (error) {
+    console.error('Erreur lors de la suppression de la vente:', error.response?.data || error.message)
+    loadError.value = error.response?.data?.message || 'Impossible de supprimer la vente.'
   }
 }
 
-const filteredSales = computed(() => {
-  let filtered = sales.value
+const applyPeriodFilter = () => {
+  const now = new Date()
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter((sale) => {
-      if (!sale) return false
-
-      const ticketValue = sale.ticket_number != null ? sale.ticket_number.toString() : ''
-      const ticketMatch = ticketValue.toLowerCase().includes(query)
-
-      const dateValue = formatDate(sale.created_at)
-      const dateMatch = dateValue.toLowerCase().includes(query)
-
-      const productMatch = sale.order_lines?.some((line) => {
-        const name = typeof line?.product?.name === 'string' ? line.product.name : ''
-        return name.toLowerCase().includes(query)
-      })
-
-      return ticketMatch || dateMatch || productMatch
-    })
+  switch (periodFilter.value) {
+    case 'today': {
+      const today = now.toISOString().slice(0, 10)
+      startDate.value = today
+      endDate.value = today
+      break
+    }
+    case 'thisWeek': {
+      const firstDayOfWeek = new Date(now)
+      firstDayOfWeek.setDate(now.getDate() - now.getDay())
+      startDate.value = firstDayOfWeek.toISOString().slice(0, 10)
+      endDate.value = now.toISOString().slice(0, 10)
+      break
+    }
+    case 'thisMonth': {
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      startDate.value = firstDayOfMonth.toISOString().slice(0, 10)
+      endDate.value = now.toISOString().slice(0, 10)
+      break
+    }
+    default:
+      startDate.value = ''
+      endDate.value = ''
   }
-
-  if (startDate.value) {
-    filtered = filtered.filter((sale) => {
-      const saleDate = new Date(sale.created_at)
-      const start = new Date(startDate.value)
-      start.setHours(0, 0, 0, 0)
-      return saleDate >= start
-    })
-  }
-
-  if (endDate.value) {
-    filtered = filtered.filter((sale) => {
-      const saleDate = new Date(sale.created_at)
-      const end = new Date(endDate.value)
-      end.setHours(23, 59, 59, 999)
-      return saleDate <= end
-    })
-  }
-
-  return filtered.filter((sale) => sale && typeof sale === 'object')
-})
+}
 
 const formatPrice = (price) => {
-  const amount = Math.round(Number(price) || 0)
-  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)} Ar`
+  const value = Number(price)
+  const amount = Number.isFinite(value) ? value : 0
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Math.round(amount))} Ar`
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 const statusIcon = (status) => {
@@ -499,129 +338,272 @@ const statusClass = (status) => {
 
 const formatStatus = (status) => {
   if (!status) return 'En attente'
-  const map = {
+  const labels = {
     completed: 'Terminée',
     paid: 'Payée',
     pending: 'En attente',
     cancelled: 'Annulée',
     refund: 'Remboursée'
   }
-  return map[status.toLowerCase()] || status
-  const value = Number.parseFloat(price)
-  if (!Number.isFinite(value)) return '—'
-  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ar`
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+  return labels[status.toLowerCase()] || status
 }
 
 const totalLinesAmount = (sale) => {
-  if (!sale?.order_lines?.length) return 0
-  return sale.order_lines.reduce((sum, line) => sum + (Number(line.total) || 0), 0)
+  if (!sale?.order_lines) return 0
+  return sale.order_lines.reduce((sum, line) => sum + (Number(line?.total) || 0), 0)
 }
 
 const toggleSale = (saleId) => {
-  if (expandedSales.value.has(saleId)) {
-    expandedSales.value.delete(saleId)
+  if (!saleId) return
+  const current = new Set(expandedSales.value)
+  if (current.has(saleId)) {
+    current.delete(saleId)
   } else {
-    expandedSales.value.add(saleId)
+    current.add(saleId)
   }
-  expandedSales.value = new Set(expandedSales.value)
+  expandedSales.value = current
 }
 
-const deleteSale = async (saleId) => {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer cette vente ?')) {
-    return
+const getRegisterId = (register) => {
+  return register?.id ?? register?.cash_register_id ?? register?.cashRegisterId ?? null
+}
+
+const getPointOfSaleIdFromRegister = (register) => {
+  return (
+    register?.point_of_sale_id ??
+    register?.pointOfSaleId ??
+    register?.point_of_sale?.id ??
+    null
+  )
+}
+
+const getPointOfSaleId = (pointOfSale) => {
+  return pointOfSale?.id ?? pointOfSale?.point_of_sale_id ?? pointOfSale?.pointOfSaleId ?? null
+}
+
+const formatRegisterName = (register) => {
+  if (!register) return 'Caisse'
+  return register?.name || register?.label || `Caisse #${getRegisterId(register) ?? '—'}`
+}
+
+const formatPointOfSaleName = (pointOfSale) => {
+  if (!pointOfSale) return 'Point de vente'
+  return pointOfSale?.name || pointOfSale?.label || `Point de vente #${getPointOfSaleId(pointOfSale) ?? '—'}`
+}
+
+const getSaleCashRegisterId = (sale) => {
+  return (
+    sale?.cash_register_id ??
+    sale?.cash_register?.id ??
+    sale?.cashRegisterId ??
+    null
+  )
+}
+
+const getSalePointOfSaleId = (sale) => {
+  return (
+    sale?.point_of_sale_id ??
+    sale?.pointOfSaleId ??
+    sale?.cash_register?.point_of_sale_id ??
+    sale?.cash_register?.point_of_sale?.id ??
+    null
+  )
+}
+
+const availableCashRegisters = computed(() => {
+  if (!pointOfSaleFilter.value) {
+    return cashRegisters.value
   }
-  try {
-    const token = localStorage.getItem('token')
-    await axios.delete(`http://127.0.0.1:8000/api/sales/${saleId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  return cashRegisters.value.filter((register) => {
+    const registerPosId = getPointOfSaleIdFromRegister(register)
+    return String(registerPosId ?? '') === pointOfSaleFilter.value
+  })
+})
+
+const filteredSales = computed(() => {
+  let filtered = sales.value.filter((sale) => sale && typeof sale === 'object')
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+
+    filtered = filtered.filter((sale) => {
+      const ticketValue = sale.ticket_number != null ? String(sale.ticket_number) : ''
+      const dateValue = formatDate(sale.created_at)
+
+      const ticketMatch = ticketValue.toLowerCase().includes(query)
+      const dateMatch = dateValue.toLowerCase().includes(query)
+      const productMatch = sale.order_lines?.some((line) => {
+        const name = typeof line?.product?.name === 'string' ? line.product.name : ''
+        return name.toLowerCase().includes(query)
+      })
+
+      return ticketMatch || dateMatch || productMatch
     })
-    sales.value = sales.value.filter((s) => s.id !== saleId)
-  } catch (error) {
-    console.error('Erreur lors de la suppression de la vente:', error.response?.data || error.message)
   }
-}
 
-const authHeaders = () => {
-  const token = localStorage.getItem('token')
-  if (!token) throw new Error('Token manquant')
-  return { Authorization: `Bearer ${token}` }
-}
+  if (startDate.value) {
+    const start = new Date(startDate.value)
+    start.setHours(0, 0, 0, 0)
+    filtered = filtered.filter((sale) => {
+      const saleDate = new Date(sale.created_at)
+      return saleDate >= start
+    })
+  }
+
+  if (endDate.value) {
+    const end = new Date(endDate.value)
+    end.setHours(23, 59, 59, 999)
+    filtered = filtered.filter((sale) => {
+      const saleDate = new Date(sale.created_at)
+      return saleDate <= end
+    })
+  }
+
+  if (cashRegisterFilter.value) {
+    filtered = filtered.filter((sale) => {
+      const id = getSaleCashRegisterId(sale)
+      return String(id ?? '') === cashRegisterFilter.value
+    })
+  }
+
+  if (pointOfSaleFilter.value) {
+    filtered = filtered.filter((sale) => {
+      const id = getSalePointOfSaleId(sale)
+      return String(id ?? '') === pointOfSaleFilter.value
+    })
+  }
+
+  return filtered
+})
+
+watch(pointOfSaleFilter, () => {
+  if (!cashRegisterFilter.value) return
+  const isValid = availableCashRegisters.value.some((register) => {
+    const registerId = getRegisterId(register)
+    return String(registerId ?? '') === cashRegisterFilter.value
+  })
+  if (!isValid) {
+    cashRegisterFilter.value = ''
+  }
+})
 
 const fetchActiveSession = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-session/my-active-session`, {
       headers: authHeaders()
     })
+
     const session = data?.data || data || null
     if (!session) {
       loadError.value = 'Aucune session de caisse active.'
       return null
     }
+
     return session
   } catch (error) {
     console.error('Erreur session active:', error.response?.data || error.message)
-    loadError.value = error.response?.data?.message || 'Impossible de récupérer la session active.'
-    return null
+    loadError.value = error.response?.data?.message || error.message || 'Impossible de récupérer la session active.'
+    throw error
   }
 }
 
-const fetchSales = async (session, user) => {
+const fetchSales = async (params = {}) => {
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/sales', {
-      params: {
-        cash_register_session_id: session.id,
-        user_id: user?.id
-      },
+    const { data } = await axios.get(`${API_BASE_URL}/sales`, {
+      params,
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders()
       }
     })
-    sales.value = response.data?.data || response.data || []
-  if (!user?.point_of_sale_id || !token || !session) {
-    console.error('Utilisateur non authentifié, point de vente ou session non défini')
-    loading.value = false
-    return
-  }
 
-  try {
-    const response = await axios.get('http://127.0.0.1:8000/api/sales', {
-      params: {
-        user_id: user.id,
-        cash_register_session_id: session.id,
-      },
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    sales.value = response.data.data || response.data
+    const payload = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    sales.value = payload.filter((sale) => sale && typeof sale === 'object')
+    expandedSales.value = new Set()
   } catch (error) {
     console.error('Erreur chargement ventes:', error.response?.data || error.message)
     loadError.value = error.response?.data?.message || 'Impossible de charger les ventes de la session.'
+    throw error
+  }
+}
+
+const extractArray = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  if (Array.isArray(payload?.results)) return payload.results
+  return []
+}
+
+const fetchCashRegisters = async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-registers`, {
+      params: { per_page: 500 },
+      headers: authHeaders()
+    })
+    const registers = extractArray(data?.data ?? data)
+    const unique = []
+    const seen = new Set()
+    registers.forEach((register) => {
+      const id = getRegisterId(register)
+      if (id == null || seen.has(id)) return
+      seen.add(id)
+      unique.push(register)
+    })
+    cashRegisters.value = unique
+  } catch (error) {
+    console.error('Erreur chargement caisses:', error.response?.data || error.message)
+  }
+}
+
+const fetchPointOfSales = async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/point-of-sales`, {
+      params: { per_page: 500 },
+      headers: authHeaders()
+    })
+    const points = extractArray(data?.data ?? data)
+    const unique = []
+    const seen = new Set()
+    points.forEach((point) => {
+      const id = getPointOfSaleId(point)
+      if (id == null || seen.has(id)) return
+      seen.add(id)
+      unique.push(point)
+    })
+    pointOfSales.value = unique
+  } catch (error) {
+    console.error('Erreur chargement points de vente:', error.response?.data || error.message)
   }
 }
 
 onMounted(async () => {
   loading.value = true
   loadError.value = ''
-  const user = JSON.parse(localStorage.getItem('user'))
 
   try {
-    const session = await fetchActiveSession()
-    if (!session) return
-    sessionId.value = session.id
-    await fetchSales(session, user)
+    await loadUserData()
+  } catch (error) {
+    console.error('Erreur chargement utilisateur:', error)
+  }
+
+  try {
+    if (isAdmin.value) {
+      sessionId.value = null
+      await Promise.allSettled([fetchSales(), fetchCashRegisters(), fetchPointOfSales()])
+    } else {
+      const session = await fetchActiveSession()
+      if (!session) return
+      sessionId.value = session.id
+      await fetchSales({
+        cash_register_session_id: session.id,
+        user_id: currentUser.value?.id ?? null
+      })
+    }
+  } catch (error) {
+    if (!loadError.value) {
+      loadError.value = error.message || 'Une erreur est survenue lors du chargement des ventes.'
+    }
   } finally {
     loading.value = false
   }
@@ -631,8 +613,11 @@ onMounted(async () => {
 <style scoped>
 .sales-view {
   min-height: 100vh;
-  padding: 5.5rem 1.5rem 2.5rem;
+  padding: 3rem 1.5rem;
   background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .sales-content {
@@ -642,14 +627,16 @@ onMounted(async () => {
   border-radius: 1.25rem;
   box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
   padding: 2rem 2.5rem;
-  display: grid;
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .sales-header {
   display: flex;
   justify-content: space-between;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
   align-items: flex-start;
 }
 
@@ -681,7 +668,7 @@ onMounted(async () => {
 
 .utilities .search-input {
   width: 100%;
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.85rem;
   border: 1px solid #cbd5f5;
   background: #f8fafc;
@@ -697,7 +684,7 @@ onMounted(async () => {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
 }
 
@@ -711,16 +698,16 @@ onMounted(async () => {
 
 .filters select,
 .filters input {
-  padding: 0.55rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 0.75rem;
   border: 1px solid #cbd5f5;
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #0f172a;
 }
 
 .sales-list {
   display: grid;
-  gap: 1.1rem;
+  gap: 1.2rem;
 }
 
 .state {
@@ -798,13 +785,13 @@ onMounted(async () => {
 }
 
 .status--success {
-  background: rgba(22, 163, 74, 0.12);
-  color: #166534;
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
 }
 
 .status--danger {
-  background: rgba(220, 38, 38, 0.12);
-  color: #991b1b;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
 }
 
 .status--pending {
@@ -812,106 +799,96 @@ onMounted(async () => {
   color: #1d4ed8;
 }
 
-.sale-card__header .actions {
+.actions {
   display: flex;
-  gap: 0.45rem;
   align-items: center;
+  gap: 0.4rem;
 }
 
-.sale-card__header .actions button {
+.actions button {
   border: none;
-  background: none;
   cursor: pointer;
-  font-weight: 600;
-  padding: 0.4rem 0.7rem;
-  border-radius: 0.65rem;
-  transition: background 0.2s ease, color 0.2s ease;
+  background: transparent;
+  border-radius: 9999px;
+  height: 2.2rem;
+  width: 2.2rem;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
-.sale-card__header .actions .ghost {
-  color: #2563eb;
+.actions .ghost {
+  color: #1e293b;
+  background: rgba(226, 232, 240, 0.5);
 }
 
-.sale-card__header .actions .ghost:hover {
-  background: rgba(37, 99, 235, 0.12);
+.actions .ghost:hover {
+  background: rgba(59, 130, 246, 0.16);
+  color: #1d4ed8;
+  transform: translateY(-1px);
 }
 
-.sale-card__header .actions .danger {
-  color: #dc2626;
+.actions .ghost.danger {
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.6);
 }
 
-.sale-card__header .actions .danger:hover {
-  background: rgba(220, 38, 38, 0.12);
+.actions .ghost.danger:hover {
+  background: rgba(248, 113, 113, 0.18);
+  color: #991b1b;
 }
 
-.sale-card__header .actions .toggle {
-  background: rgba(148, 163, 184, 0.18);
-  color: #334155;
+.actions .toggle {
+  background: rgba(226, 232, 240, 0.4);
+  color: #475569;
 }
 
-.sale-card__header .actions .toggle:hover {
-  background: rgba(148, 163, 184, 0.3);
+.actions .toggle:hover {
+  background: rgba(37, 99, 235, 0.18);
+  color: #1d4ed8;
 }
 
-.sale-card__header .actions .toggle svg {
-  pointer-events: none;
+.sale-card__details {
+  overflow: hidden;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: #fff;
 }
 
 .sale-card__details table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 0.9rem;
-  overflow: hidden;
-}
-
-.sale-card__details thead {
-  background: #f1f5f9;
-  color: #475569;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
 }
 
 .sale-card__details th,
 .sale-card__details td {
-  padding: 0.65rem 0.75rem;
+  padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.9rem;
 }
 
-.sale-card__details tbody tr:hover {
-  background: rgba(226, 232, 240, 0.35);
+.sale-card__details thead {
+  background: rgba(226, 232, 240, 0.4);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: #64748b;
 }
 
-.sale-card__details tfoot td {
+.sale-card__details tbody tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.sale-card__details tfoot {
   font-weight: 700;
-  color: #0f172a;
-  border-top: 1px solid #cbd5f5;
+  background: rgba(226, 232, 240, 0.4);
 }
 
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
-.sales-layout {
-  min-height: calc(100vh - 5rem);
-  min-height: calc(100dvh - 5rem);
-}
-
-@media (min-width: 1024px) {
-  .sales-layout {
-    height: calc(100vh - 5.5rem);
-    height: calc(100dvh - 5.5rem);
-    max-height: calc(100vh - 5.5rem);
-    max-height: calc(100dvh - 5.5rem);
-    overflow: hidden;
-  }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .fade-enter-from,
@@ -921,13 +898,13 @@ onMounted(async () => {
 
 .expand-enter-active,
 .expand-leave-active {
-  transition: height 0.25s ease, opacity 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .expand-enter-from,
 .expand-leave-to {
-  height: 0;
   opacity: 0;
+  transform: translateY(-4px);
 }
 
 @media (max-width: 768px) {
@@ -935,18 +912,13 @@ onMounted(async () => {
     padding: 1.5rem;
   }
 
-  .sales-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .sales-header h1 {
+    font-size: 1.6rem;
   }
 
-  .sale-card__header {
-    flex-direction: column;
+  .actions button {
+    height: 2rem;
+    width: 2rem;
   }
-
-  .sale-card__header .actions {
-    align-self: flex-end;
-  }
-  transform: translateY(-4px);
 }
 </style>

@@ -1,35 +1,61 @@
 <template>
-  <Profile />
-  <section class="py-16">
-    <div class="max-w-xl mx-auto">
-      <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-lg p-8 text-black transition duration-300 hover:shadow-xl">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur">
+    <div class="relative mx-4 w-full max-w-4xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
         <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Connexion caisse</p>
+          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Associer cette machine à une caisse</h1>
+          <p class="mt-1 text-sm text-slate-500">
+            Sélectionnez ou créez une caisse pour pouvoir ouvrir une session et encaisser des ventes.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600"
+          @click="closeModal"
+        >
+          <i class="fas fa-xmark"></i>
+          Fermer
+        </button>
+      </header>
+
+      <div
+        class="grid gap-6 px-6 py-6"
+        :class="{
+          'justify-items-center': !isAdmin,
+          'lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]': isAdmin
+        }"
+      >
+        <section
+          class="w-full space-y-6 rounded-2xl border border-slate-200 bg-slate-50 p-5"
+          :class="{ 'mx-auto max-w-2xl': !isAdmin }"
+        >
           <div v-if="!isAdmin">
-            <div class="rounded-lg border border-gray-200 bg-white p-5">
-              <h2 class="text-lg font-semibold text-gray-800 mb-3">Machine actuelle</h2>
-              <p class="text-sm text-gray-600">
+            <div class="rounded-2xl border border-white bg-white/90 px-5 py-5 shadow-sm">
+              <h2 class="text-lg font-semibold text-slate-900">Machine actuelle</h2>
+              <p class="mt-1 text-sm text-slate-500">
                 Nom détecté :
-                <span v-if="machineIdentifier" class="font-semibold text-blue-700">{{ machineIdentifier }}</span>
+                <span v-if="machineIdentifier" class="font-semibold text-indigo-600">{{ machineIdentifier }}</span>
                 <span v-else class="text-amber-600">Non détecté</span>
               </p>
 
-              <p v-if="hasActiveSession" class="mt-3 text-sm text-blue-700 bg-blue-50 rounded-md px-3 py-2">
+              <p v-if="hasActiveSession" class="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-600">
                 Session ouverte sur <strong>{{ activeSession?.cash_register?.name }}</strong>.
                 Utilisez «&nbsp;Résumé &amp; Continuer&nbsp;» pour reprendre vos ventes.
               </p>
 
-              <div v-if="loadingRegisters" class="text-center text-gray-500 py-6">
+              <div v-if="loadingRegisters" class="py-6 text-center text-slate-500">
                 Chargement des caisses...
               </div>
               <div v-else class="mt-4 space-y-3">
                 <div v-if="machineRegister">
-                  <p class="text-sm text-gray-700">
+                  <p class="text-sm text-slate-700">
                     Caisse associée : <strong>{{ machineRegister.name }}</strong>
-                    <span v-if="machineRegister.point_of_sale?.name" class="text-gray-500">
+                    <span v-if="machineRegister.point_of_sale?.name" class="text-slate-400">
                       — {{ machineRegister.point_of_sale.name }}
                     </span>
                   </p>
-                  <p class="text-xs text-gray-500">
+                  <p class="text-xs text-slate-400">
                     Statut :
                     <span :class="['font-semibold', statusBadgeClass(machineRegister.id)]">
                       {{ statusBadgeText(machineRegister.id) || 'Disponible' }}
@@ -37,14 +63,15 @@
                   </p>
                 </div>
                 <div v-else class="space-y-2">
-                  <p class="text-sm text-red-600">
+                  <p class="text-sm font-semibold text-rose-600">
                     Aucune caisse n'est associée à cette machine. Créez-la avant de continuer.
                   </p>
                   <button
                     type="button"
-                    class="px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
                     @click="goToMachineManagement"
                   >
+                    <i class="fas fa-plus"></i>
                     Créer / associer une caisse
                   </button>
                 </div>
@@ -52,19 +79,19 @@
             </div>
           </div>
 
-          <div v-else class="field">
-            <label class="label">Choisir une caisse</label>
-            <div class="control">
-              <div v-if="loadingRegisters" class="text-center text-gray-500 py-6">
+          <div v-else>
+            <p class="text-sm font-semibold text-slate-700">Sélectionner une caisse</p>
+            <div class="mt-3">
+              <div v-if="loadingRegisters" class="py-6 text-center text-slate-500">
                 Chargement des caisses...
               </div>
               <div v-else>
-                <div v-if="availableRegisters.length" class="cash-register-grid">
+                <div v-if="availableRegisters.length" class="grid gap-3 sm:grid-cols-2">
                   <button
                     v-for="register in availableRegisters"
                     :key="register.id"
                     type="button"
-                    class="cash-register-card"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
                     :class="{
                       connected: registerStatuses[register.id] === 'connected',
                       selected: selectedCashRegister === register.id,
@@ -78,11 +105,18 @@
                     @keyup.enter.prevent="selectCashRegister(register.id)"
                     @keyup.space.prevent="selectCashRegister(register.id)"
                   >
-                    <span class="icon is-large">
-                      <i class="fas fa-desktop fa-2x"></i>
-                    </span>
-                    <div class="font-semibold mt-3 text-base">{{ register.name }}</div>
-                    <div class="mt-2">
+                    <div class="flex items-center gap-3">
+                      <span class="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                        <i class="fas fa-desktop"></i>
+                      </span>
+                      <div>
+                        <p class="font-semibold text-slate-900">{{ register.name }}</p>
+                        <p class="text-xs text-slate-400">
+                          {{ register.point_of_sale?.name || 'Sans point de vente' }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="mt-3">
                       <span
                         v-if="statusBadgeText(register.id)"
                         :class="['px-2 py-1 rounded text-xs font-semibold', statusBadgeClass(register.id)]"
@@ -92,128 +126,131 @@
                     </div>
                   </button>
                 </div>
-                <div v-else class="text-center text-gray-400 py-6">
+                <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                   Aucune caisse disponible.
                 </div>
               </div>
             </div>
           </div>
 
-          <p v-if="errorMessage" class="text-red-600 text-center mt-4 text-sm">{{ errorMessage }}</p>
-          <p
-            v-if="machineIdentifier && !isAdmin"
-            class="text-gray-500 text-center mt-2 text-sm"
-          >
-            Machine détectée&nbsp;: <strong>{{ machineIdentifier }}</strong>
-          </p>
-          <p
-            v-if="machineIdentifierMessage"
-            class="text-amber-600 text-center mt-2 text-sm"
-          >
-            {{ machineIdentifierMessage }}
-          </p>
+          <div class="space-y-3">
+            <p v-if="errorMessage" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+              {{ errorMessage }}
+            </p>
+            <p v-if="machineIdentifier && !isAdmin" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              Machine détectée : <strong>{{ machineIdentifier }}</strong>
+            </p>
+            <p v-if="machineIdentifierMessage" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-600">
+              {{ machineIdentifierMessage }}
+            </p>
+          </div>
 
           <button
-            class="button is-primary is-fullwidth mt-4"
-            :class="{ 'is-loading': isProcessing }"
             type="button"
+            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            :class="{ 'pointer-events-none': isProcessing }"
             :disabled="connectButtonDisabled"
-            :aria-disabled="connectButtonDisabled"
-            :aria-busy="isProcessing"
             @click="onConnectButtonClick"
           >
-            <span class="icon"><i class="fas fa-link"></i></span>
-            <span>{{ connectButtonText }}</span>
+            <i class="fas fa-link"></i>
+            {{ connectButtonText }}
           </button>
 
-          <div v-if="isSelfConnected && !isAdmin" class="buttons-container">
-            <button class="button is-warning is-light" type="button" @click="resetCashRegister">
-              <i class="fas fa-sync-alt"></i> Remise à zéro
+          <div v-if="isSelfConnected && !isAdmin" class="mt-4 flex flex-wrap gap-2">
+            <button
+              class="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-600 transition hover:bg-amber-100"
+              type="button"
+              @click="resetCashRegister"
+            >
+              <i class="fas fa-sync-alt"></i>
+              Remise à zéro
             </button>
             <button
-              class="bg-blue-100 text-blue-700 px-4 py-2 rounded flex items-center gap-2 font-semibold hover:bg-blue-200"
+              class="inline-flex items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100"
               type="button"
               @click="performCashCount"
             >
-              <i class="fas fa-money-bill-wave"></i> Billetage
+              <i class="fas fa-money-bill-wave"></i>
+              Billetage
             </button>
             <button
-              class="bg-blue-100 text-blue-700 px-4 py-2 rounded flex items-center gap-2 font-semibold hover:bg-blue-200"
+              class="inline-flex items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100"
               type="button"
               @click="viewSales"
             >
-              <i class="fas fa-chart-line"></i> Mes ventes
+              <i class="fas fa-chart-line"></i>
+              Mes ventes
             </button>
           </div>
 
-          <p v-if="isSelfConnected" class="has-text-success has-text-centered mt-3">
+          <p v-if="isSelfConnected" class="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-600">
             ✅ Caisse connectée : {{ activeSession?.cash_register?.name || connectedCashRegisterName }}
           </p>
+        </section>
+      </div>
+
+      <AmountModal :isOpen="isAmountModalOpen" @close="closeAmountModal" @send="handleAmountModalSend" />
+
+      <div v-if="isSummaryModalOpen" class="modal is-active">
+        <div class="modal-background" @click="closeSummaryModal"></div>
+        <div class="modal-card summary-modal">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Résumé de la session</p>
+            <button class="delete" type="button" aria-label="Fermer" @click="closeSummaryModal"></button>
+          </header>
+          <section class="modal-card-body">
+            <div v-if="summaryLoading" class="py-4 text-center text-slate-500">
+              Chargement du résumé...
+            </div>
+            <p v-else-if="summaryError" class="text-center text-sm text-rose-600">
+              {{ summaryError }}
+            </p>
+            <div v-else>
+              <div class="summary-row">
+                <span class="summary-label">Caisse</span>
+                <span class="summary-value">{{ activeSession?.cash_register?.name }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Ouverte par</span>
+                <span class="summary-value">{{ activeSession?.user?.name || 'Moi' }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Ouverte le</span>
+                <span class="summary-value">{{ formatDate(activeSession?.opened_at) }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Fond de caisse</span>
+                <span class="summary-value">{{ formatCurrency(activeSession?.starting_amount) }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Total transactions</span>
+                <span class="summary-value">{{ formatCurrency(sessionSummary?.total_transactions) }}</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-label">Écarts signalés</span>
+                <span class="summary-value">{{ formatCurrency(sessionSummary?.total_discrepancies) }}</span>
+              </div>
+              <div class="summary-row" v-if="sessionSummary?.session?.expected_cash_amount !== undefined">
+                <span class="summary-label">Montant attendu</span>
+                <span class="summary-value">{{ formatCurrency(sessionSummary?.session?.expected_cash_amount) }}</span>
+              </div>
+            </div>
+          </section>
+          <footer class="modal-card-foot">
+            <button
+              class="button is-primary"
+              type="button"
+              :disabled="summaryLoading"
+              @click="continueAfterSummary"
+            >
+              Continuer à vendre
+            </button>
+            <button class="button" type="button" :disabled="summaryLoading" @click="closeSummaryModal">
+              Fermer
+            </button>
+          </footer>
         </div>
       </div>
-    </div>
-  </section>
-
-  <AmountModal :isOpen="isAmountModalOpen" @close="closeAmountModal" @send="handleAmountModalSend" />
-
-  <div v-if="isSummaryModalOpen" class="modal is-active">
-    <div class="modal-background" @click="closeSummaryModal"></div>
-    <div class="modal-card summary-modal">
-      <header class="modal-card-head">
-        <p class="modal-card-title">Résumé de la session</p>
-        <button class="delete" type="button" aria-label="Fermer" @click="closeSummaryModal"></button>
-      </header>
-      <section class="modal-card-body">
-        <div v-if="summaryLoading" class="text-center text-gray-500 py-4">
-          Chargement du résumé...
-        </div>
-        <p v-else-if="summaryError" class="text-red-600 text-sm text-center">
-          {{ summaryError }}
-        </p>
-        <div v-else>
-          <div class="summary-row">
-            <span class="summary-label">Caisse</span>
-            <span class="summary-value">{{ activeSession?.cash_register?.name }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Ouverte par</span>
-            <span class="summary-value">{{ activeSession?.user?.name || 'Moi' }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Ouverte le</span>
-            <span class="summary-value">{{ formatDate(activeSession?.opened_at) }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Fond de caisse</span>
-            <span class="summary-value">{{ formatCurrency(activeSession?.starting_amount) }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Total transactions</span>
-            <span class="summary-value">{{ formatCurrency(sessionSummary?.total_transactions) }}</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Écarts signalés</span>
-            <span class="summary-value">{{ formatCurrency(sessionSummary?.total_discrepancies) }}</span>
-          </div>
-          <div class="summary-row" v-if="sessionSummary?.session?.expected_cash_amount !== undefined">
-            <span class="summary-label">Montant attendu</span>
-            <span class="summary-value">{{ formatCurrency(sessionSummary?.session?.expected_cash_amount) }}</span>
-          </div>
-        </div>
-      </section>
-      <footer class="modal-card-foot">
-        <button
-          class="button is-primary"
-          type="button"
-          :disabled="summaryLoading"
-          @click="continueAfterSummary"
-        >
-          Continuer à vendre
-        </button>
-        <button class="button" type="button" :disabled="summaryLoading" @click="closeSummaryModal">
-          Fermer
-        </button>
-      </footer>
     </div>
   </div>
 </template>
@@ -223,6 +260,9 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import AmountModal from './AmountModal.vue'
+import { useAuth } from '@/composables/useAuth'
+import { API_BASE_URL, API_URL } from '@/utils/api'
+
 const router = useRouter()
 const { isAdmin, currentUser, loadUserData } = useAuth()
 
@@ -244,6 +284,10 @@ const machineRegister = computed(() => {
   const registers = Array.isArray(cashRegisters.value) ? cashRegisters.value : []
   return findRegisterForMachine(registers)
 })
+
+const closeModal = () => {
+  router.push({ name: 'dashboard-overview' })
+}
 
 const isSummaryModalOpen = ref(false)
 const summaryLoading = ref(false)
@@ -278,17 +322,20 @@ const availableRegisters = computed(() => {
 })
 
 const connectButtonText = computed(() => {
-  if (isAdmin.value) return 'Accéder'
   if (isSelfConnected.value) return 'Résumé & Continuer'
+  if (isAdmin.value) return 'Accéder'
   return 'Connecter'
 })
 
 const connectButtonDisabled = computed(() => {
   if (isProcessing.value) return true
-  if (isAdmin.value) return false
   if (isSelfConnected.value) return false
-  if (hasActiveSession.value) return true
-  return !machineRegister.value || !selectedCashRegister.value
+  if (hasActiveSession.value && !isSelfConnected.value) {
+    return !isAdmin.value
+  }
+  if (!selectedCashRegister.value) return true
+  if (!isAdmin.value && !machineRegister.value) return true
+  return false
 })
 
 const getAuthHeaders = () => {
@@ -332,11 +379,15 @@ const selectCashRegister = (registerId) => {
   selectedCashRegister.value = registerId
 }
 
+const goToMachineManagement = () => {
+  router.push({ name: 'cash-registers-machine-link' })
+}
+
 const fetchCashRegisters = async () => {
   loadingRegisters.value = true
   errorMessage.value = ''
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-registers', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-registers`, {
       headers: getAuthHeaders()
     })
     const registers = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
@@ -390,7 +441,7 @@ function findRegisterForMachine(registers) {
 
 const fetchRegisterStatus = async (registerId) => {
   try {
-    const { data } = await axios.get(`http://127.0.0.1:8000/api/cash-registers-sessions/${registerId}/status`, {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-registers-sessions/${registerId}/status`, {
       headers: getAuthHeaders()
     })
 
@@ -421,7 +472,7 @@ const fetchRegisterStatus = async (registerId) => {
 
 const fetchMyActiveSession = async () => {
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-session/my-active-session`, {
       headers: getAuthHeaders()
     })
 
@@ -476,6 +527,55 @@ const initializeSessions = async () => {
   }
 }
 
+const fetchSessionSummary = async (sessionId) => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/${sessionId}/summary`, {
+      headers: getAuthHeaders()
+    })
+    return data?.data || data || null
+  } catch (error) {
+    if (error.response?.status === 409) {
+      const message =
+        error.response?.data?.message ||
+        "Le résumé n'est pas disponible tant que la session n'est pas clôturée."
+      throw Object.assign(new Error(message), { response: error.response })
+    }
+    throw error
+  }
+}
+
+const openSummaryModal = async () => {
+  if (!activeSession.value?.id) {
+    router.push({ name: 'dashboard-direct' })
+    return
+  }
+
+  summaryError.value = ''
+  sessionSummary.value = null
+  isSummaryModalOpen.value = true
+  summaryLoading.value = true
+
+  try {
+    sessionSummary.value = await fetchSessionSummary(activeSession.value.id)
+  } catch (error) {
+    summaryError.value =
+      error.message ||
+      error.response?.data?.message ||
+      'Impossible de récupérer le résumé de la session.'
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
+const closeSummaryModal = () => {
+  isSummaryModalOpen.value = false
+}
+
+const continueAfterSummary = () => {
+  closeSummaryModal()
+  router.push({ name: 'dashboard-direct' })
+}
+
 const openAmountModal = () => {
   if (isProcessing.value) return
   isAmountModalOpen.value = true
@@ -491,7 +591,7 @@ const handleAmountModalSend = (payload) => {
 }
 
 const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
-  if (!selectedCashRegister.value && !isAdmin.value) {
+  if (!selectedCashRegister.value) {
     alert('Sélectionnez une caisse')
     return
   }
@@ -501,30 +601,30 @@ const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
     const user = currentUser.value
     if (!user?.id) throw new Error('Utilisateur non authentifié')
 
-    const response = await axios.post(
-      'http://127.0.0.1:8000/api/cash-register-sessions',
-      {
-        cash_register_id: selectedCashRegister.value,
-        user_id: user.id,
-        starting_amount: amount,
-        note: note,
-        expected_cash_amount: 0,
-        start_ticket_number: startTicketNumber
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' }
+    const payload = {
+      cash_register_id: selectedCashRegister.value,
+      user_id: user.id,
+      starting_amount: amount,
+      note,
+      expected_cash_amount: 0,
+      start_ticket_number: ticketNumber ?? null
+    }
 
+    const { data } = await axios.post(`${API_BASE_URL}/cash-register-sessions`, payload, { headers })
+    const createdSession = data?.data || data || null
 
-    if (response.data) {
-      localStorage.setItem('cashRegisterSession', JSON.stringify(response.data))
+    if (createdSession) {
+      localStorage.setItem('cashRegisterSession', JSON.stringify(createdSession))
 
-      if (startTicketNumber !== undefined) {
-        localStorage.setItem('currentTicketNumber', startTicketNumber.toString())
+      if (ticketNumber !== undefined && ticketNumber !== null && ticketNumber !== '') {
+        localStorage.setItem('currentTicketNumber', ticketNumber.toString())
       }
 
-      isConnected.value = true
-      connectedUserId.value = user.id
-      await checkSessionStatus(selectedCashRegister.value)
+      await fetchMyActiveSession()
+      if (selectedCashRegister.value) {
+        await fetchRegisterStatus(selectedCashRegister.value)
+      }
 
       router.push({ name: 'dashboard-direct' })
     }
@@ -549,7 +649,7 @@ const resetCashRegister = async () => {
   if (!confirm('Confirmez la remise à zéro ?')) return
 
   try {
-    await axios.post('http://127.0.0.1:8000/api/cash-registers/reset', {
+    await axios.post(`${API_BASE_URL}/cash-registers/reset`, {
       cash_register_id: selectedCashRegister.value
     }, {
       headers: getAuthHeaders()
@@ -575,20 +675,23 @@ const viewSales = () => {
 }
 
 const onConnectButtonClick = () => {
-  if (isConnected.value && connectedUserId.value === currentUserId.value) {
-    router.push({ name: 'dashboard-direct' })
-  } else {
-    if (!selectedCashRegister.value) return alert('Sélectionnez une caisse')
-    openAmountModal()
-  }
+  if (isProcessing.value) return
+
   if (isSelfConnected.value) {
     openSummaryModal()
     return
   }
-  if (!selectedCashRegister.value || !machineRegister.value) {
+
+  if (!selectedCashRegister.value) {
+    alert('Sélectionnez une caisse')
+    return
+  }
+
+  if (!isAdmin.value && !machineRegister.value) {
     alert('Associez cette machine à une caisse avant de continuer.')
     return
   }
+
   openAmountModal()
 }
 

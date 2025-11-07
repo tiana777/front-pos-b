@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { API_URL } from '@/utils/api'
 
 export const useCashTransactionStore = defineStore('cashTransaction', {
   state: () => ({
@@ -13,7 +14,7 @@ export const useCashTransactionStore = defineStore('cashTransaction', {
       this.error = null
       try {
         const token = localStorage.getItem('token')
-        const response = await axios.get('http://127.0.0.1:8000/api/cash-transactions', {
+        const response = await axios.get(`${API_URL}/api/cash-transactions`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         this.transactions = Array.isArray(response.data) ? response.data : []
@@ -27,7 +28,7 @@ export const useCashTransactionStore = defineStore('cashTransaction', {
     async createTransaction(transactionData) {
       try {
         const token = localStorage.getItem('token')
-        const response = await axios.post('http://127.0.0.1:8000/api/cash-transactions', transactionData, {
+        const response = await axios.post(`${API_URL}/api/cash-transactions`, transactionData, {
           headers: { Authorization: `Bearer ${token}` },
         })
         // After creating, refresh the list

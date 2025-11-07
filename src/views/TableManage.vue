@@ -1,6 +1,6 @@
 <template>
   <div class="table-management">
-    <Profile />
+    <Profile v-if="!embedded" />
 
     <!-- Header -->
     <div class="management-header">
@@ -27,7 +27,7 @@
         </div>
         <div class="stat-content">
           <h3>{{ statistics.total_tables }}</h3>
-          <p>Total Tables</p>
+          <p>Nombre de tables</p>
         </div>
       </div>
       <div class="stat-card available">
@@ -218,14 +218,14 @@
                 id="location_x"
                 v-model.number="form.location.x"
                 type="number"
-                placeholder="Position X"
+                placeholder="Coordonnée X"
                 min="0"
               />
               <input
                 id="location_y"
                 v-model.number="form.location.y"
                 type="number"
-                placeholder="Position Y"
+                placeholder="Coordonnée Y"
                 min="0"
               />
             </div>
@@ -276,12 +276,18 @@
 </template>
 
 <script>
-import Profile from '../views/Profile.vue'
+import Profile from './Profile.vue'
 
 export default {
   name: 'TableManage',
   components: {
     Profile
+  },
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false
+    }
   },
   data() {
     return {

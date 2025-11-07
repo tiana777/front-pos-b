@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 
-const API_URL = 'http://localhost:8000/api/users'
+const API_URL = `${API_BASE_URL}/users`
 const token = localStorage.getItem('token')
 
 export default {
@@ -39,7 +40,7 @@ export default {
     })
   },
 
-  hasRole(userId, roleName) {
+  hasRole(userId, _roleName) {
     return axios.get(`${API_URL}/${userId}/roles`, {
       headers: { Authorization: `Bearer ${token}` },
     })

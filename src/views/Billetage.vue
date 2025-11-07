@@ -1,94 +1,108 @@
 <template>
-  <div class="billetage-view">
-    <Profile />
-
-    <section class="page-section">
-      <header class="page-header">
-        <div>
-          <h1>Billetage</h1>
-          <p class="subtitle">
-            Comptez uniquement les billets et pièces présents dans la caisse.
-          </p>
-        </div>
-        <div class="header-actions">
-          <button
-            type="button"
-            class="btn"
-            @click="resetForm"
-            :disabled="isSubmitting || isLoading"
-          >
-            Réinitialiser
-          </button>
-          <button
-            type="button"
-            class="btn"
-            @click="goToSummary"
-            :disabled="isSubmitting || isLoading || !sessionId || !hasRecordedBilletage"
-          >
-            RAZ – Afficher le récapitulatif
-          </button>
-        </div>
-      </header>
-
-      <form
-        ref="formRef"
-        class="card billetage-card"
-        @submit.prevent="submit"
-      >
-          <h2 class="card-title">Comptage des billets</h2>
-
-          <div class="denominations">
-            <div
-              v-for="denomination in denominations"
-              :key="denomination.value"
-              class="denomination-item"
-            >
-              <label :for="`denom-${denomination.value}`">
-                {{ denomination.label }}
-              </label>
-              <input
-                :id="`denom-${denomination.value}`"
-                v-model="counts[denomination.value]"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                step="1"
-                :disabled="isSubmitting || isLoading || sessionClosed"
-                @focus="showKeyboard({ type: 'denomination', value: denomination.value })"
-              />
-              <span class="denomination-total">{{ formatCurrency(denominationTotal(denomination.value)) }}</span>
-            </div>
+  <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm py-10">
+    <div class="relative mx-4 w-full max-w-4xl">
+      <div class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Billetage</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Comptage des espèces</h1>
+            <p class="mt-1 text-sm text-slate-500">
+              Comptez uniquement les billets et pièces présents dans la caisse avant de clôturer la session.
+            </p>
           </div>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="resetForm"
+              :disabled="isSubmitting || isLoading"
+            >
+              <i class="fas fa-rotate-left text-xs"></i>
+              Réinitialiser
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="goToSummary"
+              :disabled="isSubmitting || isLoading || !sessionId || !hasRecordedBilletage"
+            >
+              <i class="fas fa-receipt text-xs"></i>
+              RAZ — Afficher le récapitulatif
+            </button>
+            <button
+              type="button"
+              class="inline-flex size-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+              @click="closeModal"
+              aria-label="Fermer"
+            >
+              <i class="fas fa-xmark"></i>
+            </button>
+          </div>
+        </header>
 
-          <label class="field" for="coins">
-            <span>Pièces / autres montants</span>
-            <input
-              id="coins"
-              v-model="coinsValue"
-              type="number"
-              inputmode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              :disabled="isSubmitting || isLoading || sessionClosed"
-              @focus="showKeyboard({ type: 'coins' })"
-            />
-          </label>
+        <form ref="formRef" class="space-y-6 px-6 py-6" @submit.prevent="submit">
+          <section class="space-y-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-lg font-semibold text-slate-900">Comptage des billets</h2>
+              <span
+                v-if="sessionClosed"
+                class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600"
+              >
+                Session clôturée
+              </span>
+              <span
+                v-else-if="hasRecordedBilletage"
+                class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600"
+              >
+                Billetage enregistré
+              </span>
+            </div>
 
-          <p class="hint">Montant compté : <strong>{{ formatCurrency(actualTotal) }}</strong></p>
+            <div class="space-y-3">
+              <div
+                v-for="denomination in denominations"
+                :key="denomination.value"
+                class="grid items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)_130px]"
+              >
+                <label :for="`denom-${denomination.value}`" class="text-sm font-semibold text-slate-700">
+                  {{ denomination.label }}
+                </label>
+                <input
+                  :id="`denom-${denomination.value}`"
+                  v-model="counts[denomination.value]"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  :disabled="isSubmitting || isLoading || sessionClosed"
+                  @focus="showKeyboard({ type: 'denomination', value: denomination.value })"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <span class="text-right text-sm font-semibold text-slate-600">
+                  {{ formatCurrency(denominationTotal(denomination.value)) }}
+                </span>
+              </div>
+            </div>
 
-          <div class="form-actions">
+            <p class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              Montant compté :
+              <strong class="font-semibold text-slate-900">{{ formatCurrency(actualTotal) }}</strong>
+            </p>
+          </section>
+
+          <div class="flex flex-wrap justify-end gap-3">
             <button
               type="submit"
-              class="btn primary"
+              class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || hasRecordedBilletage"
             >
-              <span v-if="isSubmitting" class="loading">Enregistrement…</span>
+              <i v-if="isSubmitting" class="fas fa-circle-notch animate-spin text-xs"></i>
+              <span v-if="isSubmitting">Enregistrement…</span>
               <span v-else>Enregistrer le billetage</span>
             </button>
             <button
               type="button"
-              class="btn danger"
+              class="inline-flex items-center gap-2 rounded-2xl bg-rose-50 px-5 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
               @click="closeSession"
               :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || !hasRecordedBilletage"
             >
@@ -96,11 +110,30 @@
             </button>
           </div>
 
-          <p v-if="hasRecordedBilletage" class="feedback info">Le billetage a déjà été enregistré pour cette session.</p>
-          <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
-          <p v-if="successMessage" class="feedback success">{{ successMessage }}</p>
-      </form>
-    </section>
+          <div class="space-y-2">
+            <p
+              v-if="hasRecordedBilletage"
+              class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-600"
+            >
+              Le billetage est enregistré pour cette session.
+            </p>
+            <p
+              v-if="errorMessage"
+              class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600"
+            >
+              {{ errorMessage }}
+            </p>
+            <p
+              v-if="successMessage"
+              class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-600"
+            >
+              {{ successMessage }}
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <Keyboard
       v-if="keyboardVisible"
       :initial-position="keyboardPosition"
@@ -114,7 +147,6 @@
 import { reactive, ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import Profile from './Profile.vue'
 import Keyboard from '../components/tools/Keyboard.vue'
 
 const denominations = [
@@ -125,14 +157,12 @@ const denominations = [
   { value: 1000, label: '1 000' },
   { value: 500, label: '500' },
   { value: 200, label: '200' },
-  { value: 100, label: '100' },
-  { value: 50, label: '50' }
+  { value: 100, label: '100' }
 ]
 
 const router = useRouter()
 
 const counts = reactive(Object.fromEntries(denominations.map(d => [d.value, 0])))
-const coinsValue = ref(0)
 const keyboardVisible = ref(false)
 const activeField = ref(null)
 const keyboardPosition = ref({ top: 0, left: 0 })
@@ -152,16 +182,17 @@ const authHeaders = () => {
   return { Authorization: `Bearer ${token}` }
 }
 
+const closeModal = () => {
+  router.push({ name: 'cash-printer' })
+}
+
 const hasUserInput = computed(() => {
-  const anyBills = denominations.some(denomination => Number(counts[denomination.value]) > 0)
-  const coins = Number(coinsValue.value) > 0
-  return anyBills || coins
+  return denominations.some(denomination => Number(counts[denomination.value]) > 0)
 })
 
 const actualTotal = computed(() => {
   const billsTotal = denominations.reduce((sum, d) => sum + d.value * (Number(counts[d.value]) || 0), 0)
-  const coins = Number(coinsValue.value) || 0
-  return Number((billsTotal + coins).toFixed(2))
+  return Number(billsTotal.toFixed(2))
 })
 
 const denominationTotal = (value) => {
@@ -170,13 +201,12 @@ const denominationTotal = (value) => {
 
 const formatCurrency = (amount) => {
   const number = Number(amount)
-  if (!Number.isFinite(number)) return '0,00 Ar'
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(number)
+  if (!Number.isFinite(number)) return '0 Ar'
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'MGA' }).format(number).replace('MGA', 'Ar').trim()
 }
 
 const resetForm = () => {
   denominations.forEach(d => { counts[d.value] = 0 })
-  coinsValue.value = 0
   errorMessage.value = ''
   successMessage.value = ''
   activeField.value = null
@@ -369,27 +399,6 @@ const handleKeyPress = (key) => {
     counts[denominationValue] = Number(updated)
     return
   }
-
-  if (activeField.value.type === 'coins') {
-    const current = coinsValue.value
-    const baseString = current === 0 || current === '' ? '' : String(current)
-
-    if (key === 'BACKSPACE') {
-      const updated = baseString.slice(0, -1)
-      coinsValue.value = updated
-      return
-    }
-
-    if (key === '.') {
-      if (baseString.includes('.')) return
-      coinsValue.value = baseString === '' ? '0.' : `${baseString}.`
-      return
-    }
-
-    if (!/^[0-9]$/.test(key)) return
-    const updated = `${baseString}${key}`
-    coinsValue.value = updated
-  }
 }
 
 const hideKeyboard = () => {
@@ -415,216 +424,3 @@ onBeforeUnmount(() => {
   detachKeyboardListeners()
 })
 </script>
-
-<style scoped>
-.billetage-view {
-  min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
-  padding-top: 5.5rem;
-}
-
-@media (max-width: 640px) {
-  .billetage-view {
-    padding-top: 4.75rem;
-  }
-}
-
-.page-section {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 3rem;
-  display: grid;
-  gap: 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-}
-
-.page-header h1 {
-  font-size: 1.9rem;
-  font-weight: 700;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.subtitle {
-  margin-top: 0.35rem;
-  color: #64748b;
-  font-size: 0.95rem;
-}
-
-.billetage-card {
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.card {
-  background: #fff;
-  border-radius: 1rem;
-  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
-  padding: 1.5rem;
-  display: grid;
-  gap: 1.2rem;
-}
-
-.card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.denominations {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.denomination-item {
-  display: grid;
-  grid-template-columns: 120px 1fr 120px;
-  align-items: center;
-  gap: 0.8rem;
-}
-
-.denomination-item label {
-  font-weight: 600;
-}
-
-.denomination-item input {
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.65rem;
-  border: 1px solid #cbd5f5;
-  background: #f1f5f9;
-}
-
-.denomination-total {
-  text-align: right;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.field input,
-.field textarea {
-  padding: 0.55rem 0.7rem;
-  border-radius: 0.65rem;
-  border: 1px solid #cbd5f5;
-  background: #f8fafc;
-}
-
-.field input:focus,
-.field textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.form-hint {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn {
-  border: none;
-  padding: 0.6rem 1.1rem;
-  border-radius: 0.75rem;
-  background: rgba(148, 163, 184, 0.2);
-  color: #1e293b;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn:hover {
-  background: rgba(148, 163, 184, 0.3);
-}
-
-.btn:disabled,
-.btn.disabled {
-  background: rgba(148, 163, 184, 0.25);
-  color: #94a3b8;
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-.btn.primary {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #fff;
-}
-
-.btn.primary:hover {
-  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
-}
-
-.btn.primary:disabled,
-.btn.primary.disabled {
-  background: linear-gradient(135deg, #94a3b8, #cbd5f5);
-  color: #e2e8f0;
-}
-
-.btn.danger {
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  color: #fff;
-}
-
-.btn.danger:hover {
-  background: linear-gradient(135deg, #b91c1c, #7f1d1d);
-}
-
-.btn.danger:disabled,
-.btn.danger.disabled {
-  background: linear-gradient(135deg, #fca5a5, #f87171);
-  color: #fee2e2;
-}
-
-.feedback {
-  font-size: 0.9rem;
-}
-
-.feedback.error {
-  color: #dc2626;
-}
-
-.feedback.success {
-  color: #16a34a;
-}
-
-.feedback.info {
-  color: #0ea5e9;
-}
-
-@media (max-width: 640px) {
-  .denomination-item {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-areas:
-      'label total'
-      'input input';
-  }
-
-  .denomination-item label { grid-area: label; }
-  .denomination-item input { grid-area: input; }
-  .denomination-total { grid-area: total; text-align: right; }
-}
-</style>

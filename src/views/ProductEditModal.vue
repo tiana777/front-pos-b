@@ -1,42 +1,77 @@
 <template>
 
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/80" @click="closeModal"></div>
-    <div class="relative z-10 flex max-h-[95vh] w-full max-w-xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-      <header class="flex items-center justify-between border-b px-6 py-4">
-        <h2 class="text-xl font-bold text-gray-800">Éditer le produit</h2>
-        <button class="text-2xl leading-none text-gray-500 hover:text-gray-700" aria-label="Fermer" @click="closeModal">&times;</button>
+  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center px-4 sm:px-6">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
+    <div class="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/95 shadow-2xl">
+      <header class="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 px-6 py-5 text-white">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-white/80">Produits</p>
+          <h2 class="text-2xl font-semibold leading-snug">Éditer le produit</h2>
+        </div>
+        <button
+          class="flex size-10 items-center justify-center rounded-full bg-white/10 text-lg leading-none text-white transition hover:bg-white/20"
+          aria-label="Fermer"
+          @click="closeModal"
+        >
+          &times;
+        </button>
       </header>
-      <section class="flex-1 overflow-y-auto bg-gray-50 px-6 py-4">
+
+      <section class="flex-1 space-y-6 overflow-y-auto bg-slate-50/90 px-6 py-6">
         <!-- Nom du produit -->
-        <div class="mb-6">
-          <label class="mb-2 block font-semibold text-gray-700">Nom du produit</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="text" v-model="localProduct.name" maxlength="255" required placeholder="Nom du produit" />
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">Nom du produit</label>
+          <input
+            class="w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            type="text"
+            v-model="localProduct.name"
+            maxlength="255"
+            required
+            placeholder="Nom du produit"
+          />
         </div>
         <!-- Ref du produit -->
-        <div class="mb-6">
-          <label class="mb-2 block font-semibold text-gray-700">Réference du produit</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="text" v-model="localProduct.ref" maxlength="255" required placeholder="Nom du produit" />
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">Référence du produit</label>
+          <input
+            class="w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            type="text"
+            v-model="localProduct.ref"
+            maxlength="255"
+            required
+            placeholder="Référence du produit"
+          />
         </div>
 
         <!-- Prix -->
-        <div class="mb-6">
-          <label class="mb-2 block font-semibold text-gray-700">Prix</label>
-          <input class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none" type="number" v-model.number="localProduct.price" min="0" step="0.01" required placeholder="Prix" />
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">Prix</label>
+          <input
+            class="w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            type="number"
+            v-model.number="localProduct.price"
+            min="0"
+            step="0.01"
+            required
+            placeholder="Prix"
+          />
         </div>
 
         <!-- Statut actif -->
-        <div class="mb-6">
-          <label class="inline-flex items-center gap-2 text-gray-700">
-            <input type="checkbox" v-model="localProduct.status" class="size-4 rounded border-gray-300 text-teal-600 focus:ring-0" />
+        <div>
+          <label class="inline-flex items-center gap-3 text-sm font-semibold text-slate-700">
+            <input type="checkbox" v-model="localProduct.status" class="size-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200" />
             Actif
           </label>
         </div>
 
         <!-- Catégorie -->
-        <div class="mb-6">
-          <label class="mb-2 block font-semibold text-gray-700">Catégorie</label>
-          <select v-model="localProduct.category_id" class="w-full rounded border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none">
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">Catégorie</label>
+          <select
+            v-model="localProduct.category_id"
+            class="w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+          >
             <option :value="null" disabled>Choisir une catégorie</option>
             <option v-for="category in categories" :key="category.id" :value="category.id">
               {{ category.name }}
@@ -45,18 +80,27 @@
         </div>
 
         <!-- Image -->
-        <div class="mb-6">
-          <label class="mb-2 block font-semibold text-gray-700">Image</label>
-          <input type="file" accept="image/*" @change="onImageChange" class="block w-full text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:text-white hover:file:bg-teal-700" />
-          <p v-if="imageError" class="mt-1 text-sm text-rose-500">{{ imageError }}</p>
-          <figure class="mt-4 text-center">
-            <img :src="imageUrl" :alt="localProduct.name" class="mx-auto h-auto max-w-[200px] rounded-lg shadow" loading="lazy" />
+        <div>
+          <label class="mb-2 block text-sm font-semibold text-slate-700">Image</label>
+          <input
+            type="file"
+            accept="image/*"
+            @change="onImageChange"
+            class="block w-full cursor-pointer text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:font-semibold file:text-white transition hover:file:bg-indigo-700"
+          />
+          <p v-if="imageError" class="mt-2 text-sm text-rose-500">{{ imageError }}</p>
+          <figure class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white/80 p-4 text-center shadow-sm">
+            <img :src="imageUrl" :alt="localProduct.name" class="mx-auto h-auto max-h-48 rounded-2xl object-contain shadow" loading="lazy" />
+            <figcaption class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              {{ localProduct.name || 'Aperçu de l’image' }}
+            </figcaption>
           </figure>
         </div>
       </section>
-      <footer class="flex items-center justify-end gap-2 border-t bg-gray-50 px-6 py-3">
+
+      <footer class="flex items-center justify-end gap-3 border-t border-slate-200 bg-white/90 px-6 py-4">
         <button
-          class="inline-flex items-center rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+          class="inline-flex items-center rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
           :class="{ 'cursor-not-allowed': isSaving }"
           @click="saveProduct"
           :disabled="isSaving"
@@ -64,14 +108,14 @@
           Enregistrer
         </button>
         <button
-          class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+          class="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
           @click="closeModal"
           :disabled="isSaving"
         >
           Annuler
         </button>
       </footer>
-      <p v-if="saveError" class="px-6 pb-4 text-center text-rose-600">{{ saveError }}</p>
+      <p v-if="saveError" class="px-6 pb-4 text-center text-sm font-semibold text-rose-600">{{ saveError }}</p>
     </div>
   </div>
 </template>
@@ -79,6 +123,7 @@
 <script setup>
 import { ref, watch, reactive, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL, API_URL } from '@/utils/api'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -104,7 +149,7 @@ const imageError = ref('')
 const fetchCategories = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://127.0.0.1:8000/api/categories`, {
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     categories.value = response.data
@@ -128,8 +173,8 @@ watch(
         category_id: newProduct.category_id,
         image: null,
         imagePreview: newProduct.image
-          ? (newProduct.image.startsWith('blob:') ? newProduct.image : `http://localhost:8000/storage/${newProduct.image}`)
-          : 'http://localhost:8000/storage/products/default-product-image.jpg'
+          ? (newProduct.image.startsWith('blob:') ? newProduct.image : `${API_URL}/storage/${newProduct.image}`)
+          : `${API_URL}/storage/products/default-product-image.jpg`
       })
     }
   },
@@ -146,7 +191,7 @@ const price = computed({
 })
 
 const imageUrl = computed(() => {
-  return localProduct.imagePreview || 'http://localhost:8000/storage/products/default-product-image.jpg'
+  return localProduct.imagePreview || `${API_URL}/storage/products/default-product-image.jpg`
 })
 
 const onImageChange = (event) => {
@@ -185,7 +230,7 @@ const saveProduct = async () => {
     }
 
     const response_1 = await axios.put(
-      `http://127.0.0.1:8000/api/products/${localProduct.id}`,
+      `${API_BASE_URL}/products/${localProduct.id}`,
       payload_1,
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     )
@@ -195,7 +240,7 @@ const saveProduct = async () => {
     }
     try {
       const response_2 = await axios.put(
-        `http://127.0.0.1:8000/api/pricings/${localProduct.id}`,
+        `${API_BASE_URL}/pricings/${localProduct.id}`,
         payload_2,
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
       );

@@ -158,6 +158,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 import Profile from './Profile.vue'
 import { usePrinterTypes } from '../composables/usePrinterTypes.js'
 
@@ -242,7 +243,7 @@ const refreshMachineName = () => {
 const fetchCashRegisters = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get('http://localhost:8000/api/cash-registers', {
+    const response = await axios.get(`${API_BASE_URL}/cash-registers`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     cashRegisters.value = response.data.data ? response.data.data : response.data
@@ -278,7 +279,7 @@ const savePrinter = async () => {
     }
 
     const { data } = await axios.post(
-      'http://localhost:8000/api/printers',
+      `${API_BASE_URL}/printers`,
       payload,
       { headers: { Authorization: `Bearer ${token}` } }
     )

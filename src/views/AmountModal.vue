@@ -1,50 +1,94 @@
 <template>
-  <div v-if="isOpen" class="modal is-active">
-    <div class="modal-background" @click="closeModal"></div>
-    <div class="modal-card">
-      <header class="modal-header">
-        <h2 class="modal-title">Fond de caisse</h2>
-        <button class="modal-close" aria-label="Fermer" @click="closeModal">&times;</button>
+  <div
+    v-if="isOpen"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity"
+  >
+    <div class="absolute inset-0" @click="closeModal" />
+
+    <div class="relative mx-4 w-full max-w-xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <header class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Fond de caisse</p>
+          <h2 class="mt-2 text-lg font-semibold text-slate-900">Configurer le fond de caisse</h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Renseignez le montant initial et le ticket de départ pour lancer la session.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex size-9 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+          @click="closeModal"
+          aria-label="Fermer"
+        >
+          <i class="fas fa-xmark"></i>
+        </button>
       </header>
-      <section class="modal-body">
-        <div class="field">
-          <label class="label">Montant du fond de caisse</label>
-          <div class="control">
-            <input class="input" type="number" v-model.number="amount" min="0" step="0.01" placeholder="Montant"
-              @input="validateAmount" />
-          </div>
-          <p v-if="amountError" class="help is-danger">{{ amountError }}</p>
+
+      <section class="space-y-5 px-6 py-6">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Montant du fond de caisse</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            v-model.number="amount"
+            @input="validateAmount"
+            placeholder="Montant"
+            class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+          />
+          <p v-if="amountError" class="mt-1 text-sm font-medium text-rose-500">{{ amountError }}</p>
         </div>
 
-        <div class="field">
-          <label class="label">Numéro de ticket initial</label>
-          <div class="control">
-            <div class="select is-fullwidth">
-              <select v-model.number="ticketNumber" @change="validateTicketNumber">
-                <option value="">-- Sélectionnez un numéro --</option>
-                <option v-for="num in ticketNumbers" :key="num" :value="num">
-                  {{ num }}
-                </option>
-              </select>
-            </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Numéro de ticket initial</label>
+          <div class="relative mt-2">
+            <select
+              v-model.number="ticketNumber"
+              @change="validateTicketNumber"
+              class="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+            >
+              <option value="">Sélectionnez un numéro</option>
+              <option v-for="num in ticketNumbers" :key="num" :value="num">
+                {{ num }}
+              </option>
+            </select>
+            <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
+              <i class="fas fa-chevron-down text-xs"></i>
+            </span>
           </div>
-          <p v-if="ticketError" class="help is-danger">{{ ticketError }}</p>
+          <p v-if="ticketError" class="mt-1 text-sm font-medium text-rose-500">{{ ticketError }}</p>
         </div>
 
-        <div class="field">
-          <label class="label">Note</label>
-          <div class="control">
-            <input class="input" type="text" v-model="note" maxlength="50" placeholder="Note (max 50 caractères)" />
-          </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Note</label>
+          <input
+            type="text"
+            v-model="note"
+            maxlength="50"
+            placeholder="Note (max 50 caractères)"
+            class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
+          />
         </div>
       </section>
-      <footer class="modal-footer">
-        <button class="button button-success" :class="{ 'is-loading': isSending }" @click="sendAmount"
-          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === null || ticketNumber === ''">
-          Envoyer
-        </button>
-        <button class="button button-cancel" @click="closeModal" :disabled="isSending">
+
+      <footer class="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-5">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+          @click="closeModal"
+          :disabled="isSending"
+        >
           Annuler
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          @click="sendAmount"
+          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === null || ticketNumber === ''"
+        >
+          <i v-if="isSending" class="fas fa-circle-notch animate-spin text-xs"></i>
+          Envoyer
         </button>
       </footer>
     </div>
@@ -52,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const props = defineProps({
   isOpen: Boolean
@@ -95,13 +139,11 @@ const sendAmount = () => {
 
   isSending.value = true
 
-  // Save to cache
   const data = {
     amount: amount.value,
     ticketNumber: ticketNumber.value,
     note: note.value
   }
-  console.log(typeof data)
 
   emits('send', data)
 
@@ -114,101 +156,4 @@ const sendAmount = () => {
 const closeModal = () => {
   emits('close')
 }
-
-
-
-
-
 </script>
-
-<style scoped>
-.modal-card {
-  max-width: 400px;
-  width: 100%;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.label {
-  color: black !important;
-}
-
-.modal-header {
-  padding: 1.5rem;
-  background-color: #a83232;
-  color: white;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: white;
-  cursor: pointer;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  border-top: 1px solid #eee;
-}
-
-.button-success {
-  background-color: #d32f2f;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.button-success.is-loading {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.button-cancel {
-  background-color: #ccc;
-  color: #333;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.select.is-fullwidth {
-  width: 100%;
-}
-
-.select select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.input {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-</style>

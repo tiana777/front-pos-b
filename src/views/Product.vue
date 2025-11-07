@@ -110,6 +110,7 @@
                       :alt="product.name"
                       class="h-12 w-12 flex-shrink-0 rounded-full object-cover ring-2 ring-indigo-50"
                       loading="lazy"
+                      @error="onProductImageError"
                     />
                     <div>
                       <p class="font-semibold text-slate-800">{{ product.name }}</p>
@@ -218,9 +219,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
+import { API_URL } from '@/utils/api'
 import ProductEditModal from './ProductEditModal.vue'
 import AddProductModal from './AddProductModal.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import placeholderImage from '@/assets/avatar.png'
 
 const products = ref([])
 const categories = ref([])
@@ -248,7 +251,7 @@ const fetchData = async () => {
       throw new Error('Point de vente non configuré pour cet utilisateur')
     }
 
-    const response = await axios.get('http://127.0.0.1:8000/api/categories', {
+    const response = await axios.get(`${API_URL}/api/categories`, {
       params: { with_products: 1, point_of_sale_id: pointOfSaleId, with_pricing: 1 },
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     })
@@ -301,10 +304,32 @@ const formatPrice = (price) => {
 }
 
 const getProductImage = (product) => {
-  if (product.image) {
-    return `http://localhost:8000/storage/${product.image}`
+  const raw = product?.image || product?.product?.image
+  if (!raw) {
+    return placeholderImage
   }
-  return 'https://via.placeholder.com/300x300?text=Image+non+disponible'
+
+  if (/^https?:\/\//i.test(raw)) {
+    return raw
+  }
+
+  if (raw.startsWith('storage/')) {
+    return `${API_URL}/${raw}`
+  }
+
+  if (raw.startsWith('products/')) {
+    return `${API_URL}/storage/${raw}`
+  }
+
+  return `${API_URL}/storage/products/${raw}`
+}
+
+const onProductImageError = (event) => {
+  if (!event?.target) {
+    return
+  }
+  event.target.onerror = null
+  event.target.src = placeholderImage
 }
 
 const productsCountByCategory = computed(() => {
@@ -374,7 +399,7 @@ const closeAddModal = () => {
 const handleAdd = async (newProduct) => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`http://127.0.0.1:8000/api/products/${newProduct.id}`, {
+    const response = await axios.get(`${API_URL}/api/products/${newProduct.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -408,7 +433,7 @@ const deleteProduct = async () => {
   isDeleting.value = true
   try {
     const token = localStorage.getItem('token')
-    await axios.delete(`http://127.0.0.1:8000/api/products/${productToDelete.value.id}`, {
+    await axios.delete(`${API_URL}/api/products/${productToDelete.value.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     products.value = products.value.filter((p) => p.id !== productToDelete.value.id)
