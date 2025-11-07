@@ -105,6 +105,7 @@ import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
 import Profile from './Profile.vue'
 import { useCashTransactionStore } from '@/stores/cashTransactionStore'
+import { API_BASE_URL } from '@/utils/api'
 
 const cashTransactionStore = useCashTransactionStore()
 
@@ -120,7 +121,7 @@ const form = reactive({
   description: ''
 })
 
-const apiBase = 'http://127.0.0.1:8000/api/cash-transactions'
+const apiBase = `${API_BASE_URL}/cash-transactions`
 
 const getHeaders = () => {
   const token = localStorage.getItem('token')

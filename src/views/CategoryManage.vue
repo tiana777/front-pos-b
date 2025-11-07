@@ -160,6 +160,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import CategoryCreateModal from './CategoryCreateModal.vue'
 import CategoryEditModal from './CategoryEditModal.vue'
 import { usePrinterTypes } from '../composables/usePrinterTypes.js'
+import { API_BASE_URL } from '@/utils/api'
 
 // =============================================
 // ÉTATS RÉACTIFS
@@ -193,7 +194,7 @@ const fetchCategories = async () => {
     loading.value = true
     const user = JSON.parse(localStorage.getItem('user'))
     const token = localStorage.getItem('token');
-    const response = await axios.get('http://127.0.0.1:8000/api/categories', {
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
       params: {
         'with_products': 1,
         'point_of_sale_id': user.point_of_sale_id,
@@ -265,7 +266,7 @@ const closeCreateModal = () => {
 const handleAdded = async (newCategory) => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.post('http://127.0.0.1:8000/api/categories', newCategory, {
+    const response = await axios.post(`${API_BASE_URL}/categories`, newCategory, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -302,7 +303,7 @@ const handleUpdated = async (updatedCategory) => {
   try {
     console.log(updatedCategory)
     const token = localStorage.getItem('token')
-    const response = await axios.put(`http://127.0.0.1:8000/api/categories/${updatedCategory.id}`, updatedCategory, {
+    const response = await axios.put(`${API_BASE_URL}/categories/${updatedCategory.id}`, updatedCategory, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -345,7 +346,7 @@ const deleteCategory = async () => {
   isDeleting.value = true
   try {
     const token = localStorage.getItem('token')
-    await axios.delete(`http://127.0.0.1:8000/api/categories/${categoryToDelete.value.id}`, {
+    await axios.delete(`${API_BASE_URL}/categories/${categoryToDelete.value.id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     categories.value = categories.value.filter(c => c.id !== categoryToDelete.value.id)

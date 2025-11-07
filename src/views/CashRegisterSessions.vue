@@ -128,6 +128,7 @@
 
 <script>
 import axios from 'axios'
+import { API_BASE_URL } from '@/utils/api'
 
 export default {
   name: 'CashRegisterSessions',
@@ -194,7 +195,7 @@ export default {
       try {
         console.log('Ouverture d\'une nouvelle session avec les données :', this.newSessionData)
 
-        const response = await axios.post('http://127.0.0.1:8000/api/cash-register-sessions',
+        const response = await axios.post(`${API_BASE_URL}/cash-register-sessions`,
           {
             cash_register_id: this.newSessionData.cash_register_id,
             user_id: this.newSessionData.user_id,

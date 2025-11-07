@@ -118,6 +118,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import Profile from './Profile.vue'
+import { API_BASE_URL } from '@/utils/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,7 +209,7 @@ const fetchSummary = async () => {
   errorMessage.value = ''
 
   try {
-    const { data } = await axios.get(`http://127.0.0.1:8000/api/cash-register-sessions/${sessionId.value}/summary`, {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/${sessionId.value}/summary`, {
       headers: authHeaders()
     })
 
@@ -252,7 +253,7 @@ const printSummary = async () => {
   printSuccess.value = ''
   errorMessage.value = ''
   try {
-    await axios.post(`http://127.0.0.1:8000/api/printers/session-recap/${sessionId.value}`, {}, {
+    await axios.post(`${API_BASE_URL}/printers/session-recap/${sessionId.value}`, {}, {
       headers: authHeaders()
     })
     printSuccess.value = 'Récapitulatif envoyé à l\'imprimante.'

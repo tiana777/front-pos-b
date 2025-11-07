@@ -88,6 +88,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import PointOfSaleModal from './PointOfSaleModal.vue'
+import { API_BASE_URL } from '@/utils/api'
 
 const pointsOfSale = ref([])
 const loading = ref(true)
@@ -101,7 +102,7 @@ const form = ref({
 const fetchPointsOfSale = async () => {
   loading.value = true
   try {
-    const response = await axios.get('http://127.0.0.1:8000/api/point_of_sales')
+    const response = await axios.get(`${API_BASE_URL}/point_of_sales`)
     pointsOfSale.value = response.data.data || response.data
   } catch (error) {
     console.error('Erreur lors du chargement des points de vente:', error)
@@ -117,7 +118,7 @@ const submitForm = async (name) => {
   if (showEditForm.value) {
     // Update existing point of sale
     try {
-      await axios.put(`http://127.0.0.1:8000/api/point_of_sales/${form.value.id}`, {
+      await axios.put(`${API_BASE_URL}/point_of_sales/${form.value.id}`, {
         name: form.value.name,
       })
       await fetchPointsOfSale()
@@ -128,7 +129,7 @@ const submitForm = async (name) => {
   } else {
     // Add new point of sale
     try {
-      await axios.post('http://127.0.0.1:8000/api/point_of_sales', {
+      await axios.post(`${API_BASE_URL}/point_of_sales`, {
         name: form.value.name,
       })
       await fetchPointsOfSale()
@@ -149,7 +150,7 @@ const editPointOfSale = (pos) => {
 const deletePointOfSale = async (id) => {
   if (confirm('Voulez-vous vraiment supprimer ce point de vente ?')) {
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/point_of_sales/${id}`)
+      await axios.delete(`${API_BASE_URL}/point_of_sales/${id}`)
       await fetchPointsOfSale()
     } catch (error) {
       console.error('Erreur lors de la suppression du point de vente:', error)

@@ -148,6 +148,7 @@ import { reactive, ref, computed, onMounted, onBeforeUnmount, watch, nextTick } 
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Keyboard from '../components/tools/Keyboard.vue'
+import { API_BASE_URL } from '@/utils/api'
 
 const denominations = [
   { value: 20000, label: '20 000' },
@@ -229,7 +230,7 @@ const fetchActiveSession = async () => {
   isLoading.value = true
   errorMessage.value = ''
   try {
-    const { data } = await axios.get('http://127.0.0.1:8000/api/cash-register-session/my-active-session', {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-session/my-active-session`, {
       headers: authHeaders()
     })
     const session = data?.data || data || null
@@ -284,7 +285,7 @@ const submit = async () => {
   successMessage.value = ''
 
   try {
-    await axios.put(`http://127.0.0.1:8000/api/cash-register-sessions/${sessionId.value}`, {
+    await axios.put(`${API_BASE_URL}/cash-register-sessions/${sessionId.value}`, {
       actual_cash_amount: actualTotal.value
     }, {
       headers: authHeaders()
@@ -318,7 +319,7 @@ const closeSession = async () => {
   successMessage.value = ''
 
   try {
-    await axios.put(`http://127.0.0.1:8000/api/cash-register-sessions/${sessionId.value}`, {
+    await axios.put(`${API_BASE_URL}/cash-register-sessions/${sessionId.value}`, {
       actual_cash_amount: actualTotal.value,
       is_closed: true,
       closed_at: new Date().toISOString()

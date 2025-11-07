@@ -277,6 +277,7 @@
 
 <script>
 import Profile from './Profile.vue'
+import { API_BASE_URL } from '@/utils/api'
 
 export default {
   name: 'TableManage',
@@ -357,7 +358,7 @@ export default {
     async loadTables() {
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('http://127.0.0.1:8000/api/tables', {
+        const response = await fetch(`${API_BASE_URL}/tables`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -377,7 +378,7 @@ export default {
     async loadStatistics() {
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('http://127.0.0.1:8000/api/tables/statistics', {
+        const response = await fetch(`${API_BASE_URL}/tables/statistics`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -397,7 +398,7 @@ export default {
     async loadPointsOfSale() {
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch('http://127.0.0.1:8000/api/points-of-sale', {
+        const response = await fetch(`${API_BASE_URL}/points-of-sale`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -520,8 +521,8 @@ export default {
       try {
         const token = localStorage.getItem('token')
         const url = this.isEditing
-          ? `http://127.0.0.1:8000/api/tables/${this.editingTableId}`
-          : 'http://127.0.0.1:8000/api/tables'
+          ? `${API_BASE_URL}/tables/${this.editingTableId}`
+          : `${API_BASE_URL}/tables`
 
         const method = this.isEditing ? 'PUT' : 'POST'
 
@@ -567,7 +568,7 @@ export default {
     async updateTableStatus(tableId, status) {
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch(`http://127.0.0.1:8000/api/tables/${tableId}/status`, {
+        const response = await fetch(`${API_BASE_URL}/tables/${tableId}/status`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -606,7 +607,7 @@ export default {
 
       try {
         const token = localStorage.getItem('token')
-        const response = await fetch(`http://127.0.0.1:8000/api/tables/${this.tableToDelete.id}`, {
+        const response = await fetch(`${API_BASE_URL}/tables/${this.tableToDelete.id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
