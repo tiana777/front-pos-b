@@ -38,59 +38,115 @@
             <label>Total après remise</label>
             <div class="field-value highlight">{{ formatPrice(discountedTotal) }}</div>
           </div>
-        </div>
 
-        <div class="partial-payment-row">
-          <label class="checkbox-wrapper">
-            <input type="checkbox" v-model="isPartialPayment">
-            <span>Payer une partie</span>
-          </label>
-        </div>
+          <!-- Section pour le paiement en tranches -->
+          <div class="amount-field installment-section">
+            <div class="installment-header">
+              <label>Paiement en tranches</label>
+              <button 
+                type="button" 
+                class="toggle-installment"
+                :class="{ active: isInstallmentActive }"
+                @click="toggleInstallment"
+              >
+                <font-awesome-icon :icon="isInstallmentActive ? 'fa-solid fa-toggle-on' : 'fa-solid fa-toggle-off'" />
+                {{ isInstallmentActive ? 'Activé' : 'Désactivé' }}
+              </button>
+            </div>
+            
+            <div v-if="isInstallmentActive" class="installment-controls">
+              <div class="installment-input-group">
+                <label>Montant à payer maintenant</label>
+                <input
+                  type="text"
+                  v-model="installmentAmount"
+                  @input="validateInstallmentAmount"
+                  placeholder="0"
+                  class="installment-amount-input"
+                  ref="installmentAmountInput"
+                  readonly
+                />
+              </div>
 
-        <div class="details-grid full-row" v-if="isPartialPayment">
-          <label>Montant à payer</label>
-          <input type="number" v-model="partialAmount" placeholder="Entrez le montant" />
-        </div>
-
-        <div class="details-grid full-row" v-if="selectedPayment === 'TPE'">
-          <label>Référence TPE</label>
-          <input
-            type="text"
-            v-model="cardNumber"
-            placeholder="1234 5678 9012 3456"
-            maxlength="19"
-            ref="cardNumberInput"
-          />
-        </div>
-
-        <div class="details-grid" v-if="selectedPayment === 'Espèce'">
-          <label>Montant reçu</label>
-          <input
-            type="text"
-            v-model="amountReceived"
-            @input="calculateChange"
-            placeholder="0"
-            ref="amountReceivedInput"
-          />
-        </div>
-
-        <div class="details-grid" v-if="isMobilePayment">
-          <label>Numéro de téléphone</label>
-          <input
-            type="tel"
-            v-model="phoneNumber"
-            placeholder="034 12 345 67"
-            ref="phoneInput"
-          />
-        </div>
-
-        <div class="details-grid" v-if="selectedPayment && !isMobilePayment">
-          <label>Monnaie à rendre</label>
-          <div class="field-value" :class="{ positive: changeAmount >= 0, negative: changeAmount < 0 }">
-            {{ formatPrice(Math.abs(changeAmount)) }}
+              <div class="installment-details" v-if="installmentAmount > 0">
+                <div class="installment-item first-payment">
+                  <span>Paiement immédiat</span>
+                  <strong>{{ formatPrice(installmentAmountValue) }}</strong>
+                </div>
+                <div v-if="installmentAmountValue < discountedTotal" class="installment-item remaining-payments">
+                  <span>Reste à payer</span>
+                  <strong>{{ formatPrice(remainingBalance) }}</strong>
+                </div>
+                <div class="installment-total">
+                  <span>Total à payer</span>
+                  <strong>{{ formatPrice(discountedTotal) }}</strong>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
+        <!-- Champs spécifiques selon le mode de paiement (toujours visibles quand mode tranche désactivé) -->
+        <template v-if="!isInstallmentActive">
+          <div class="details-grid full-row" v-if="selectedPayment === 'TPE'">
+            <label>Référence TPE</label>
+            <input
+              type="text"
+              v-model="cardNumber"
+              placeholder="1234 5678 9012 3456"
+              maxlength="19"
+              ref="cardNumberInput"
+            />
+          </div>
+
+          <div class="details-grid" v-if="selectedPayment === 'Espèce'">
+            <label>Montant reçu</label>
+            <input
+              type="text"
+              v-model="amountReceived"
+              @input="calculateChange"
+              placeholder="0"
+              ref="amountReceivedInput"
+            />
+          </div>
+
+          <div class="details-grid" v-if="isMobilePayment">
+            <label>Numéro de téléphone</label>
+            <input
+              type="tel"
+              v-model="phoneNumber"
+              placeholder="034 12 345 67"
+              ref="phoneInput"
+            />
+          </div>
+
+          <div class="details-grid" v-if="selectedPayment && !isMobilePayment">
+            <label>Monnaie à rendre</label>
+            <div class="field-value" :class="{ positive: changeAmount >= 0, negative: changeAmount < 0 }">
+              {{ formatPrice(Math.abs(changeAmount)) }}
+            </div>
+          </div>
+        </template>
+
+        <!-- Mode de paiement préféré pour les tranches (visible seulement quand mode tranche activé) -->
+        <div class="preferred-payment-section" v-if="isInstallmentActive">
+          <label>Mode de paiement préféré pour les tranches</label>
+          <div class="preferred-payment-buttons">
+            <button
+              v-for="payment in payments"
+              :key="payment.name"
+              type="button"
+              class="preferred-payment-btn"
+              :class="{ active: preferredPaymentMethod === payment.name }"
+              @click="selectPreferredPaymentMethod(payment.name)"
+            >
+              <font-awesome-icon :icon="getPaymentIcon(payment.name)" />
+              <span>{{ payment.name }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section des méthodes de paiement (TOUJOURS visible) -->
         <div class="payment-layout">
           <div class="methods">
             <button
@@ -111,28 +167,55 @@
             </button>
           </div>
 
+          <!-- Clavier adapté selon le contexte -->
           <div class="keypad">
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('7')">7</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('8')">8</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('9')">9</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('4')">4</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('5')">5</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('6')">6</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('1')">1</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('2')">2</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('3')">3</button>
-            <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('0')">0</button>
-            <button
-              v-if="isMobilePayment"
-              class="keypad-button"
-              @click="appendToField(' ')">
-              Espace
-            </button>
-            <button v-else class="keypad-button" disabled>•</button>
-            <button class="keypad-button danger" @click="clearField">
-              <font-awesome-icon icon="fa-solid fa-delete-left" />
-            </button>
+            <template v-if="isInstallmentActive">
+              <!-- Clavier pour le montant de l'acompte -->
+              <button class="keypad-button active" @click="appendToInstallmentAmount('7')">7</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('8')">8</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('9')">9</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('4')">4</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('5')">5</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('6')">6</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('1')">1</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('2')">2</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('3')">3</button>
+              <button class="keypad-button active" @click="appendToInstallmentAmount('0')">0</button>
+              <button class="keypad-button" disabled>•</button>
+              <button class="keypad-button danger" @click="clearInstallmentAmount">
+                <font-awesome-icon icon="fa-solid fa-delete-left" />
+              </button>
+            </template>
+            <template v-else>
+              <!-- Clavier standard pour les paiements -->
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('7')">7</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('8')">8</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('9')">9</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('4')">4</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('5')">5</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('6')">6</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('1')">1</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('2')">2</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('3')">3</button>
+              <button :class="keypadButtonClass(isCashPadLocked)" :disabled="isCashPadLocked" @click="appendToField('0')">0</button>
+              <button
+                v-if="isMobilePayment"
+                class="keypad-button"
+                @click="appendToField(' ')">
+                Espace
+              </button>
+              <button v-else class="keypad-button" disabled>•</button>
+              <button class="keypad-button danger" @click="clearField">
+                <font-awesome-icon icon="fa-solid fa-delete-left" />
+              </button>
+            </template>
           </div>
+        </div>
+
+        <!-- Message pour le mode tranche -->
+        <div v-if="isInstallmentActive && installmentAmountValue > 0" class="installment-message">
+          <font-awesome-icon icon="fa-solid fa-info-circle" />
+          <span>Paiement immédiat de {{ formatPrice(installmentAmountValue) }} avec {{ selectedPayment || 'mode de paiement à sélectionner' }}</span>
         </div>
       </section>
 
@@ -148,7 +231,7 @@
           @click="confirmPayment"
         >
           <font-awesome-icon icon="fa-solid fa-check" />
-          Confirmer le paiement
+          {{ isInstallmentActive ? 'Confirmer l\'acompte' : 'Confirmer le paiement' }}
         </button>
       </footer>
     </section>
@@ -168,10 +251,15 @@ import {
   faMobileScreen,
   faCashRegister,
   faDeleteLeft,
-  faCircle
+  faCircle,
+  faToggleOn,
+  faToggleOff,
+  faMinus,
+  faPlus,
+  faInfoCircle
 } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faCreditCard, faCheckCircle, faXmark, faCheck, faMoneyBillWave, faHandHoldingDollar, faMobileScreen, faCashRegister, faDeleteLeft, faCircle)
+library.add(faCreditCard, faCheckCircle, faXmark, faCheck, faMoneyBillWave, faHandHoldingDollar, faMobileScreen, faCashRegister, faDeleteLeft, faCircle, faToggleOn, faToggleOff, faMinus, faPlus, faInfoCircle)
 
 const props = defineProps({
   isOpen: Boolean,
@@ -195,9 +283,8 @@ const payments = ref([
 const amountReceivedInput = ref(null)
 const cardNumberInput = ref(null)
 const phoneInput = ref(null)
+const installmentAmountInput = ref(null)
 const selectedPayment = ref('')
-const isPartialPayment = ref(false)
-const partialAmount = ref('')
 const amountReceived = ref('')
 const changeAmount = ref(0)
 const phoneNumber = ref('')
@@ -206,6 +293,11 @@ const isProcessing = ref(false)
 const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
 const discountOptions = [0, 50, 100]
 const selectedDiscount = ref(0)
+
+// Variables pour le paiement en tranches
+const isInstallmentActive = ref(false)
+const installmentAmount = ref('')
+const preferredPaymentMethod = ref('')
 
 const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value))
 const isValidPhoneNumber = computed(() => {
@@ -219,30 +311,84 @@ const discountedTotal = computed(() => {
   return Math.round(base * (100 - discount) / 100)
 })
 
-const targetAmount = computed(() => {
-  if (isPartialPayment.value) {
-    return parseInt(partialAmount.value, 10) || 0
-  }
-  return discountedTotal.value
+// Computed pour le montant de l'acompte
+const installmentAmountValue = computed(() => {
+  return parseInt(installmentAmount.value, 10) || 0
+})
+
+const remainingBalance = computed(() => {
+  return Math.max(0, discountedTotal.value - installmentAmountValue.value)
 })
 
 const isPaymentValid = computed(() => {
+  if (isInstallmentActive.value) {
+    // En mode acompte : besoin du mode de paiement préféré ET du montant valide
+    return selectedPayment.value && 
+           installmentAmountValue.value > 0 && 
+           installmentAmountValue.value <= discountedTotal.value
+  }
+  
+  // Mode paiement normal
   if (!selectedPayment.value) return false
-  if (isPartialPayment.value && (targetAmount.value <= 0 || targetAmount.value > discountedTotal.value)) return false
   if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16
   if (isMobilePayment.value) return isValidPhoneNumber.value
-  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= targetAmount.value
+  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value
   return true
 })
 
 const isCashPadLocked = computed(() => {
   if (selectedPayment.value !== 'Espèce') return false
-  return (parseInt(amountReceived.value, 10) || 0) >= targetAmount.value && targetAmount.value > 0
+  return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value && discountedTotal.value > 0
 })
 
 const formatPrice = (price) => {
   const amount = Math.round(Number(price) || 0)
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)} Ar`
+}
+
+// Méthodes pour le paiement en tranches
+const toggleInstallment = () => {
+  isInstallmentActive.value = !isInstallmentActive.value
+  if (!isInstallmentActive.value) {
+    installmentAmount.value = ''
+  } else {
+    nextTick(() => {
+      installmentAmountInput.value?.focus()
+    })
+  }
+}
+
+const validateInstallmentAmount = () => {
+  // Nettoie le montant pour ne garder que les chiffres
+  installmentAmount.value = installmentAmount.value.replace(/[^0-9]/g, '')
+  
+  // Vérifie que le montant ne dépasse pas le total
+  const amount = parseInt(installmentAmount.value, 10) || 0
+  if (amount > discountedTotal.value) {
+    installmentAmount.value = discountedTotal.value.toString()
+  }
+}
+
+const appendToInstallmentAmount = (value) => {
+  if (value === ' ') return
+  const current = installmentAmount.value === '0' ? '' : installmentAmount.value
+  const newValue = current + value
+  const amount = parseInt(newValue, 10) || 0
+  
+  if (amount <= discountedTotal.value) {
+    installmentAmount.value = newValue
+  } else {
+    // Si le montant dépasse, on met le maximum
+    installmentAmount.value = discountedTotal.value.toString()
+  }
+}
+
+const clearInstallmentAmount = () => {
+  installmentAmount.value = installmentAmount.value.slice(0, -1)
+}
+
+const selectPreferredPaymentMethod = (method) => {
+  preferredPaymentMethod.value = method
 }
 
 const selectPaymentMethod = (method) => {
@@ -288,12 +434,17 @@ const clearField = () => {
 
 const calculateChange = () => {
   const received = parseInt(amountReceived.value, 10) || 0
-  changeAmount.value = received - targetAmount.value
+  changeAmount.value = received - discountedTotal.value
 }
 
 const selectDiscount = (value) => {
   selectedDiscount.value = value
   if (selectedPayment.value === 'Espèce') calculateChange()
+  
+  // Ajuste le montant de l'acompte si nécessaire
+  if (isInstallmentActive.value && installmentAmountValue.value > discountedTotal.value) {
+    installmentAmount.value = discountedTotal.value.toString()
+  }
 }
 
 const getPaymentIcon = (paymentName) => payments.value.find(p => p.name === paymentName)?.icon || 'fa-solid fa-credit-card'
@@ -310,33 +461,46 @@ const closeModal = () => {
   phoneNumber.value = ''
   cardNumber.value = ''
   selectedDiscount.value = 0
-  isPartialPayment.value = false
-  partialAmount.value = ''
   isProcessing.value = false
+  isInstallmentActive.value = false
+  installmentAmount.value = ''
+  preferredPaymentMethod.value = ''
   emits('close-modal')
 }
 
 const confirmPayment = () => {
   isProcessing.value = true
-  const paymentData = {
-    method: selectedPayment.value,
-    total: props.totalAmount,
-    discount_percentage: selectedDiscount.value,
-    final_total: targetAmount.value,
-    sale_total: discountedTotal.value,
-    is_partial: isPartialPayment.value,
-    reference: selectedPayment.value === 'TPE' ? cardNumber.value : null,
-    phone: isMobilePayment.value ? phoneNumber.value : null,
-    received: selectedPayment.value === 'Espèce' ? (parseInt(amountReceived.value, 10) || 0) : null,
-    change: parseInt(changeAmount.value, 10) || 0
+  
+  let paymentData
+  
+  if (isInstallmentActive.value) {
+    paymentData = {
+      type: 'installment',
+      total: props.totalAmount,
+      discount_percentage: selectedDiscount.value,
+      final_total: discountedTotal.value,
+      immediate_payment: installmentAmountValue.value,
+      remaining_balance: remainingBalance.value,
+      payment_method: selectedPayment.value, // Mode de paiement pour l'acompte
+      preferred_payment_method: preferredPaymentMethod.value || selectedPayment.value // Mode préféré pour les futures tranches
+    }
+  } else {
+    paymentData = {
+      type: 'full',
+      method: selectedPayment.value,
+      total: props.totalAmount,
+      discount_percentage: selectedDiscount.value,
+      final_total: discountedTotal.value,
+      reference: selectedPayment.value === 'TPE' ? cardNumber.value : null,
+      phone: isMobilePayment.value ? phoneNumber.value : null,
+      received: selectedPayment.value === 'Espèce' ? (parseInt(amountReceived.value, 10) || 0) : null,
+      change: parseInt(changeAmount.value, 10) || 0
+    }
   }
+  
   emits('confirm-payment', paymentData)
   isProcessing.value = false
 }
-
-watch(targetAmount, () => {
-  if (selectedPayment.value === 'Espèce') calculateChange()
-})
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
@@ -344,13 +508,21 @@ watch(() => props.isOpen, (newVal) => {
     phoneNumber.value = ''
     cardNumber.value = ''
     selectedDiscount.value = 0
-    isPartialPayment.value = false
-    partialAmount.value = ''
+    isInstallmentActive.value = false
+    installmentAmount.value = ''
+    preferredPaymentMethod.value = ''
+  }
+})
+
+watch(discountedTotal, (newTotal) => {
+  if (isInstallmentActive.value && installmentAmountValue.value > newTotal) {
+    installmentAmount.value = newTotal.toString()
   }
 })
 </script>
 
 <style scoped>
+/* Tous les styles restent identiques */
 .payment-overlay {
   position: fixed;
   inset: 0;
@@ -399,7 +571,7 @@ watch(() => props.isOpen, (newVal) => {
   align-items: center;
   justify-content: center;
   width: 2.4rem;
-  height: 1.4rem;
+  height: 2.4rem;
   border-radius: 9999px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -417,7 +589,6 @@ watch(() => props.isOpen, (newVal) => {
 .payment-body {
   padding: 2rem;
   display: flex;
-  margin-top: -3.5rem;
   flex-direction: column;
   gap: 1.75rem;
   background: rgba(248, 250, 252, 0.9);
@@ -499,6 +670,133 @@ watch(() => props.isOpen, (newVal) => {
   box-shadow: 0 12px 25px rgba(79, 70, 229, 0.28);
 }
 
+.installment-section {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border-radius: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.installment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.toggle-installment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-installment:hover {
+  background: #f1f5f9;
+}
+
+.toggle-installment.active {
+  background: #818cf8;
+  color: white;
+  border-color: #818cf8;
+}
+
+.toggle-installment.active:hover {
+  background: #6366f1;
+}
+
+.installment-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.installment-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.installment-input-group label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.installment-amount-input {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  outline: none;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  font-size: 1.1rem;
+  cursor: pointer;
+  background-color: #f9fafb;
+}
+
+.installment-amount-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  background-color: #fff;
+}
+
+.installment-amount-input[readonly] {
+  background-color: #f9fafb;
+  cursor: pointer;
+}
+
+.installment-details {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.installment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.installment-item:last-child {
+  border-bottom: none;
+}
+
+.installment-item.first-payment {
+  color: #059669;
+}
+
+.installment-item.remaining-payments {
+  color: #7c3aed;
+}
+
+.installment-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0 0 0;
+  margin-top: 0.5rem;
+  border-top: 2px solid #e2e8f0;
+  font-weight: 700;
+  color: #1f2937;
+}
+
 .details-grid {
   width: 100%;
   display: grid;
@@ -534,6 +832,61 @@ watch(() => props.isOpen, (newVal) => {
 .details-grid input:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.preferred-payment-section {
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.preferred-payment-section label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.preferred-payment-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.preferred-payment-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preferred-payment-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  background: #f8fafc;
+}
+
+.preferred-payment-btn.active {
+  background: #818cf8;
+  color: white;
+  border-color: #818cf8;
+}
+
+.preferred-payment-btn.active:hover {
+  background: #6366f1;
 }
 
 .payment-layout {
@@ -642,11 +995,27 @@ watch(() => props.isOpen, (newVal) => {
   border-color: rgba(248, 113, 113, 0.3);
 }
 
+.installment-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #dbeafe;
+  border-radius: 1rem;
+  color: #1e40af;
+  font-weight: 600;
+  border: 1px solid #bfdbfe;
+}
+
+.installment-message svg {
+  font-size: 1.25rem;
+}
+
 .payment-footer {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding: 0.5rem 2rem 0.5rem;
+  padding: 1rem 2rem;
   border-top: 1px solid rgba(226, 232, 240, 0.6);
   background: #fff;
 }
@@ -695,37 +1064,40 @@ watch(() => props.isOpen, (newVal) => {
     border-radius: 1rem;
   }
 
-  .payment-layout {
-    flex-direction: column;
+  .payment-header {
+    padding: 1rem 1.5rem;
   }
 
-  .amounts-row {
-  align-items: end;
+  .payment-body {
+    padding: 1.5rem;
+  }
+
+  .amount-panel {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .payment-layout {
+    flex-direction: column;
+    padding: 1rem;
   }
 
   .keypad {
     max-width: none;
   }
-}
+  
+  .preferred-payment-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-.partial-payment-row {
-  margin-top: 1rem;
-}
+  .payment-footer {
+    padding: 1rem 1.5rem;
+    flex-direction: column-reverse;
+  }
 
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 600;
-  color: #334155;
-  cursor: pointer;
-}
-
-.checkbox-wrapper input[type="checkbox"] {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: #4f46e5;
-  border-radius: 4px;
+  .payment-footer button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
