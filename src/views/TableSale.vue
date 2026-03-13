@@ -1582,7 +1582,7 @@ export default {
         this.isAddingToPending = false
         return
       }
-
+      
       const payloadLines = this.prepareCartLines(cartSnapshot)
 
       this.clearCart()

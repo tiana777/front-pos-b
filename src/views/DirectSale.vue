@@ -303,9 +303,20 @@ const handlePaymentConfirmation = async (paymentData) => {
       cash_register_session_id: sessionData?.id || null,
       total_amount: Math.round(totalAmount), // Convert to integer
       discount_percentage: discount,
+      final_amount: Math.round(finalAmount),
+      amount_received: paymentData.received || 0,
+      change_returned: paymentData.change || 0,
+      payment_method: paymentData.method,
       status: paymentData.status || 'completed',
+      date: new Date().toISOString().split('T')[0],
       payment_id: paymentMethodMap[paymentData.method] || null,
-      ticket_number: Number(ticketNumber)
+      ticket_number: Number(ticketNumber),
+      items: cart.value.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: Math.round(item.price),
+        total: Math.round(item.price * item.quantity)
+      }))
     }
 
     const response = await axios.post(`${API_BASE_URL}/sales`, saleData, {
@@ -316,21 +327,6 @@ const handlePaymentConfirmation = async (paymentData) => {
     })
 
     const saleId = response.data.id
-    for (const item of cart.value) {
-      const orderLineData = {
-        sale_id: saleId,
-        product_id: item.id,
-        quantity: item.quantity,
-        price: Math.round(item.price), // Convert to integer
-        total: Math.round(item.price * item.quantity) // Convert to integer
-      }
-      await axios.post(`${API_BASE_URL}/orderlines`, orderLineData, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        }
-      })
-    }
 
     if (sessionData?.id) {
       try {

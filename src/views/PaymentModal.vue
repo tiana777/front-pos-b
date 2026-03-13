@@ -40,6 +40,18 @@
           </div>
         </div>
 
+        <div class="partial-payment-row">
+          <label class="checkbox-wrapper">
+            <input type="checkbox" v-model="isPartialPayment">
+            <span>Payer une partie</span>
+          </label>
+        </div>
+
+        <div class="details-grid full-row" v-if="isPartialPayment">
+          <label>Montant à payer</label>
+          <input type="number" v-model="partialAmount" placeholder="Entrez le montant" />
+        </div>
+
         <div class="details-grid full-row" v-if="selectedPayment === 'TPE'">
           <label>Référence TPE</label>
           <input
@@ -184,6 +196,8 @@ const amountReceivedInput = ref(null)
 const cardNumberInput = ref(null)
 const phoneInput = ref(null)
 const selectedPayment = ref('')
+const isPartialPayment = ref(false)
+const partialAmount = ref('')
 const amountReceived = ref('')
 const changeAmount = ref(0)
 const phoneNumber = ref('')
@@ -205,17 +219,25 @@ const discountedTotal = computed(() => {
   return Math.round(base * (100 - discount) / 100)
 })
 
+const targetAmount = computed(() => {
+  if (isPartialPayment.value) {
+    return parseInt(partialAmount.value, 10) || 0
+  }
+  return discountedTotal.value
+})
+
 const isPaymentValid = computed(() => {
   if (!selectedPayment.value) return false
+  if (isPartialPayment.value && (targetAmount.value <= 0 || targetAmount.value > discountedTotal.value)) return false
   if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16
   if (isMobilePayment.value) return isValidPhoneNumber.value
-  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value
+  if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= targetAmount.value
   return true
 })
 
 const isCashPadLocked = computed(() => {
   if (selectedPayment.value !== 'Espèce') return false
-  return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value && discountedTotal.value > 0
+  return (parseInt(amountReceived.value, 10) || 0) >= targetAmount.value && targetAmount.value > 0
 })
 
 const formatPrice = (price) => {
@@ -266,7 +288,7 @@ const clearField = () => {
 
 const calculateChange = () => {
   const received = parseInt(amountReceived.value, 10) || 0
-  changeAmount.value = received - discountedTotal.value
+  changeAmount.value = received - targetAmount.value
 }
 
 const selectDiscount = (value) => {
@@ -288,6 +310,8 @@ const closeModal = () => {
   phoneNumber.value = ''
   cardNumber.value = ''
   selectedDiscount.value = 0
+  isPartialPayment.value = false
+  partialAmount.value = ''
   isProcessing.value = false
   emits('close-modal')
 }
@@ -298,7 +322,9 @@ const confirmPayment = () => {
     method: selectedPayment.value,
     total: props.totalAmount,
     discount_percentage: selectedDiscount.value,
-    final_total: discountedTotal.value,
+    final_total: targetAmount.value,
+    sale_total: discountedTotal.value,
+    is_partial: isPartialPayment.value,
     reference: selectedPayment.value === 'TPE' ? cardNumber.value : null,
     phone: isMobilePayment.value ? phoneNumber.value : null,
     received: selectedPayment.value === 'Espèce' ? (parseInt(amountReceived.value, 10) || 0) : null,
@@ -308,12 +334,18 @@ const confirmPayment = () => {
   isProcessing.value = false
 }
 
+watch(targetAmount, () => {
+  if (selectedPayment.value === 'Espèce') calculateChange()
+})
+
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
     amountReceived.value = ''
     phoneNumber.value = ''
     cardNumber.value = ''
     selectedDiscount.value = 0
+    isPartialPayment.value = false
+    partialAmount.value = ''
   }
 })
 </script>
@@ -675,5 +707,25 @@ watch(() => props.isOpen, (newVal) => {
   .keypad {
     max-width: none;
   }
+}
+
+.partial-payment-row {
+  margin-top: 1rem;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: #4f46e5;
+  border-radius: 4px;
 }
 </style>
