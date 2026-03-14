@@ -39,10 +39,9 @@
             <div class="field-value highlight">{{ formatPrice(discountedTotal) }}</div>
           </div>
 
-          <!-- Section pour le paiement en tranches -->
           <div class="amount-field installment-section">
             <div class="installment-header">
-              <label>Paiement en tranches</label>
+              <label>Paiement </label>
               <button 
                 type="button" 
                 class="toggle-installment"
@@ -50,7 +49,7 @@
                 @click="toggleInstallment"
               >
                 <font-awesome-icon :icon="isInstallmentActive ? 'fa-solid fa-toggle-on' : 'fa-solid fa-toggle-off'" />
-                {{ isInstallmentActive ? 'Activé' : 'Désactivé' }}
+                {{ isInstallmentActive ? 'Separé' : 'En totalité' }}
               </button>
             </div>
             
@@ -69,6 +68,11 @@
               </div>
 
               <div class="installment-details" v-if="installmentAmount > 0">
+                <div class="installment-total">
+                  <span>Total à payer</span>
+                  <strong>{{ formatPrice(discountedTotal) }}</strong>
+                </div>
+
                 <div class="installment-item first-payment">
                   <span>Paiement immédiat</span>
                   <strong>{{ formatPrice(installmentAmountValue) }}</strong>
@@ -77,16 +81,15 @@
                   <span>Reste à payer</span>
                   <strong>{{ formatPrice(remainingBalance) }}</strong>
                 </div>
-                <div class="installment-total">
-                  <span>Total à payer</span>
-                  <strong>{{ formatPrice(discountedTotal) }}</strong>
+                <div v-if="isInstallmentActive && installmentAmountValue > 0" class="installment-message">
+                  <font-awesome-icon icon="fa-solid fa-info-circle" />
+                  <span>Paiement immédiat de {{ formatPrice(installmentAmountValue) }} par {{ selectedPayment || 'mode de paiement à sélectionner' }}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Champs spécifiques selon le mode de paiement (toujours visibles quand mode tranche désactivé) -->
         <template v-if="!isInstallmentActive">
           <div class="details-grid full-row" v-if="selectedPayment === 'TPE'">
             <label>Référence TPE</label>
@@ -128,25 +131,6 @@
           </div>
         </template>
 
-        <!-- Mode de paiement préféré pour les tranches (visible seulement quand mode tranche activé) -->
-        <div class="preferred-payment-section" v-if="isInstallmentActive">
-          <label>Mode de paiement préféré pour les tranches</label>
-          <div class="preferred-payment-buttons">
-            <button
-              v-for="payment in payments"
-              :key="payment.name"
-              type="button"
-              class="preferred-payment-btn"
-              :class="{ active: preferredPaymentMethod === payment.name }"
-              @click="selectPreferredPaymentMethod(payment.name)"
-            >
-              <font-awesome-icon :icon="getPaymentIcon(payment.name)" />
-              <span>{{ payment.name }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Section des méthodes de paiement (TOUJOURS visible) -->
         <div class="payment-layout">
           <div class="methods">
             <button
@@ -167,10 +151,8 @@
             </button>
           </div>
 
-          <!-- Clavier adapté selon le contexte -->
           <div class="keypad">
             <template v-if="isInstallmentActive">
-              <!-- Clavier pour le montant de l'acompte -->
               <button class="keypad-button active" @click="appendToInstallmentAmount('7')">7</button>
               <button class="keypad-button active" @click="appendToInstallmentAmount('8')">8</button>
               <button class="keypad-button active" @click="appendToInstallmentAmount('9')">9</button>
@@ -211,12 +193,6 @@
             </template>
           </div>
         </div>
-
-        <!-- Message pour le mode tranche -->
-        <div v-if="isInstallmentActive && installmentAmountValue > 0" class="installment-message">
-          <font-awesome-icon icon="fa-solid fa-info-circle" />
-          <span>Paiement immédiat de {{ formatPrice(installmentAmountValue) }} avec {{ selectedPayment || 'mode de paiement à sélectionner' }}</span>
-        </div>
       </section>
 
       <footer class="payment-footer">
@@ -254,12 +230,10 @@ import {
   faCircle,
   faToggleOn,
   faToggleOff,
-  faMinus,
-  faPlus,
   faInfoCircle
 } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faCreditCard, faCheckCircle, faXmark, faCheck, faMoneyBillWave, faHandHoldingDollar, faMobileScreen, faCashRegister, faDeleteLeft, faCircle, faToggleOn, faToggleOff, faMinus, faPlus, faInfoCircle)
+library.add(faCreditCard, faCheckCircle, faXmark, faCheck, faMoneyBillWave, faHandHoldingDollar, faMobileScreen, faCashRegister, faDeleteLeft, faCircle, faToggleOn, faToggleOff, faInfoCircle)
 
 const props = defineProps({
   isOpen: Boolean,
@@ -294,10 +268,8 @@ const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
 const discountOptions = [0, 50, 100]
 const selectedDiscount = ref(0)
 
-// Variables pour le paiement en tranches
 const isInstallmentActive = ref(false)
 const installmentAmount = ref('')
-const preferredPaymentMethod = ref('')
 
 const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value))
 const isValidPhoneNumber = computed(() => {
@@ -321,15 +293,15 @@ const remainingBalance = computed(() => {
 })
 
 const isPaymentValid = computed(() => {
+  if (!selectedPayment.value) return false
+  
   if (isInstallmentActive.value) {
-    // En mode acompte : besoin du mode de paiement préféré ET du montant valide
-    return selectedPayment.value && 
-           installmentAmountValue.value > 0 && 
+    // En mode acompte : besoin d'un montant valide
+    return installmentAmountValue.value > 0 && 
            installmentAmountValue.value <= discountedTotal.value
   }
   
   // Mode paiement normal
-  if (!selectedPayment.value) return false
   if (selectedPayment.value === 'TPE') return cardNumber.value.replace(/\D/g, '').length === 16
   if (isMobilePayment.value) return isValidPhoneNumber.value
   if (selectedPayment.value === 'Espèce') return (parseInt(amountReceived.value, 10) || 0) >= discountedTotal.value
@@ -346,7 +318,7 @@ const formatPrice = (price) => {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount)} Ar`
 }
 
-// Méthodes pour le paiement en tranches
+// Méthodes pour le paiement separé
 const toggleInstallment = () => {
   isInstallmentActive.value = !isInstallmentActive.value
   if (!isInstallmentActive.value) {
@@ -385,10 +357,6 @@ const appendToInstallmentAmount = (value) => {
 
 const clearInstallmentAmount = () => {
   installmentAmount.value = installmentAmount.value.slice(0, -1)
-}
-
-const selectPreferredPaymentMethod = (method) => {
-  preferredPaymentMethod.value = method
 }
 
 const selectPaymentMethod = (method) => {
@@ -464,7 +432,6 @@ const closeModal = () => {
   isProcessing.value = false
   isInstallmentActive.value = false
   installmentAmount.value = ''
-  preferredPaymentMethod.value = ''
   emits('close-modal')
 }
 
@@ -481,8 +448,7 @@ const confirmPayment = () => {
       final_total: discountedTotal.value,
       immediate_payment: installmentAmountValue.value,
       remaining_balance: remainingBalance.value,
-      payment_method: selectedPayment.value, // Mode de paiement pour l'acompte
-      preferred_payment_method: preferredPaymentMethod.value || selectedPayment.value // Mode préféré pour les futures tranches
+      payment_method: selectedPayment.value // Même mode de paiement pour l'acompte
     }
   } else {
     paymentData = {
@@ -510,7 +476,6 @@ watch(() => props.isOpen, (newVal) => {
     selectedDiscount.value = 0
     isInstallmentActive.value = false
     installmentAmount.value = ''
-    preferredPaymentMethod.value = ''
   }
 })
 
@@ -803,11 +768,8 @@ watch(discountedTotal, (newTotal) => {
   gap: 0.6rem;
 }
 
-.amounts-row {
-  align-items: end;
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+.details-grid.full-row {
+  grid-column: 1 / -1;
 }
 
 .details-grid label {
@@ -834,61 +796,6 @@ watch(discountedTotal, (newTotal) => {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
-.preferred-payment-section {
-  padding: 1rem;
-  background: #f1f5f9;
-  border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-}
-
-.preferred-payment-section label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
-  margin-bottom: 0.75rem;
-}
-
-.preferred-payment-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
-}
-
-.preferred-payment-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.75rem 0.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: white;
-  color: #475569;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.preferred-payment-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  background: #f8fafc;
-}
-
-.preferred-payment-btn.active {
-  background: #818cf8;
-  color: white;
-  border-color: #818cf8;
-}
-
-.preferred-payment-btn.active:hover {
-  background: #6366f1;
-}
-
 .payment-layout {
   display: grid;
   gap: 1.5rem;
@@ -902,10 +809,6 @@ watch(discountedTotal, (newTotal) => {
   .payment-layout {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     align-items: stretch;
-  }
-
-  .details-grid.full-row {
-    grid-column: 1 / -1;
   }
 }
 
@@ -1084,10 +987,6 @@ watch(discountedTotal, (newTotal) => {
 
   .keypad {
     max-width: none;
-  }
-  
-  .preferred-payment-buttons {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .payment-footer {
