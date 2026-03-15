@@ -127,6 +127,27 @@ export default {
     }
   },
   methods: {
+    normalizeStatus(status) {
+      const normalized = String(status || 'available').trim().toLowerCase()
+      const aliases = {
+        disponible: 'available',
+        available: 'available',
+        libre: 'available',
+        occupee: 'occupied',
+        occupée: 'occupied',
+        occupied: 'occupied',
+        reservee: 'reserved',
+        réservée: 'reserved',
+        reserved: 'reserved',
+        hors_service: 'out_of_order',
+        horsservice: 'out_of_order',
+        out_of_order: 'out_of_order',
+        outoforder: 'out_of_order'
+      }
+
+      return aliases[normalized] || normalized
+    },
+
     async loadTables() {
       this.loading = true
       try {
@@ -153,7 +174,10 @@ export default {
               ? payload.data.data
               : []
 
-        this.tables = normalizedTables
+        this.tables = normalizedTables.map((table) => ({
+          ...table,
+          status: this.normalizeStatus(table.status)
+        }))
 
         // Réinitialiser les commandes en attente avant de recharger les données
         this.pendingOrders = {}

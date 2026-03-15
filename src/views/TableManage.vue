@@ -486,6 +486,7 @@ export default {
 
       try {
         const token = localStorage.getItem('token')
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
         const url = this.isEditing
           ? `${API_BASE_URL}/tables/${this.editingTableId}`
           : `${API_BASE_URL}/tables`
@@ -493,11 +494,22 @@ export default {
         const method = this.isEditing ? 'PUT' : 'POST'
 
         const formData = {
-          ...this.form,
+          table_number: String(this.form.table_number || '').trim(),
+          name: String(this.form.name || '').trim() || null,
+          capacity: Number(this.form.capacity) || 0,
           status: this.normalizeStatus(this.form.status),
-          location: this.prepareLocationPayload(this.form.location)
+          description: String(this.form.description || '').trim() || null
         }
-        delete formData.point_of_sale_id
+
+        const location = this.prepareLocationPayload(this.form.location)
+        if (location) {
+          formData.location = location
+        }
+
+        const pointOfSaleId = Number(currentUser?.point_of_sale_id ?? 0)
+        if (Number.isFinite(pointOfSaleId) && pointOfSaleId > 0) {
+          formData.point_of_sale_id = pointOfSaleId
+        }
 
         const response = await fetch(url, {
           method,
@@ -508,7 +520,14 @@ export default {
           body: JSON.stringify(formData)
         })
 
-        const data = await response.json()
+        const rawText = await response.text()
+        let data = {}
+
+        try {
+          data = rawText ? JSON.parse(rawText) : {}
+        } catch (parseError) {
+          data = { message: rawText }
+        }
 
         if (response.ok) {
           await this.loadTables()
@@ -517,7 +536,8 @@ export default {
           if (response.status === 422) {
             this.errors = data.errors || {}
           } else {
-            alert(data.error || 'Erreur lors de la sauvegarde')
+            console.error('Erreur creation/modification table:', response.status, data)
+            alert(data.error || data.message || 'Erreur lors de la sauvegarde')
           }
         }
       } catch (error) {

@@ -431,6 +431,49 @@ export default {
     }
   },
   methods: {
+    getCurrentUserPointOfSaleId() {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        const pointOfSaleId = Number(user?.point_of_sale_id)
+        return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
+      } catch (error) {
+        return null
+      }
+    },
+
+    resolveTablePointOfSaleId(table) {
+      const pointOfSaleId = Number(
+        table?.point_of_sale_id ??
+        table?.pointOfSaleId ??
+        table?.point_of_sale?.id ??
+        table?.pointOfSale?.id ??
+        null
+      )
+
+      return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
+    },
+
+    normalizeStatus(status) {
+      const normalized = String(status || 'available').trim().toLowerCase()
+      const aliases = {
+        disponible: 'available',
+        available: 'available',
+        libre: 'available',
+        occupee: 'occupied',
+        occupée: 'occupied',
+        occupied: 'occupied',
+        reservee: 'reserved',
+        réservée: 'reserved',
+        reserved: 'reserved',
+        hors_service: 'out_of_order',
+        horsservice: 'out_of_order',
+        out_of_order: 'out_of_order',
+        outoforder: 'out_of_order'
+      }
+
+      return aliases[normalized] || normalized
+    },
+
     showAllProducts() {
       this.activeCategory = null
       if (Array.isArray(this.products)) {
@@ -519,6 +562,7 @@ export default {
         })
 
         const table = this.normalizeTableResponse(response.data)
+        const userPointOfSaleId = this.getCurrentUserPointOfSaleId()
 
         if (!table) {
           console.warn('Impossible de charger la table demandée')
@@ -526,7 +570,16 @@ export default {
           return
         }
 
-        await this.onTableSelected(table)
+        if (userPointOfSaleId && this.resolveTablePointOfSaleId(table) !== userPointOfSaleId) {
+          console.warn('Table hors du point de vente de l’utilisateur:', table)
+          this.showNotification('Cette table n\'appartient pas a votre point de vente', 'error')
+          return
+        }
+
+        await this.onTableSelected({
+          ...table,
+          status: this.normalizeStatus(table.status)
+        })
       } catch (error) {
         console.error('Erreur lors du chargement de la table:', error.response?.data || error.message)
         this.showNotification('Erreur lors du chargement de la table', 'error')
@@ -1437,7 +1490,7 @@ export default {
         })
 
         const orderData = {
-          table_id: this.selectedTable.id,
+          table_id: Number(this.selectedTable.id),
           user_id: user.id,
           point_of_sale_id: user.point_of_sale_id,
           cash_register_session_id: sessionData?.id || null,

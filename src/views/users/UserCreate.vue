@@ -1,107 +1,163 @@
 <template>
-  <div class="user-create user-management-page">
-    <div class="container is-fluid">
-      <div class="columns is-centered">
-        <div class="column is-12">
-          <div class="card">
-            <header class="card-header">
-              <p class="card-header-title">
-                <i class="fas fa-user-plus me-2"></i>
-                Créer un Nouvel Utilisateur
-              </p>
-            </header>
-            <div class="card-content">
-              <form @submit.prevent="createUser">
-                <div class="field">
-                  <label class="label">Email *</label>
-                  <div class="control">
-                    <input v-model="user.email" class="input is-large" :class="{ 'is-danger': errors.email }"
-                      type="email" placeholder="exemple@domaine.com" required />
-                  </div>
-                  <p v-if="errors.email" class="help is-danger">{{ errors.email }}</p>
-                </div>
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Administration</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="fa-solid fa-plus-circle" class="text-indigo-500" />
+          Créer un utilisateur
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Ajoutez un nouveau compte et rattachez-le au point de vente approprié.
+        </p>
+      </div>
+      <router-link
+        :to="{ name: 'dashboard-users' }"
+        class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+      >
+        <font-awesome-icon icon="fa-solid fa-arrow-left" />
+        Retour
+      </router-link>
+    </header>
 
-                <div class="field">
-                  <label class="label">Nom complet *</label>
-                  <div class="control">
-                    <input v-model="user.name" class="input is-large" :class="{ 'is-danger': errors.name }" type="text"
-                      placeholder="Jean Dupont" required />
-                  </div>
-                  <p v-if="errors.name" class="help is-danger">{{ errors.name }}</p>
-                </div>
+    <div
+      v-if="errors.general"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600"
+    >
+      <div class="flex items-center gap-2">
+        <font-awesome-icon icon="fa-solid fa-triangle-exclamation" />
+        <span>{{ errors.general }}</span>
+      </div>
+      <button
+        type="button"
+        class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-600 transition hover:bg-rose-100"
+        @click="errors.general = ''"
+      >
+        Fermer
+      </button>
+    </div>
 
-                <div class="field">
-                  <label class="label">Mot de passe *</label>
-                  <div class="control">
-                    <input v-model="user.password" class="input is-large" :class="{ 'is-danger': errors.password }"
-                      type="password" placeholder="Minimum 8 caractères" required />
-                  </div>
-                  <p v-if="errors.password" class="help is-danger">{{ errors.password }}</p>
-                  <p class="help">Le mot de passe doit contenir au moins 8 caractères.</p>
-                </div>
-
-                <div class="field">
-                  <label class="label">Confirmer le mot de passe *</label>
-                  <div class="control">
-                    <input v-model="user.password_confirmation" class="input is-large"
-                      :class="{ 'is-danger': errors.password_confirmation }" type="password"
-                      placeholder="Retapez votre mot de passe" required />
-                  </div>
-                  <p v-if="errors.password_confirmation" class="help is-danger">{{ errors.password_confirmation }}</p>
-                  <p class="help">Veuillez retaper votre mot de passe pour confirmer qu'il est correct.</p>
-                </div>
-
-                <div class="field">
-                  <label class="label">Point de vente *</label>
-                  <div class="control">
-                    <div class="select is-large is-fullwidth" :class="{ 'is-danger': errors.point_of_sale_id }">
-                      <select v-model="user.point_of_sale_id" required :disabled="loadingPointsOfSale">
-                        <option value="">Sélectionner un point de vente</option>
-                        <option v-for="pos in pointsOfSale" :key="pos.id" :value="pos.id">
-                          {{ pos.name }}
-                        </option>
-                      </select>
-                    </div>
-                  </div>
-                  <p v-if="errors.point_of_sale_id" class="help is-danger">{{ errors.point_of_sale_id }}</p>
-                  <p v-if="loadingPointsOfSale" class="help">Chargement des points de vente...</p>
-                </div>
-
-                <div class="field is-grouped is-grouped-right">
-                  <div class="control">
-                    <router-link to="/users" class="button is-light is-large">
-                      <i class="fas fa-arrow-left me-1"></i> Annuler
-                    </router-link>
-                  </div>
-                  <div class="control">
-                    <button type="submit" class="button is-primary is-large" :disabled="isCreating || !isFormValid">
-                      <span v-if="isCreating">
-                        <span class="icon">
-                          <i class="fas fa-spinner fa-pulse"></i>
-                        </span>
-                        <span>Création...</span>
-                      </span>
-                      <span v-else>
-                        <i class="fas fa-user-plus me-1"></i> Créer
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-slate-800">Informations du compte</h2>
+          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            Nouveau profil
+          </span>
         </div>
       </div>
-    </div>
+
+      <form @submit.prevent="createUser">
+        <div class="grid gap-6 px-6 py-6 sm:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Email</label>
+            <input
+              v-model.trim="user.email"
+              type="email"
+              required
+              placeholder="prenom.nom@entreprise.com"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.email }"
+            />
+            <p v-if="errors.email" class="text-xs font-semibold text-rose-500">{{ errors.email }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Nom complet</label>
+            <input
+              v-model.trim="user.name"
+              type="text"
+              required
+              placeholder="Jean Dupont"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.name }"
+            />
+            <p v-if="errors.name" class="text-xs font-semibold text-rose-500">{{ errors.name }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Mot de passe</label>
+            <input
+              v-model="user.password"
+              type="password"
+              required
+              placeholder="Minimum 8 caracteres"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.password }"
+            />
+            <p class="text-xs text-slate-400">Le mot de passe doit contenir au moins 8 caracteres.</p>
+            <p v-if="errors.password" class="text-xs font-semibold text-rose-500">{{ errors.password }}</p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-600">Confirmation du mot de passe</label>
+            <input
+              v-model="user.password_confirmation"
+              type="password"
+              required
+              placeholder="Retapez votre mot de passe"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              :class="{ 'border-rose-300': errors.password_confirmation }"
+            />
+            <p class="text-xs text-slate-400">Utilisez la meme valeur pour confirmer le mot de passe.</p>
+            <p v-if="errors.password_confirmation" class="text-xs font-semibold text-rose-500">
+              {{ errors.password_confirmation }}
+            </p>
+          </div>
+
+          <div class="space-y-2 sm:col-span-2">
+            <label class="text-sm font-medium text-slate-600">Point de vente</label>
+            <select
+              v-model="user.point_of_sale_id"
+              required
+              :disabled="loadingPointsOfSale"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-50"
+              :class="{ 'border-rose-300': errors.point_of_sale_id }"
+            >
+              <option value="">Selectionner un point de vente</option>
+              <option v-for="pos in pointsOfSale" :key="pos.id" :value="pos.id">
+                {{ pos.name }}
+              </option>
+            </select>
+            <p v-if="loadingPointsOfSale" class="text-xs text-slate-400">Chargement des points de vente...</p>
+            <p v-if="errors.point_of_sale_id" class="text-xs font-semibold text-rose-500">
+              {{ errors.point_of_sale_id }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+          <router-link
+            :to="{ name: 'dashboard-users' }"
+            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+          >
+            <font-awesome-icon icon="fa-solid fa-xmark" />
+            Annuler
+          </router-link>
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isCreating || !isFormValid"
+          >
+            <font-awesome-icon :icon="isCreating ? 'fa-solid fa-rotate' : 'fa-solid fa-plus-circle'" :class="{ 'animate-spin': isCreating }" />
+            {{ isCreating ? 'Creation...' : 'Creer' }}
+          </button>
+        </div>
+      </form>
+    </section>
   </div>
 </template>
 
 <script>
 import userService from '@/services/userService'
 import pointOfSaleService from '@/services/pointOfSaleService'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 export default {
   name: 'UserCreate',
+  components: {
+    FontAwesomeIcon
+  },
   data() {
     return {
       user: {
@@ -187,113 +243,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.user-create {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 0;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-.user-management-page {
-  min-height: 100vh;
-  padding: 2rem 0;
-}
-
-.card {
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.card-header-title {
-  color: white;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.card-content {
-  padding: 2.5rem;
-}
-
-.field {
-  margin-bottom: 1.5rem;
-}
-
-.label {
-  color: #2d3748;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.input {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.3s ease;
-}
-
-.input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.input.is-danger {
-  border-color: #f56565;
-}
-
-.help.is-danger {
-  color: #f56565;
-}
-
-.button {
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.button.is-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-}
-
-.button.is-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.button.is-light {
-  border: 1px solid #e2e8f0;
-}
-
-.button.is-light:hover {
-  background: #f7fafc;
-  transform: translateY(-1px);
-}
-
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-@media screen and (max-width: 768px) {
-  .card-content {
-    padding: 1.5rem;
-  }
-
-  .user-create {
-    padding: 1rem 0;
-  }
-}
-</style>
