@@ -373,10 +373,16 @@ const isRegisterLocked = (registerId) => {
 }
 
 const selectCashRegister = (registerId) => {
+  
   if (loadingRegisters.value || isProcessing.value) return
   if (isRegisterLocked(registerId)) return
+  console.log("------ ------ ACTIVE REGISTER ID ", activeRegisterId.value);
   if (hasActiveSession.value && registerId !== activeRegisterId.value) return
   selectedCashRegister.value = registerId
+
+  console.log("###################");
+  console.log("###################", registerId);
+  console.log("################### --- ", selectedCashRegister.value);
 }
 
 const goToMachineManagement = () => {
@@ -610,6 +616,8 @@ const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
       expected_cash_amount: 0,
       start_ticket_number: ticketNumber ?? null
     }
+
+    console.log("+++++++ Data alefa VUE : ", payload)
 
     const { data } = await axios.post(`${API_BASE_URL}/cash-register-sessions`, payload, { headers })
     const createdSession = data?.data || data || null
