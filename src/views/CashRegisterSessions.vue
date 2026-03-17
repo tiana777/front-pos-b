@@ -1,359 +1,395 @@
 <template>
-  <div class="cash-register-sessions">
-    <h1>Sessions de caisse</h1>
+  <div class="space-y-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Caisse</p>
+        <h1 class="mt-3 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+          <font-awesome-icon icon="fa-solid fa-cash-register" class="text-indigo-500" />
+          Sessions caisse
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          Gérez les caisses rattachées au point de vente de l'utilisateur connecté.
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+          @click="refreshData"
+          :disabled="loading"
+        >
+          <font-awesome-icon icon="fa-solid fa-rotate" :class="{ 'animate-spin': loading }" />
+          Actualiser
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          @click="showCreateForm = !showCreateForm"
+          :disabled="!userPointOfSaleId"
+        >
+          <font-awesome-icon icon="fa-solid fa-plus" />
+          {{ showCreateForm ? 'Fermer' : 'Nouvelle caisse' }}
+        </button>
+      </div>
+    </header>
 
-    <div class="filter-bar">
-      <label>Filtrer par statut :</label>
-      <select v-model="filterStatus" @change="fetchSessions">
-        <option value="all">Toutes</option>
-        <option value="open">Ouvertes</option>
-        <option value="closed">Fermées</option>
-      </select>
-      <button @click="showNewSessionForm = true" v-if="hasPermission('cash_register_sessions.create')">
-        Ouvrir une nouvelle session
+    <div
+      v-if="errorMessage"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600"
+    >
+      <div class="flex items-center gap-2">
+        <font-awesome-icon icon="fa-solid fa-triangle-exclamation" />
+        <span>{{ errorMessage }}</span>
+      </div>
+      <button
+        type="button"
+        class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-600 transition hover:bg-rose-100"
+        @click="errorMessage = ''"
+      >
+        Fermer
       </button>
-      <span v-else class="permission-denied">
-        Vous n'avez pas l'autorisation de créer des sessions
-      </span>
     </div>
 
-    <div v-if="loading">Chargement des sessions...</div>
-    <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
-
-    <table v-if="sessions.length > 0" class="sessions-table">
-      <thead>
-        <tr>
-          <th class="has-text-black">ID</th>
-          <th class="has-text-black">Utilisateur</th>
-          <th class="has-text-black">Statut</th>
-          <th class="has-text-black">Ouverture</th>
-          <th class="has-text-black">Clôture</th>
-          <th class="has-text-black">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="session in sessions" :key="session.id">
-          <td class="has-text-black">{{ session.id }}</td>
-          <td class="has-text-black">{{ session.user.name }}</td>
-          <td class="has-text-black">{{ session.is_closed ? 'Fermée' : 'Ouverte' }}</td>
-          <td class="has-text-black">{{ formatDate(session.opened_at) }}</td>
-          <td class="has-text-black">{{ session.closed_at ? formatDate(session.closed_at) : '-' }}</td>
-          <td class="has-text-black">
-            <button @click="viewSession(session)">Voir</button>
-            <button v-if="!session.is_closed" @click="closeSession(session)">Clôturer</button>
-            <button v-else @click="reopenSession(session)">Rouvrir</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div v-if="showNewSessionForm" class="modal">
-      <div class="modal-content">
-        <h2>Ouvrir une nouvelle session</h2>
-        <form @submit.prevent="openNewSession">
-          <div>
-            <label for="cash_register_id">Id de caisse :</label>
-            <input type="number" v-model.number="newSessionData.cash_register_id" required />
-          </div>
-          <div>
-            <label for="user_id">Id utilisateur :</label>
-            <input type="number" v-model.number="newSessionData.user_id" required />
-          </div>
-          <div>
-            <label for="starting_amount">Montant initial :</label>
-            <input type="number" step="0.01" v-model.number="newSessionData.starting_amount" required min="0" />
-          </div>
-          <div>
-            <label for="expected_cash_amount">Montant espèces attendu :</label>
-            <input type="number" step="0.01" v-model.number="newSessionData.expected_cash_amount" required min="0" />
-          </div>
-          <div>
-            <label for="note">Note :</label>
-            <textarea v-model="newSessionData.note" rows="3" cols="30"></textarea>
-          </div>
-          <button type="submit">Ouvrir la session</button>
-          <button type="button" @click="showNewSessionForm = false">Annuler</button>
-        </form>
-        <div v-if="formErrorMessage" class="error">{{ formErrorMessage }}</div>
+    <div
+      v-if="successMessage"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-600"
+    >
+      <div class="flex items-center gap-2">
+        <font-awesome-icon icon="fa-solid fa-circle-check" />
+        <span>{{ successMessage }}</span>
       </div>
+      <button
+        type="button"
+        class="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-600 transition hover:bg-emerald-100"
+        @click="successMessage = ''"
+      >
+        Fermer
+      </button>
     </div>
 
-    <div v-if="selectedSession" class="modal">
-      <div class="modal-content">
-        <h2>Détails de la session — ID : {{ selectedSession.id }}</h2>
-        <p>Utilisateur : {{ selectedSession.user.name }}</p>
-        <p>Statut : {{ selectedSession.is_closed ? 'Fermée' : 'Ouverte' }}</p>
-        <p>Ouverte le : {{ formatDate(selectedSession.opened_at) }}</p>
-        <p>Fermée le : {{ selectedSession.closed_at ? formatDate(selectedSession.closed_at) : '-' }}</p>
-
-        <h3>Transactions</h3>
-        <ul>
-          <li v-for="transaction in selectedSession.transactions" :key="transaction.id">
-            {{ transaction.description }} - {{ transaction.amount }}
-          </li>
-        </ul>
-
-        <h3>Écarts</h3>
-        <ul>
-          <li v-for="discrepancy in selectedSession.discrepancies" :key="discrepancy.id">
-            {{ discrepancy.description }} - {{ discrepancy.amount }}
-          </li>
-        </ul>
-
-        <h3>Ajouter un écart</h3>
-        <form @submit.prevent="addDiscrepancy">
-          <div>
-            <label for="description">Description :</label>
-            <input type="text" v-model="discrepancyFormData.description" required />
-          </div>
-          <div>
-            <label for="amount">Montant :</label>
-            <input type="number" step="0.01" v-model.number="discrepancyFormData.amount" required />
-          </div>
-          <button type="submit">Ajouter l'écart</button>
-        </form>
-        <div v-if="discrepancyErrorMessage" class="error">{{ discrepancyErrorMessage }}</div>
-
-        <h3>Récapitulatif</h3>
-        <p>Total transactions : {{ summary.total_transactions }}</p>
-        <p>Total des écarts : {{ summary.total_discrepancies }}</p>
-
-        <button @click="closeSession(selectedSession)" v-if="!selectedSession.is_closed">Clôturer la session</button>
-        <button @click="reopenSession(selectedSession)" v-else>Rouvrir la session</button>
-        <button @click="closeDetails">Fermer</button>
+    <section
+      v-if="showCreateForm"
+      class="rounded-3xl border border-slate-200 bg-white shadow-sm"
+    >
+      <div class="border-b border-slate-100 px-6 py-4">
+        <h2 class="text-base font-semibold text-slate-800">Ajouter une caisse</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          La caisse sera automatiquement rattachée au point de vente {{ userPointOfSaleName }}.
+        </p>
       </div>
-    </div>
+
+      <form class="grid gap-6 px-6 py-6 sm:grid-cols-[minmax(0,1fr)_auto]" @submit.prevent="createRegister">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-slate-600">Nom de la caisse</label>
+          <input
+            v-model.trim="form.name"
+            type="text"
+            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            :class="{ 'border-rose-300': formError }"
+            placeholder="Ex. Caisse principale"
+            required
+          />
+          <p v-if="formError" class="text-xs font-semibold text-rose-500">{{ formError }}</p>
+        </div>
+
+        <div class="flex items-end justify-end gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-600"
+            @click="resetForm"
+          >
+            <font-awesome-icon icon="fa-solid fa-xmark" />
+            Annuler
+          </button>
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="saving || !form.name || !userPointOfSaleId"
+          >
+            <font-awesome-icon icon="fa-solid fa-plus" :class="{ 'animate-spin': saving }" />
+            {{ saving ? 'Ajout...' : 'Ajouter' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-slate-800">Caisses du point de vente</h2>
+            <p class="mt-1 text-sm text-slate-500">{{ userPointOfSaleName }}</p>
+          </div>
+          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            {{ registers.length }} caisse{{ registers.length > 1 ? 's' : '' }}
+          </span>
+        </div>
+      </div>
+
+      <div
+        v-if="loading"
+        class="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-sm text-slate-500"
+      >
+        <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
+        <div>
+          <p class="font-semibold text-slate-700">Chargement des caisses…</p>
+          <p class="text-xs text-slate-400">Veuillez patienter pendant la récupération des données.</p>
+        </div>
+      </div>
+
+      <div
+        v-else-if="!userPointOfSaleId"
+        class="px-6 py-16 text-center text-sm text-slate-500"
+      >
+        Aucun point de vente n'est rattaché à cet utilisateur.
+      </div>
+
+      <div
+        v-else-if="registers.length === 0"
+        class="px-6 py-16 text-center text-sm text-slate-500"
+      >
+        Aucune caisse enregistrée pour ce point de vente.
+      </div>
+
+      <ul v-else class="divide-y divide-slate-100">
+        <li
+          v-for="register in registers"
+          :key="register.id"
+          class="flex flex-wrap items-center justify-between gap-4 px-6 py-4"
+        >
+          <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <font-awesome-icon icon="fa-solid fa-cash-register" />
+            </div>
+            <div>
+              <p class="font-semibold text-slate-900">{{ register.name }}</p>
+              <p class="text-xs text-slate-400">ID caisse : {{ register.id }}</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+            @click="deleteRegister(register)"
+            :disabled="saving"
+          >
+            <font-awesome-icon icon="fa-solid fa-trash" />
+            Supprimer
+          </button>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>
 
 <script>
 import axios from 'axios'
 import { API_BASE_URL } from '@/utils/api'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 export default {
   name: 'CashRegisterSessions',
+  components: {
+    FontAwesomeIcon
+  },
   data() {
     return {
-      sessions: [],
-      filterStatus: 'all',
-      selectedSession: null,
-      showNewSessionForm: false,
-      newSessionData: {
-        cash_register_id: null,
-        user_id: null,
-        starting_amount: 0,
-        expected_cash_amount: 0,
-        note: '',
-      },
-      discrepancyFormData: {
-        description: '',
-        amount: 0,
-      },
-      summary: {
-        total_transactions: 0,
-        total_discrepancies: 0,
-      },
       loading: false,
+      saving: false,
+      showCreateForm: false,
+      registers: [],
+      userProfile: null,
+      form: {
+        name: ''
+      },
+      formError: '',
       errorMessage: '',
-      formErrorMessage: '',
-      discrepancyErrorMessage: '',
+      successMessage: ''
     }
   },
-  methods: {
-    formatDate(dateStr) {
-      if (!dateStr) return '-'
-      const date = new Date(dateStr)
-      return date.toLocaleString()
+  computed: {
+    currentUser() {
+      if (this.userProfile && typeof this.userProfile === 'object') {
+        return this.userProfile
+      }
+
+      try {
+        return JSON.parse(localStorage.getItem('user') || '{}')
+      } catch (error) {
+        return {}
+      }
     },
-    async fetchSessions() {
+
+    userPointOfSaleId() {
+      const pointOfSaleId = Number(this.currentUser?.point_of_sale_id)
+      return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
+    },
+
+    userPointOfSaleName() {
+      return this.currentUser?.point_of_sale_name || 'Point de vente non défini'
+    }
+  },
+  async mounted() {
+    await this.loadCurrentUserProfile()
+    await this.fetchRegisters()
+  },
+  methods: {
+    getAuthHeaders() {
+      const token = localStorage.getItem('token')
+      return {
+        Authorization: `Bearer ${token}`
+      }
+    },
+
+    resolveRegisterPointOfSaleId(register) {
+      const pointOfSaleId = Number(
+        register?.point_of_sale_id ??
+        register?.pointOfSaleId ??
+        register?.point_of_sale?.id ??
+        register?.pointOfSale?.id ??
+        null
+      )
+
+      return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
+    },
+
+    getFirstValidationError(error) {
+      const responseData = error?.response?.data || {}
+      const errorBag = responseData.errors || responseData.details || {}
+
+      for (const value of Object.values(errorBag)) {
+        if (Array.isArray(value) && value.length > 0) {
+          return value[0]
+        }
+        if (typeof value === 'string' && value.trim()) {
+          return value
+        }
+      }
+
+      return responseData.message || ''
+    },
+
+    async loadCurrentUserProfile() {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/me`, {
+          headers: this.getAuthHeaders()
+        })
+
+        const profile = data?.data || data || null
+        if (profile && typeof profile === 'object') {
+          this.userProfile = {
+            ...(this.currentUser || {}),
+            ...profile
+          }
+          localStorage.setItem('user', JSON.stringify(this.userProfile))
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du profil utilisateur:', error.response?.data || error.message)
+      }
+    },
+
+    async fetchRegisters() {
       this.loading = true
       this.errorMessage = ''
+
       try {
-        let url = '/api/cash-register-sessions'
-        if (this.filterStatus !== 'all') {
-          url += `?status=${this.filterStatus}`
-        }
-        const response = await axios.get(url)
-        this.sessions = response.data
+        const { data } = await axios.get(`${API_BASE_URL}/cash-registers`, {
+          headers: this.getAuthHeaders()
+        })
+
+        const allRegisters = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+        this.registers = this.userPointOfSaleId
+          ? allRegisters.filter((register) => this.resolveRegisterPointOfSaleId(register) === this.userPointOfSaleId)
+          : []
       } catch (error) {
-        this.errorMessage = 'Impossible de charger les sessions.'
+        console.error('Erreur lors du chargement des caisses:', error)
+        this.errorMessage = error.response?.data?.message || 'Impossible de charger les caisses.'
+        this.registers = []
       } finally {
         this.loading = false
       }
     },
-    viewSession(session) {
-      this.selectedSession = session
-      this.fetchSummary(session.id)
-      this.discrepancyFormData = { description: '', amount: 0 }
+
+    resetForm() {
+      this.showCreateForm = false
+      this.form.name = ''
+      this.formError = ''
     },
-    closeDetails() {
-      this.selectedSession = null
-      this.summary = { total_transactions: 0, total_discrepancies: 0 }
-    },
-    async openNewSession() {
-      this.formErrorMessage = ''
-      try {
-        console.log('Ouverture d\'une nouvelle session avec les données :', this.newSessionData)
 
-        const response = await axios.post(`${API_BASE_URL}/cash-register-sessions`,
-          {
-            cash_register_id: this.newSessionData.cash_register_id,
-            user_id: this.newSessionData.user_id,
-            starting_amount: this.newSessionData.starting_amount,
-            expected_cash_amount: 0,
-            note: this.newSessionData.note,
-            start_ticket_number: this.newSessionData.start_ticket_number // si utilisé côté Laravel
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${this.token}`
-            }
-          }
-        )
+    async createRegister() {
+      this.formError = ''
+      this.errorMessage = ''
+      this.successMessage = ''
 
-        this.sessions.push(response.data)
-        this.showNewSessionForm = false
-        this.newSessionData = {
-          cash_register_id: null,
-          user_id: null,
-          starting_amount: 0,
-          expected_cash_amount: 0,
-          note: '',
-          start_ticket_number: ''
-        }
-
-      } catch (error) {
-        console.error('Impossible d\'ouvrir la session :', error)
-        this.formErrorMessage = error.response?.data?.message || 'Impossible d\'ouvrir la session.'
+      if (!this.userPointOfSaleId) {
+        this.formError = 'Aucun point de vente associe a cet utilisateur.'
+        return
       }
-    }
-    ,
 
-    async closeSession(session) {
+      if (!this.form.name.trim()) {
+        this.formError = 'Le nom de la caisse est requis.'
+        return
+      }
+
+      this.saving = true
+
       try {
         const payload = {
-          is_closed: true,
-          actual_cash_amount: session.actual_cash_amount || 0,
-          closed_at: new Date().toISOString(),
+          name: this.form.name.trim()
         }
-        const response = await axios.put(`/api/cash-register-sessions/${session.id}`, payload)
-        const index = this.sessions.findIndex(s => s.id === session.id)
-        if (index !== -1) {
-          this.sessions.splice(index, 1, response.data)
+
+        if (this.userPointOfSaleId) {
+          payload.point_of_sale_id = this.userPointOfSaleId
         }
-        if (this.selectedSession && this.selectedSession.id === session.id) {
-          this.selectedSession = response.data
-          this.fetchSummary(session.id)
+
+        const { data } = await axios.post(`${API_BASE_URL}/cash-registers`, payload, {
+          headers: this.getAuthHeaders()
+        })
+
+        const createdRegister = data?.data || data
+        if (createdRegister) {
+          this.registers.unshift(createdRegister)
         }
+
+        this.successMessage = 'Caisse ajoutee avec succes.'
+        this.resetForm()
+        await this.fetchRegisters()
       } catch (error) {
-        alert(error.response?.data?.message || 'Impossible de clôturer la session.')
+        console.error('Erreur lors de la creation de la caisse:', error)
+        this.formError = this.getFirstValidationError(error) || 'Impossible d ajouter la caisse.'
+      } finally {
+        this.saving = false
       }
     },
-    async reopenSession(session) {
+
+    async deleteRegister(register) {
+      if (!register) return
+
+      const confirmed = window.confirm(`Supprimer la caisse "${register.name}" ?`)
+      if (!confirmed) return
+
+      this.saving = true
+      this.errorMessage = ''
+      this.successMessage = ''
+
       try {
-        const response = await axios.post(`/api/cash-register-sessions/${session.id}/reopen`)
-        const index = this.sessions.findIndex(s => s.id === session.id)
-        if (index !== -1) {
-          this.sessions.splice(index, 1, response.data)
-        }
-        if (this.selectedSession && this.selectedSession.id === session.id) {
-          this.selectedSession = response.data
-          this.fetchSummary(session.id)
-        }
+        await axios.delete(`${API_BASE_URL}/cash-registers/${register.id}`, {
+          headers: this.getAuthHeaders()
+        })
+
+        this.registers = this.registers.filter((item) => item.id !== register.id)
+        this.successMessage = 'Caisse supprimee avec succes.'
       } catch (error) {
-        alert(error.response?.data?.message || 'Impossible de rouvrir la session.')
+        console.error('Erreur lors de la suppression de la caisse:', error)
+        this.errorMessage = error.response?.data?.message || 'Impossible de supprimer la caisse.'
+      } finally {
+        this.saving = false
       }
     },
-    async addDiscrepancy() {
-      this.discrepancyErrorMessage = ''
-      try {
-        const response = await axios.post(`/api/cash-register-sessions/${this.selectedSession.id}/discrepancies`, this.discrepancyFormData)
-        this.selectedSession.discrepancies.push(response.data)
-        this.discrepancyFormData = { description: '', amount: 0 }
-        this.fetchSummary(this.selectedSession.id)
-      } catch (error) {
-        this.discrepancyErrorMessage = error.response?.data?.message || 'Impossible d\'ajouter l\'écart.'
-      }
-    },
-    async fetchSummary(sessionId) {
-      try {
-        const response = await axios.get(`/api/cash-register-sessions/${sessionId}/summary`)
-        this.summary = response.data
-      } catch (error) {
-        // Ignore les erreurs lors de la récupération du récapitulatif
-      }
-    },
-  },
-  mounted() {
-    this.fetchSessions()
-  },
+
+    async refreshData() {
+      await this.fetchRegisters()
+    }
+  }
 }
 </script>
-
-<style scoped>
-.cash-register-sessions {
-  padding: 1rem;
-}
-
-.filter-bar {
-  margin-bottom: 1rem;
-}
-
-.sessions-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.sessions-table th,
-.sessions-table td {
-  border: 1px solid #ccc;
-  padding: 0.5rem;
-  text-align: left;
-}
-
-.error {
-  color: red;
-  margin-top: 0.5rem;
-}
-
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal-content {
-  background-color: white;
-  padding: 1rem;
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  border-radius: 4px;
-}
-
-.modal-content h2 {
-  margin-top: 0;
-}
-
-.modal-content form div {
-  margin-bottom: 0.5rem;
-}
-
-.modal-content form label {
-  display: block;
-  margin-bottom: 0.25rem;
-}
-
-.modal-content form input {
-  width: 100%;
-  padding: 0.25rem;
-  box-sizing: border-box;
-}
-</style>

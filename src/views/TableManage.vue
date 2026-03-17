@@ -106,12 +106,31 @@
             <i class="fas fa-users"></i>
             {{ table.capacity }} personnes
           </div>
+          <div v-if="formatLocation(table)" class="table-location">
+            <i class="fas fa-location-dot"></i>
+            {{ formatLocation(table) }}
+          </div>
           <div v-if="table.description" class="table-description">
             {{ table.description }}
           </div>
         </div>
 
         <div class="table-actions">
+          <select
+            :value="table.status"
+            class="status-select"
+            :disabled="loading && loadingTableId === table.id"
+            @click.stop
+            @change.stop="handleStatusChange(table, $event)"
+          >
+            <option
+              v-for="status in statusFilters"
+              :key="status.value"
+              :value="status.value"
+            >
+              {{ status.label }}
+            </option>
+          </select>
           <button @click.stop="editTable(table)" class="action-btn edit">
             <i class="fas fa-edit"></i>
           </button>
@@ -293,7 +312,6 @@ export default {
   data() {
     return {
       tables: [],
-      pointsOfSale: [],
       statistics: {
         total_tables: 0,
         available_tables: 0,
@@ -314,6 +332,7 @@ export default {
       showDeleteModal: false,
       isEditing: false,
       loading: false,
+      loadingTableId: null,
       tableToDelete: null,
       editingTableId: null,
       form: {
@@ -351,8 +370,6 @@ export default {
   },
   async mounted() {
     await this.loadTables()
-    await this.loadStatistics()
-    await this.loadPointsOfSale()
   },
   methods: {
     async loadTables() {
@@ -366,65 +383,14 @@ export default {
         })
 
         if (response.ok) {
-          this.tables = await response.json()
+          const payload = await response.json()
+          this.tables = this.normalizeTables(payload)
+          this.refreshStatisticsFromTables()
         } else {
           console.error('Erreur lors du chargement des tables')
         }
       } catch (error) {
         console.error('Erreur:', error)
-      }
-    },
-
-    async loadStatistics() {
-      try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(`${API_BASE_URL}/tables/statistics`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (response.ok) {
-          this.statistics = await response.json()
-        } else {
-          console.error('Erreur lors du chargement des statistiques')
-        }
-      } catch (error) {
-        console.error('Erreur:', error)
-      }
-    },
-
-    async loadPointsOfSale() {
-      try {
-        const token = localStorage.getItem('token')
-        const response = await fetch(`${API_BASE_URL}/points-of-sale`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (response.ok) {
-          this.pointsOfSale = await response.json()
-          // Pré-sélectionner le point de vente de l'utilisateur si disponible
-          this.setDefaultPointOfSale()
-        } else {
-          console.error('Erreur lors du chargement des points de vente')
-        }
-      } catch (error) {
-        console.error('Erreur:', error)
-      }
-    },
-
-    setDefaultPointOfSale() {
-      const user = JSON.parse(localStorage.getItem('user'))
-      if (user && user.point_of_sale_id && this.pointsOfSale.length > 0) {
-        // Vérifier si le point de vente de l'utilisateur existe dans la liste
-        const userPos = this.pointsOfSale.find(pos => pos.id === user.point_of_sale_id)
-        if (userPos) {
-          this.form.point_of_sale_id = user.point_of_sale_id
-        }
       }
     },
 
@@ -491,7 +457,7 @@ export default {
         capacity: table.capacity,
         status: table.status,
         description: table.description || '',
-        location: table.location || { x: null, y: null }
+        location: this.normalizeLocation(table.location)
       }
       this.showModal = true
     },
@@ -520,15 +486,30 @@ export default {
 
       try {
         const token = localStorage.getItem('token')
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
         const url = this.isEditing
           ? `${API_BASE_URL}/tables/${this.editingTableId}`
           : `${API_BASE_URL}/tables`
 
         const method = this.isEditing ? 'PUT' : 'POST'
 
-        // Remove point_of_sale_id from form data as it's handled by backend
-        const formData = { ...this.form }
-        delete formData.point_of_sale_id
+        const formData = {
+          table_number: String(this.form.table_number || '').trim(),
+          name: String(this.form.name || '').trim() || null,
+          capacity: Number(this.form.capacity) || 0,
+          status: this.normalizeStatus(this.form.status),
+          description: String(this.form.description || '').trim() || null
+        }
+
+        const location = this.prepareLocationPayload(this.form.location)
+        if (location) {
+          formData.location = location
+        }
+
+        const pointOfSaleId = Number(currentUser?.point_of_sale_id ?? 0)
+        if (Number.isFinite(pointOfSaleId) && pointOfSaleId > 0) {
+          formData.point_of_sale_id = pointOfSaleId
+        }
 
         const response = await fetch(url, {
           method,
@@ -539,17 +520,24 @@ export default {
           body: JSON.stringify(formData)
         })
 
-        const data = await response.json()
+        const rawText = await response.text()
+        let data = {}
+
+        try {
+          data = rawText ? JSON.parse(rawText) : {}
+        } catch (parseError) {
+          data = { message: rawText }
+        }
 
         if (response.ok) {
           await this.loadTables()
-          await this.loadStatistics()
           this.closeModal()
         } else {
           if (response.status === 422) {
             this.errors = data.errors || {}
           } else {
-            alert(data.error || 'Erreur lors de la sauvegarde')
+            console.error('Erreur creation/modification table:', response.status, data)
+            alert(data.error || data.message || 'Erreur lors de la sauvegarde')
           }
         }
       } catch (error) {
@@ -565,7 +553,14 @@ export default {
       this.updateTableStatus(table.id, newStatus)
     },
 
+    handleStatusChange(table, event) {
+      const newStatus = this.normalizeStatus(event.target.value)
+      if (newStatus === table.status) return
+      this.updateTableStatus(table.id, newStatus)
+    },
+
     async updateTableStatus(tableId, status) {
+      this.loadingTableId = tableId
       try {
         const token = localStorage.getItem('token')
         const response = await fetch(`${API_BASE_URL}/tables/${tableId}/status`, {
@@ -579,7 +574,6 @@ export default {
 
         if (response.ok) {
           await this.loadTables()
-          await this.loadStatistics()
         } else {
           const data = await response.json()
           alert(data.error || 'Erreur lors de la mise à jour du statut')
@@ -587,6 +581,8 @@ export default {
       } catch (error) {
         console.error('Erreur:', error)
         alert('Erreur de connexion')
+      } finally {
+        this.loadingTableId = null
       }
     },
 
@@ -617,7 +613,6 @@ export default {
 
         if (response.ok) {
           await this.loadTables()
-          await this.loadStatistics()
           this.closeDeleteModal()
         } else {
           const data = await response.json()
@@ -639,6 +634,103 @@ export default {
         return 'Aucune table ne correspond aux filtres sélectionnés.'
       }
       return 'Commencez par créer votre première table.'
+    },
+
+    normalizeTables(payload) {
+      const rawTables = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+      return rawTables.map((table) => ({
+        ...table,
+        status: this.normalizeStatus(table.status),
+        location: this.normalizeLocation(table.location)
+      }))
+    },
+
+    normalizeStatus(status) {
+      const normalized = String(status || 'available').trim().toLowerCase()
+      const aliases = {
+        disponible: 'available',
+        available: 'available',
+        occupee: 'occupied',
+        occupée: 'occupied',
+        occupied: 'occupied',
+        reservee: 'reserved',
+        réservée: 'reserved',
+        reserved: 'reserved',
+        hors_service: 'out_of_order',
+        horsservice: 'out_of_order',
+        out_of_order: 'out_of_order',
+        outoforder: 'out_of_order'
+      }
+
+      return aliases[normalized] || normalized
+    },
+
+    normalizeLocation(location) {
+      if (!location || typeof location !== 'object') {
+        return { x: null, y: null }
+      }
+
+      const x = Number(location.x ?? location.pos_x ?? location.left ?? null)
+      const y = Number(location.y ?? location.pos_y ?? location.top ?? null)
+
+      return {
+        x: Number.isFinite(x) ? x : null,
+        y: Number.isFinite(y) ? y : null
+      }
+    },
+
+    prepareLocationPayload(location) {
+      const normalized = this.normalizeLocation(location)
+      if (normalized.x === null && normalized.y === null) {
+        return null
+      }
+
+      return normalized
+    },
+
+    normalizeStatistics(payload) {
+      const source = payload?.data && !Array.isArray(payload.data) ? payload.data : payload
+      const totalTables = Number(source?.total_tables ?? source?.total ?? source?.tables_count ?? 0) || 0
+      const availableTables = Number(source?.available_tables ?? source?.available ?? 0) || 0
+      const occupiedTables = Number(source?.occupied_tables ?? source?.occupied ?? 0) || 0
+      const reservedTables = Number(source?.reserved_tables ?? source?.reserved ?? 0) || 0
+      const outOfOrderTables = Number(source?.out_of_order_tables ?? source?.out_of_order ?? 0) || 0
+      const occupancyRate = Number(source?.occupancy_rate ?? source?.occupation_rate ?? 0) || 0
+
+      return {
+        total_tables: totalTables,
+        available_tables: availableTables,
+        occupied_tables: occupiedTables,
+        reserved_tables: reservedTables,
+        out_of_order_tables: outOfOrderTables,
+        occupancy_rate: occupancyRate
+      }
+    },
+
+    refreshStatisticsFromTables() {
+      const total = this.tables.length
+      const available = this.tables.filter((table) => table.status === 'available').length
+      const occupied = this.tables.filter((table) => table.status === 'occupied').length
+      const reserved = this.tables.filter((table) => table.status === 'reserved').length
+      const outOfOrder = this.tables.filter((table) => table.status === 'out_of_order').length
+
+      this.statistics = {
+        total_tables: total,
+        available_tables: available,
+        occupied_tables: occupied,
+        reserved_tables: reserved,
+        out_of_order_tables: outOfOrder,
+        occupancy_rate: total > 0 ? Math.round((occupied / total) * 100) : 0
+      }
+    },
+
+    formatLocation(table) {
+      const location = this.normalizeLocation(table?.location)
+      if (location.x === null && location.y === null) {
+        return ''
+      }
+
+      return `X: ${location.x ?? '-'} | Y: ${location.y ?? '-'}`
     }
   }
 }
@@ -929,12 +1021,34 @@ export default {
   line-height: 1.4;
 }
 
+.table-location {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #475569;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
 .table-actions {
   padding: 1rem;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.5rem;
   border-top: 1px solid #f1f5f9;
+}
+
+.status-select {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  padding: 0 0.75rem;
+  background: white;
+  color: #1e293b;
+  font-size: 0.8rem;
 }
 
 .action-btn {

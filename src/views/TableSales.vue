@@ -16,10 +16,6 @@
             <font-awesome-icon icon="fa-solid fa-rotate" />
             Actualiser
           </button>
-          <button type="button" class="action-button alt" @click="openTableLayout">
-            <font-awesome-icon icon="fa-solid fa-table-cells" />
-            Plan de salle
-          </button>
         </div>
       </header>
 
@@ -32,15 +28,6 @@
               <option value="occupied">Occupées</option>
               <option value="available">Disponibles</option>
               <option value="reserved">Réservées</option>
-            </select>
-          </div>
-          <div class="filter-item">
-            <label for="pointOfSaleFilter">Point de vente</label>
-            <select id="pointOfSaleFilter" v-model="pointOfSaleFilter" @change="filterTables">
-              <option value="">Tous</option>
-              <option v-for="pos in pointsOfSale" :key="pos.id" :value="pos.id">
-                {{ pos.name }}
-              </option>
             </select>
           </div>
         </div>
@@ -271,9 +258,7 @@ export default {
   data() {
     return {
       tables: [],
-      pointsOfSale: [],
       statusFilter: '',
-      pointOfSaleFilter: '',
       loading: false,
       showTableDetails: false,
       showSaleDetails: false,
@@ -290,14 +275,31 @@ export default {
         filtered = filtered.filter(table => table.status === this.statusFilter)
       }
 
-      if (this.pointOfSaleFilter) {
-        filtered = filtered.filter(table => table.point_of_sale_id == this.pointOfSaleFilter)
-      }
-
       return filtered
     }
   },
   methods: {
+    normalizeStatus(status) {
+      const normalized = String(status || 'available').trim().toLowerCase()
+      const aliases = {
+        disponible: 'available',
+        available: 'available',
+        libre: 'available',
+        occupee: 'occupied',
+        occupée: 'occupied',
+        occupied: 'occupied',
+        reservee: 'reserved',
+        réservée: 'reserved',
+        reserved: 'reserved',
+        hors_service: 'out_of_order',
+        horsservice: 'out_of_order',
+        out_of_order: 'out_of_order',
+        outoforder: 'out_of_order'
+      }
+
+      return aliases[normalized] || normalized
+    },
+
     formatPrice(price) {
       return `${parseFloat(price).toFixed(2)} Ar`
     },
@@ -503,6 +505,7 @@ export default {
       const activeSales = this.resolveActiveSales(rawTable)
       return {
         ...rawTable,
+        status: this.normalizeStatus(rawTable.status),
         active_sales: activeSales
       }
     },
@@ -643,8 +646,7 @@ export default {
         const token = localStorage.getItem('token')
         const response = await axios.get(`${API_BASE_URL}/tables`, {
           params: {
-            with_sales: 1,
-            with_point_of_sale: 1
+            with_sales: 1
           },
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -663,32 +665,12 @@ export default {
       }
     },
 
-    async loadPointsOfSale() {
-      try {
-        const token = localStorage.getItem('token')
-        const response = await axios.get(`${API_BASE_URL}/pointofsales`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        this.pointsOfSale = Array.isArray(response.data) ? response.data : response.data.data || []
-      } catch (error) {
-        console.error('Erreur lors du chargement des points de vente:', error.response?.data || error.message)
-      }
-    },
-
     filterTables() {
       // La logique de filtrage est dans le computed filteredTables
     },
 
     refreshData() {
       this.loadTables()
-    },
-
-    openTableLayout() {
-      this.$router.push({ name: 'tables-layout' })
     },
 
     viewTableDetails(table) {
@@ -740,10 +722,7 @@ export default {
   },
 
   async mounted() {
-    await Promise.all([
-      this.loadTables(),
-      this.loadPointsOfSale()
-    ])
+    await this.loadTables()
   }
 }
 </script>
@@ -759,8 +738,9 @@ export default {
 }
 
 .table-sales-content {
-  max-width: 1100px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   background: #fff;
   border-radius: 1.25rem;
   box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
@@ -921,7 +901,7 @@ export default {
 
 .tables-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 1.25rem;
 }
 

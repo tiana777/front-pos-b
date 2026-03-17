@@ -295,6 +295,10 @@ const summaryError = ref('')
 const sessionSummary = ref(null)
 
 const currentUserId = computed(() => currentUser.value?.id ?? null)
+const currentUserPointOfSaleId = computed(() => {
+  const pointOfSaleId = Number(currentUser.value?.point_of_sale_id ?? null)
+  return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
+})
 
 const isSessionOpen = (session) => {
   if (!session) return false
@@ -342,6 +346,18 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
   if (!token) throw new Error("Token d'authentification manquant")
   return { Authorization: `Bearer ${token}` }
+}
+
+const resolveRegisterPointOfSaleId = (register) => {
+  const pointOfSaleId = Number(
+    register?.point_of_sale_id ??
+    register?.pointOfSaleId ??
+    register?.point_of_sale?.id ??
+    register?.pointOfSale?.id ??
+    null
+  )
+
+  return Number.isFinite(pointOfSaleId) && pointOfSaleId > 0 ? pointOfSaleId : null
 }
 
 const statusBadgeText = (registerId) => {
@@ -397,7 +413,9 @@ const fetchCashRegisters = async () => {
       headers: getAuthHeaders()
     })
     const registers = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
-    cashRegisters.value = registers
+    cashRegisters.value = currentUserPointOfSaleId.value
+      ? registers.filter((register) => resolveRegisterPointOfSaleId(register) === currentUserPointOfSaleId.value)
+      : registers
   } catch (error) {
     console.error('Erreur lors du chargement des caisses:', error)
     errorMessage.value = error.response?.data?.message || 'Impossible de charger les caisses'
