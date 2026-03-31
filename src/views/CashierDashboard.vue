@@ -286,6 +286,11 @@ const latestTransactions = computed(() => {
   return cashTransactionStore.transactions.slice(0, 5)
 })
 
+const getSaleUserId = (sale) => {
+  if (!sale || typeof sale !== 'object') return null
+  return sale.user_id ?? sale.userId ?? sale.user?.id ?? null
+}
+
 const goTo = (routeName) => {
   router.push({ name: routeName })
 }
@@ -311,12 +316,13 @@ const fetchSales = async () => {
   try {
     const { data } = await axios.get(`${API_BASE_URL}/sales/current-session`, {
       params: {
-        user_id: user.value.id,
         cash_register_session_id: session.value.id
       },
       headers: authHeaders()
     })
-    sales.value = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    const sessionSales = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+    const userSales = sessionSales.filter((sale) => String(getSaleUserId(sale) ?? '') === String(user.value.id))
+    sales.value = userSales.length ? userSales : sessionSales
   } catch (error) {
     console.error('Erreur lors du chargement des ventes de la session:', error.response?.data || error.message)
     sales.value = []

@@ -1,5 +1,5 @@
 <template>
-  <div class="user-sales-view">
+  <div :class="embedded ? 'user-sales-embedded' : 'user-sales-view'">
     <Profile v-if="!embedded" />
 
     <div class="user-sales-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -190,6 +190,41 @@ const authHeaders = () => {
   return { Authorization: `Bearer ${token}` }
 }
 
+const getSaleUserId = (sale) => {
+  if (!sale || typeof sale !== 'object') return null
+  return sale.user_id ?? sale.userId ?? sale.user?.id ?? null
+}
+
+const getSaleSessionId = (sale) => {
+  if (!sale || typeof sale !== 'object') return null
+  return sale.cash_register_session_id ?? sale.cashRegisterSessionId ?? sale.session_id ?? sale.sessionId ?? null
+}
+
+const extractSalesArray = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.items)) return payload.items
+  if (Array.isArray(payload?.results)) return payload.results
+  return []
+}
+
+const fetchSalesForSession = async (sessionId, userId) => {
+  const { data } = await axios.get(`${API_BASE_URL}/sales`, {
+    params: {
+      cash_register_session_id: sessionId
+    },
+    headers: authHeaders()
+  })
+
+  const fetchedSales = extractSalesArray(data).filter((sale) => sale && typeof sale === 'object')
+  const sessionSales = fetchedSales.filter((sale) => String(getSaleSessionId(sale) ?? '') === String(sessionId))
+  const userSales = sessionSales.filter((sale) => String(getSaleUserId(sale) ?? '') === String(userId))
+
+  if (userSales.length) return userSales
+  if (sessionSales.length) return sessionSales
+  return fetchedSales
+}
+
 const selectSale = (sale) => {
   selectedSale.value = sale
 }
@@ -328,16 +363,7 @@ onMounted(async () => {
       return
     }
 
-    const { data } = await axios.get(`${API_BASE_URL}/sales/current-session`, {
-      params: {
-        user_id: user.id,
-        cash_register_session_id: session.id
-      },
-      headers: authHeaders()
-    })
-
-    const payload = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
-    sales.value = payload.filter((sale) => sale && typeof sale === 'object')
+    sales.value = await fetchSalesForSession(session.id, user.id)
     selectedSale.value = sales.value[0] || null
   } catch (error) {
     console.error('Erreur lors du chargement des ventes:', error.response?.data || error.message)
@@ -357,10 +383,18 @@ onMounted(async () => {
   gap: 2rem;
 }
 
+.user-sales-embedded {
+  min-height: 0;
+}
+
 .user-sales-layout {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
+}
+
+.user-sales-embedded .user-sales-layout {
+  max-width: none;
 }
 
 @media (max-width: 1024px) {

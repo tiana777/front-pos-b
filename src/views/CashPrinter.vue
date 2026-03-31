@@ -191,61 +191,72 @@
 
       <AmountModal :isOpen="isAmountModalOpen" @close="closeAmountModal" @send="handleAmountModalSend" />
 
-      <div v-if="isSummaryModalOpen" class="modal is-active">
+      <div v-if="isSummaryModalOpen" class="modal is-active summary-overlay">
         <div class="modal-background" @click="closeSummaryModal"></div>
         <div class="modal-card summary-modal">
-          <header class="modal-card-head">
-            <p class="modal-card-title">Résumé de la session</p>
-            <button class="delete" type="button" aria-label="Fermer" @click="closeSummaryModal"></button>
+          <header class="modal-card-head summary-modal-head">
+            <div>
+              <p class="summary-kicker">Connexion caisse</p>
+              <p class="modal-card-title summary-modal-title">Résumé de la session</p>
+            </div>
+            <button class="summary-close-button" type="button" aria-label="Fermer" @click="closeSummaryModal">
+              <i class="fas fa-xmark"></i>
+              Fermer
+            </button>
           </header>
-          <section class="modal-card-body">
+          <section class="modal-card-body summary-modal-body">
             <div v-if="summaryLoading" class="py-4 text-center text-slate-500">
               Chargement du résumé...
             </div>
             <p v-else-if="summaryError" class="text-center text-sm text-rose-600">
               {{ summaryError }}
             </p>
-            <div v-else>
-              <div class="summary-row">
-                <span class="summary-label">Caisse</span>
-                <span class="summary-value">{{ activeSession?.cash_register?.name }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Ouverte par</span>
-                <span class="summary-value">{{ activeSession?.user?.name || 'Moi' }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Ouverte le</span>
-                <span class="summary-value">{{ formatDate(activeSession?.opened_at) }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Fond de caisse</span>
-                <span class="summary-value">{{ formatCurrency(activeSession?.starting_amount) }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Total transactions</span>
-                <span class="summary-value">{{ formatCurrency(sessionSummary?.total_transactions) }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="summary-label">Écarts signalés</span>
-                <span class="summary-value">{{ formatCurrency(sessionSummary?.total_discrepancies) }}</span>
-              </div>
-              <div class="summary-row" v-if="sessionSummary?.session?.expected_cash_amount !== undefined">
-                <span class="summary-label">Montant attendu</span>
-                <span class="summary-value">{{ formatCurrency(sessionSummary?.session?.expected_cash_amount) }}</span>
+            <div v-else class="summary-content">
+              <p v-if="summaryInfo" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                {{ summaryInfo }}
+              </p>
+              <div class="summary-grid">
+                <div class="summary-row">
+                  <span class="summary-label">Caisse</span>
+                  <span class="summary-value">{{ activeSession?.cash_register?.name }}</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label">Ouverte par</span>
+                  <span class="summary-value">{{ activeSession?.user?.name || 'Moi' }}</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label">Ouverte le</span>
+                  <span class="summary-value">{{ formatDate(activeSession?.opened_at) }}</span>
+                </div>
+                <div class="summary-row">
+                  <span class="summary-label">Fond de caisse</span>
+                  <span class="summary-value">{{ formatCurrency(activeSession?.starting_amount) }}</span>
+                </div>
+                <div v-if="sessionSummary" class="summary-row">
+                  <span class="summary-label">Total transactions</span>
+                  <span class="summary-value">{{ formatCurrency(sessionSummary?.total_transactions) }}</span>
+                </div>
+                <div v-if="sessionSummary" class="summary-row">
+                  <span class="summary-label">Écarts signalés</span>
+                  <span class="summary-value">{{ formatCurrency(sessionSummary?.total_discrepancies) }}</span>
+                </div>
+                <div class="summary-row" v-if="sessionSummary?.session?.expected_cash_amount !== undefined">
+                  <span class="summary-label">Montant attendu</span>
+                  <span class="summary-value">{{ formatCurrency(sessionSummary?.session?.expected_cash_amount) }}</span>
+                </div>
               </div>
             </div>
           </section>
-          <footer class="modal-card-foot">
+          <footer class="modal-card-foot summary-modal-foot">
             <button
-              class="button is-primary"
+              class="summary-action summary-action-primary"
               type="button"
               :disabled="summaryLoading"
               @click="continueAfterSummary"
             >
               Continuer à vendre
             </button>
-            <button class="button" type="button" :disabled="summaryLoading" @click="closeSummaryModal">
+            <button class="summary-action summary-action-secondary" type="button" :disabled="summaryLoading" @click="closeSummaryModal">
               Fermer
             </button>
           </footer>
@@ -292,6 +303,7 @@ const closeModal = () => {
 const isSummaryModalOpen = ref(false)
 const summaryLoading = ref(false)
 const summaryError = ref('')
+const summaryInfo = ref('')
 const sessionSummary = ref(null)
 
 const currentUserId = computed(() => currentUser.value?.id ?? null)
@@ -506,6 +518,8 @@ const fetchMyActiveSession = async () => {
       activeSession.value = session
       selectedCashRegister.value = session.cash_register_id
       connectedCashRegisterName.value = session.cash_register?.name || ''
+      localStorage.setItem('cashRegisterSession', JSON.stringify(session))
+      localStorage.setItem('cash_register_session', JSON.stringify(session))
       registerStatuses.value = {
         ...registerStatuses.value,
         [session.cash_register_id]: 'connected'
@@ -516,6 +530,8 @@ const fetchMyActiveSession = async () => {
       }
     } else {
       activeSession.value = null
+      localStorage.removeItem('cashRegisterSession')
+      localStorage.removeItem('cash_register_session')
       if (!isAdmin.value) {
         selectedCashRegister.value = null
       }
@@ -525,6 +541,8 @@ const fetchMyActiveSession = async () => {
       console.error('Erreur récupération session active:', error.response?.data || error.message)
     }
     activeSession.value = null
+    localStorage.removeItem('cashRegisterSession')
+    localStorage.removeItem('cash_register_session')
     if (!isAdmin.value) {
       selectedCashRegister.value = null
     }
@@ -575,8 +593,15 @@ const openSummaryModal = async () => {
   }
 
   summaryError.value = ''
+  summaryInfo.value = ''
   sessionSummary.value = null
   isSummaryModalOpen.value = true
+  if (isSessionOpen(activeSession.value)) {
+    summaryLoading.value = false
+    summaryInfo.value = "Le résumé détaillé sera disponible après la clôture de la session. Vous pouvez reprendre les ventes immédiatement."
+    return
+  }
+
   summaryLoading.value = true
 
   try {
@@ -596,6 +621,10 @@ const closeSummaryModal = () => {
 }
 
 const continueAfterSummary = () => {
+  if (activeSession.value?.id) {
+    localStorage.setItem('cashRegisterSession', JSON.stringify(activeSession.value))
+    localStorage.setItem('cash_register_session', JSON.stringify(activeSession.value))
+  }
   closeSummaryModal()
   router.push({ name: 'dashboard-direct' })
 }
@@ -642,6 +671,7 @@ const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
 
     if (createdSession) {
       localStorage.setItem('cashRegisterSession', JSON.stringify(createdSession))
+      localStorage.setItem('cash_register_session', JSON.stringify(createdSession))
 
       if (ticketNumber !== undefined && ticketNumber !== null && ticketNumber !== '') {
         localStorage.setItem('currentTicketNumber', ticketNumber.toString())
@@ -689,10 +719,6 @@ const resetCashRegister = async () => {
 }
 
 const performCashCount = () => {
-  if (!isSelfConnected.value) {
-    alert("Connectez-vous à une caisse d'abord")
-    return
-  }
   router.push({ name: 'billetage' })
 }
 
@@ -751,3 +777,206 @@ onMounted(async () => {
   await initializeSessions()
 })
 </script>
+
+<style scoped>
+.summary-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.summary-overlay .modal-background {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.summary-modal {
+  position: relative;
+  width: min(100%, 760px);
+  border: 1px solid rgb(226 232 240 / 0.95);
+  border-radius: 1.75rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgb(224 231 255 / 0.85), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 32px 80px -36px rgba(15, 23, 42, 0.45);
+}
+
+.summary-modal-head,
+.summary-modal-body,
+.summary-modal-foot {
+  position: relative;
+  z-index: 1;
+}
+
+.summary-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-bottom: 1px solid rgb(226 232 240 / 0.9);
+  background: rgb(255 255 255 / 0.86);
+}
+
+.summary-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgb(99 102 241);
+}
+
+.summary-modal-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: rgb(15 23 42);
+}
+
+.summary-close-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.95);
+  padding: 0.7rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgb(71 85 105);
+  transition: all 0.2s ease;
+}
+
+.summary-close-button:hover {
+  border-color: rgb(251 113 133 / 0.35);
+  color: rgb(225 29 72);
+}
+
+.summary-modal-body {
+  padding: 1.5rem 1.75rem;
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.summary-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.35);
+}
+
+.summary-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+}
+
+.summary-value {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgb(15 23 42);
+  word-break: break-word;
+}
+
+.summary-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.75rem 1.6rem;
+  border-top: 1px solid rgb(226 232 240 / 0.9);
+  background: rgb(248 250 252 / 0.85);
+}
+
+.summary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  border-radius: 9999px;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.summary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.summary-action-primary {
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #fff;
+  box-shadow: 0 20px 36px -24px rgba(79, 70, 229, 0.8);
+}
+
+.summary-action-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 24px 42px -24px rgba(79, 70, 229, 0.95);
+}
+
+.summary-action-secondary {
+  border: 1px solid rgb(226 232 240);
+  background: rgb(255 255 255 / 0.95);
+  color: rgb(71 85 105);
+}
+
+.summary-action-secondary:hover:not(:disabled) {
+  border-color: rgb(148 163 184);
+  color: rgb(15 23 42);
+}
+
+@media (max-width: 640px) {
+  .summary-overlay {
+    padding: 0.85rem;
+  }
+
+  .summary-modal-head,
+  .summary-modal-body,
+  .summary-modal-foot {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .summary-modal-head,
+  .summary-modal-foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-action {
+    width: 100%;
+    min-width: 0;
+  }
+}
+</style>

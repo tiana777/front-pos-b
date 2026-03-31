@@ -36,19 +36,27 @@
 
       <section v-else class="summary-content" ref="summaryRef">
         <article class="card billetage-card">
-          <h2 class="card-title">Billetage</h2>
+          <h2 class="card-title">Cloture de session</h2>
           <ul class="billetage-stats">
+            <li>
+              <span class="label">Fond de caisse</span>
+              <strong>{{ formatCurrency(startingAmount) }}</strong>
+            </li>
+            <li>
+              <span class="label">Ventes especes</span>
+              <strong>{{ formatCurrency(cashSalesTotal) }}</strong>
+            </li>
+            <li>
+              <span class="label">Montant attendu en caisse</span>
+              <strong>{{ formatCurrency(expectedCashAmount) }}</strong>
+            </li>
             <li>
               <span class="label">Montant billetage</span>
               <strong>{{ formatCurrency(billetageAmount) }}</strong>
             </li>
             <li>
-              <span class="label">Total ventes espèces</span>
-              <strong>{{ formatCurrency(cashSalesTotal) }}</strong>
-            </li>
-            <li>
-              <span class="label">Écart (cash - billetage)</span>
-              <strong :class="{ positive: differenceAmount < 0, negative: differenceAmount > 0 }">
+              <span class="label">Ecart de caisse</span>
+              <strong :class="{ positive: differenceAmount > 0, negative: differenceAmount < 0 }">
                 {{ formatCurrency(differenceAmount) }}
               </strong>
             </li>
@@ -153,6 +161,7 @@ const removeDiacritics = (value) => {
 }
 
 const billetageAmount = computed(() => Number(sessionInfo.value?.actual_cash_amount ?? 0))
+const startingAmount = computed(() => Number(sessionInfo.value?.starting_amount ?? 0))
 
 const cashSalesTotal = computed(() => {
   const keywords = ['cash', 'espe', 'liquide']
@@ -166,7 +175,8 @@ const cashSalesTotal = computed(() => {
   }, 0)
 })
 
-const differenceAmount = computed(() => Number((cashSalesTotal.value - billetageAmount.value).toFixed(2)))
+const expectedCashAmount = computed(() => Number((startingAmount.value + cashSalesTotal.value).toFixed(2)))
+const differenceAmount = computed(() => Number((billetageAmount.value - expectedCashAmount.value).toFixed(2)))
 
 const totalPaymentsAmount = computed(() => {
   return paymentSummary.value.reduce((sum, payment) => {

@@ -204,7 +204,7 @@ const router = createRouter({
         {
           path: 'retour',
           name: 'dashboard-retour',
-          component: () => import('../views/CashPrinter.vue'),
+          component: () => import('../views/Billetage.vue'),
         },
         {
           path: 'point-of-sale',
@@ -390,7 +390,6 @@ router.beforeEach(async (to, from, next) => {
     'dashboard-product',
     'dashboard-ventes',
     'dashboard-user-sales',
-    'dashboard-retour',
     'table',
     'table-sales',
     'dashboard-table-order',
@@ -399,7 +398,6 @@ router.beforeEach(async (to, from, next) => {
     'tables-selector',
     'direct',
     'product',
-    'retour',
     'user-sales'
   ])
 

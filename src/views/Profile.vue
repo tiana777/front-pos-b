@@ -66,25 +66,6 @@
       </div>
     </nav>
 
-    <div class="breadcrumb-container">
-      <nav aria-label="Fil d'Ariane" class="breadcrumb-nav">
-        <ol>
-          <li v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`" class="breadcrumb-item">
-            <router-link
-              v-if="crumb.routeName && index !== breadcrumbs.length - 1"
-              :to="{ name: crumb.routeName }"
-            >
-              {{ crumb.label }}
-            </router-link>
-            <span v-else class="breadcrumb-current">{{ crumb.label }}</span>
-            <span v-if="index !== breadcrumbs.length - 1" class="breadcrumb-separator">
-              <font-awesome-icon icon="fa-angle-right" />
-            </span>
-          </li>
-        </ol>
-      </nav>
-    </div>
-
     <div v-if="isPosRoute" class="pos-landing">
       <section class="pos-hero">
         <div class="pos-hero-text">
@@ -252,72 +233,6 @@ const sessionLabel = computed(() => {
   return 'active'
 })
 
-const breadcrumbLabels = {
-  pos: 'Accueil',
-  direct: 'Vente directe',
-  table: 'Service à table',
-  'table-sales': 'Ventes par table',
-  'dashboard-table-order': 'Commande table',
-  'tables-manage': 'Gestion des tables',
-  'tables-layout': 'Plan de salle',
-  'tables-selector': 'Sélecteur de table',
-  ventes: 'Historique des ventes',
-  retour: 'Retour caisse',
-  billetage: 'Billetage',
-  'billetage-summary': 'Résumé billetage',
-  roles: 'Gestion des rôles',
-  'roles-create': 'Créer un rôle',
-  'roles-edit': 'Modifier un rôle',
-  permissions: 'Permissions',
-  'permissions-create': 'Créer une permission',
-  users: 'Utilisateurs',
-  'users-create': 'Créer un utilisateur',
-  'users-edit': 'Modifier un utilisateur',
-  'users-roles': 'Rôles utilisateur',
-  printers: 'Imprimantes',
-  'printers-create': 'Ajouter une imprimante',
-  categories: 'Catégories',
-  product: 'Catalogue produits',
-  'user-sales': 'Mes ventes',
-  'cash-registers-machine-link': 'Lien caisse',
-  'cash-register-sessions': 'Sessions caisse',
-  'cash-transactions': 'Transactions caisse',
-  'cashier-dashboard': 'Tableau caissier'
-}
-
-const formatLabel = (value) => {
-  if (!value) return 'Page'
-  if (breadcrumbLabels[value]) return breadcrumbLabels[value]
-  if (typeof value === 'string') {
-    return value
-      .replace(/[-_]/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase())
-  }
-  return 'Page'
-}
-
-const breadcrumbs = computed(() => {
-  const matched = route.matched.filter((record) => record.name)
-
-  if (!matched.length) {
-    return [{ label: 'Accueil', routeName: null }]
-  }
-
-  const items = []
-
-  if (matched[0].name !== 'pos') {
-    items.push({ label: 'Accueil', routeName: 'pos' })
-  }
-
-  matched.forEach((record, index) => {
-    const isLast = index === matched.length - 1
-    const label = record.meta?.breadcrumb || record.meta?.title || formatLabel(record.name)
-    items.push({ label, routeName: isLast ? null : record.name })
-  })
-
-  return items
-})
-
 onMounted(async () => {
   await loadUserData()
   await fetchUserProfile()
@@ -434,67 +349,6 @@ const navigateTo = (routeName) => {
   color: #b91c1c;
   transform: translateY(-1px);
 }
-
-.breadcrumb-container {
-  position: fixed;
-  top: 96px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  padding: 0 2rem;
-  z-index: 1098;
-  pointer-events: none;
-}
-
-.breadcrumb-nav {
-  pointer-events: auto;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 16px 45px rgba(15, 23, 42, 0.12);
-  border-radius: 9999px;
-  padding: 0.5rem 1.5rem;
-  backdrop-filter: blur(10px);
-}
-
-.breadcrumb-nav ol {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.breadcrumb-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.breadcrumb-nav a {
-  color: #0f172a;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.breadcrumb-nav a:hover {
-  color: #2563eb;
-}
-
-.breadcrumb-current {
-  color: #2563eb;
-  font-weight: 700;
-}
-
-.breadcrumb-separator {
-  color: rgba(100, 116, 139, 0.75);
-  display: flex;
-  align-items: center;
-}
-
 
 .menu-overlay {
   position: fixed;

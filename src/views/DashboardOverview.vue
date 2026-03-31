@@ -18,10 +18,9 @@
         >
           <option value="">Tous les points de vente</option>
           <option
-            v-for="pos in pointOfSales"
+            v-for="pos in availablePointOfSales"
             :key="getPointOfSaleId(pos) ?? pos?.id ?? pos?.name"
             :value="String(getPointOfSaleId(pos) ?? '')"
-            v-if="getPointOfSaleId(pos) !== null"
           >
             {{ formatPointOfSaleName(pos) }}
           </option>
@@ -527,6 +526,10 @@ const filteredSalesData = computed(() => {
 
   return salesData.value
 })
+
+const availablePointOfSales = computed(() =>
+  pointOfSales.value.filter((point) => getPointOfSaleId(point) !== null)
+)
 
 const filteredSalesCount = computed(() => filteredSalesData.value.length)
 
