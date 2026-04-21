@@ -137,6 +137,7 @@ const login = async () => {
       email: email.value,
       password: password.value
     });
+   
 
     if (response.data.token && response.data.user) {
       // Durée de vie des cookies : 60 minutes (en millisecondes)

@@ -1,312 +1,320 @@
 <template>
-  <div v-if="isOpen" class="invoice-overlay" @click.self="closeModal">
-    <article class="invoice-card">
-      <header class="invoice-header">
-        <div class="brand">
-          <img
-            :src="companyLogo || brandLogo"
-            :alt="companyName || 'Logo de l\'entreprise'"
-            class="brand-logo"
-          />
-          <p class="brand-name">{{ companyName || 'Votre entreprise' }}</p>
-        </div>
-        <div class="invoice-meta">
-          <h1>Facture</h1>
-          <p>N° {{ invoiceNumber || 'N/A' }}</p>
-          <p>Date : {{ currentDate }}</p>
-          <p>Client : {{ clientName || 'Client' }}</p>
-        </div>
-      </header>
+  <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" @click="closeModal"></div>
 
-      <section class="invoice-body">
-        <table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Quantité</th>
-              <th>Prix unitaire</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, index) in items" :key="index">
-              <td>{{ item.name }}</td>
-              <td>{{ item.quantity }}</td>
-              <td>{{ formatCurrency(item.price) }}</td>
-              <td>{{ formatCurrency(item.quantity * item.price) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section class="invoice-summary">
-        <div class="summary-row">
-          <span>Sous-total</span>
-          <span>{{ formatCurrency(subtotal) }}</span>
+      <div class="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl transition-all">
+        <div class="flex items-center justify-between border-b border-slate-200 p-4">
+          <h2 class="text-xl font-bold text-slate-800">Facture</h2>
+          <button
+            @click="closeModal"
+            class="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-times" />
+          </button>
         </div>
-        <div class="summary-row total">
-          <span>Total</span>
-          <span>{{ formatCurrency(totalAmount) }}</span>
-        </div>
-      </section>
 
-      <footer class="invoice-footer">
-        <button type="button" class="ghost" @click="closeModal">
-          <font-awesome-icon icon="fa-solid fa-xmark" />
-          Fermer
-        </button>
-        <button type="button" class="primary" @click="openPaymentModal">
-          <font-awesome-icon icon="fa-solid fa-credit-card" />
-          Procéder au paiement
-        </button>
-      </footer>
-    </article>
+        <div class="max-h-[70vh] overflow-y-auto p-6">
+          <div class="mb-6 text-center">
+            <h3 class="text-2xl font-bold text-indigo-600">FACTURE</h3>
+            <p class="mt-1 text-sm text-slate-500">N° {{ invoiceNumber }}</p>
+            <p class="text-xs text-slate-400">{{ currentDate }}</p>
+          </div>
+
+          <div class="mb-6 rounded-lg bg-slate-50 p-4">
+            <div class="flex justify-between">
+              <div>
+                <p class="text-xs font-semibold text-slate-500">CLIENT</p>
+                <p class="font-medium text-slate-800">{{ clientName || 'Client particulier' }}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs font-semibold text-slate-500">MODE DE PAIEMENT</p>
+                <p class="font-medium text-slate-800">{{ paymentMethod || 'Non spécifié' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <table class="w-full">
+              <thead class="border-b border-slate-200">
+                <tr class="text-left text-xs font-semibold text-slate-500">
+                  <th class="pb-2">ARTICLE</th>
+                  <th class="pb-2 text-center">QTÉ</th>
+                  <th class="pb-2 text-right">PRIX U.</th>
+                  <th class="pb-2 text-right">TOTAL</th>
+                 </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="(item, index) in items" :key="index" class="text-sm">
+                  <td class="py-3 text-slate-800">{{ item.name }}</td>
+                  <td class="py-3 text-center text-slate-600">{{ item.quantity }}</td>
+                  <td class="py-3 text-right text-slate-600">{{ formatPrice(item.price) }}</td>
+                  <td class="py-3 text-right font-semibold text-slate-800">
+                    {{ formatPrice(item.price * item.quantity) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Détail des paiements -->
+          <div v-if="uniquePayments && uniquePayments.length > 0" class="mb-6 rounded-lg bg-indigo-50 p-4">
+            <p class="mb-2 text-sm font-semibold text-indigo-800">Détail des paiements</p>
+            <div class="space-y-2">
+              <div
+                v-for="(payment, index) in uniquePayments"
+                :key="index"
+                class="flex items-center justify-between text-sm border-b border-indigo-100 pb-2 last:border-0"
+              >
+                <div class="flex items-center gap-2">
+                  <FontAwesomeIcon 
+                    :icon="getPaymentIcon(payment.payment_method_name)" 
+                    class="text-indigo-600" 
+                  />
+                  <div>
+                    <span class="text-slate-700 font-medium">{{ payment.payment_method_name }}</span>
+                    <div v-if="payment.reference" class="text-xs text-slate-500">
+                      Réf: {{ payment.reference }}
+                    </div>
+                  </div>
+                </div>
+                <span class="font-semibold text-indigo-700">{{ formatPrice(payment.amount) }}</span>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-indigo-200 flex justify-between text-sm font-semibold">
+              <span class="text-indigo-800">Total payé</span>
+              <span class="text-indigo-800">{{ formatPrice(totalPaymentsAmount) }}</span>
+            </div>
+          </div>
+
+          <!-- Section trop-perçu / solde restant -->
+          <div v-if="totalPaymentsAmount !== finalTotal" 
+               :class="[
+                 'mb-6 rounded-lg p-4',
+                 totalPaymentsAmount > finalTotal ? 'bg-amber-50' : 'bg-red-50'
+               ]"
+          >
+            <p class="mb-2 text-sm font-semibold" :class="totalPaymentsAmount > finalTotal ? 'text-amber-800' : 'text-red-800'">
+              {{ totalPaymentsAmount > finalTotal ? '⚠️ Trop-perçu' : '❌ Solde restant' }}
+            </p>
+            
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-700">Total dû</span>
+                <span class="font-semibold">{{ formatPrice(finalTotal) }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-700">Total payé</span>
+                <span class="font-semibold">{{ formatPrice(totalPaymentsAmount) }}</span>
+              </div>
+              <div class="flex justify-between text-base font-bold pt-2 border-t" 
+                   :class="totalPaymentsAmount > finalTotal ? 'border-amber-200' : 'border-red-200'">
+                <span>{{ totalPaymentsAmount > finalTotal ? '💰 Monnaie à rendre' : '💸 Reste à payer' }}</span>
+                <span :class="totalPaymentsAmount > finalTotal ? 'text-green-600' : 'text-red-600'">
+                  {{ formatPrice(Math.abs(totalPaymentsAmount - finalTotal)) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-200 pt-4">
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-600">Sous-total</span>
+                <span class="text-slate-800">{{ formatPrice(total) }}</span>
+              </div>
+              <div v-if="discountPercentage > 0" class="flex justify-between text-sm">
+                <span class="text-slate-600">Remise ({{ discountPercentage }}%)</span>
+                <span class="text-red-600">-{{ formatPrice(discountAmount) }}</span>
+              </div>
+              <div class="flex justify-between text-lg font-bold">
+                <span class="text-slate-800">TOTAL À PAYER</span>
+                <span class="text-indigo-600">{{ formatPrice(finalTotal) }}</span>
+              </div>
+              
+              <!-- Statut du paiement -->
+              <div class="flex justify-between text-sm mt-2 pt-2 border-t border-slate-200" 
+                   :class="totalPaymentsAmount >= finalTotal ? 'text-green-600' : 'text-red-500'">
+                <span>Statut</span>
+                <span class="font-semibold">
+                  {{ totalPaymentsAmount >= finalTotal ? '✓ PAYÉ' : '⚠️ PAIEMENT PARTIEL' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 text-center text-xs text-slate-400">
+            <p>Merci de votre visite !</p>
+            <p class="mt-1">Règlement effectué le {{ currentDateTime }}</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 border-t border-slate-200 p-4">
+          <button
+            @click="printInvoice"
+            class="flex-1 rounded-lg border border-indigo-200 bg-white px-4 py-2 font-semibold text-indigo-600 transition hover:bg-indigo-50"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-print" class="mr-2" />
+            Imprimer
+          </button>
+          <button
+            @click="closeModal"
+            class="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
-<script>
-import brandLogo from '@/assets/logoigp.jpg'
+<script setup>
+import { computed } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faTimes, faPrint, faMoneyBillWave, faMobileAlt, faCreditCard, faFileInvoice } from '@fortawesome/free-solid-svg-icons'
 
-export default {
-  name: 'InvoiceModal',
-  props: {
-    isOpen: {
-      type: Boolean,
-      required: true
-    },
-    items: {
-      type: Array,
-      default: () => []
-    },
-    clientName: {
-      type: String,
-      default: 'Client non spécifié'
-    },
-    invoiceNumber: {
-      type: [Number, String],
-      default: 'N/A'
-    },
-    companyLogo: {
-      type: String,
-      default: ''
-    },
-    companyName: {
-      type: String,
-      default: 'Votre entreprise'
-    }
+library.add(faTimes, faPrint, faMoneyBillWave, faMobileAlt, faCreditCard, faFileInvoice)
+
+const props = defineProps({
+  isOpen: {
+    type: Boolean,
+    default: false
   },
-  data() {
-    return {
-      currentDate: new Date().toLocaleDateString('fr-FR'),
-      brandLogo
-    }
+  items: {
+    type: Array,
+    default: () => []
   },
-  computed: {
-    subtotal() {
-      if (!this.items?.length) return 0
-      return this.items.reduce((sum, item) => sum + item.quantity * item.price, 0)
-    },
-    totalAmount() {
-      return this.subtotal
-    }
+  total: {
+    type: Number,
+    default: 0
   },
-  methods: {
-    formatCurrency(value) {
-      const amount = Number(value) || 0
-      return `${new Intl.NumberFormat('fr-FR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)} Ar`
-    },
-    closeModal() {
-      this.$emit('close-modal')
-    },
-    openPaymentModal() {
-      this.$emit('openPaymentModal')
-    }
+  clientName: {
+    type: String,
+    default: 'Client'
+  },
+  invoiceNumber: {
+    type: String,
+    default: ''
+  },
+  paymentMethod: {
+    type: String,
+    default: ''
+  },
+  payments: {
+    type: Array,
+    default: () => []
+  },
+  discountPercentage: {
+    type: Number,
+    default: 0
   }
+})
+
+const emit = defineEmits(['close-modal'])
+
+// Icône selon le mode de paiement
+const getPaymentIcon = (methodName) => {
+  const name = methodName.toLowerCase()
+  if (name.includes('espèce') || name.includes('cash')) return 'fa-solid fa-money-bill-wave'
+  if (name.includes('orange') || name.includes('airtel') || name.includes('wave') || name.includes('mtn')) return 'fa-solid fa-mobile-alt'
+  if (name.includes('carte')) return 'fa-solid fa-credit-card'
+  if (name.includes('chèque')) return 'fa-solid fa-file-invoice'
+  return 'fa-solid fa-money-bill-wave'
+}
+
+// Regrouper et fusionner les paiements par méthode
+const uniquePayments = computed(() => {
+  if (!props.payments?.length) return []
+  
+  const paymentMap = new Map()
+  
+  props.payments.forEach(payment => {
+    const methodName = payment.payment_method_name || 'Paiement'
+    const key = methodName
+    
+    if (paymentMap.has(key)) {
+      const existing = paymentMap.get(key)
+      existing.amount += Number(payment.amount || 0)
+    } else {
+      paymentMap.set(key, {
+        amount: Number(payment.amount || 0),
+        payment_method_name: methodName,
+        reference: payment.reference || ''
+      })
+    }
+  })
+  
+  return Array.from(paymentMap.values())
+})
+
+const totalPaymentsAmount = computed(() => {
+  return uniquePayments.value.reduce((sum, p) => sum + p.amount, 0)
+})
+
+const discountAmount = computed(() => {
+  return (props.total * props.discountPercentage) / 100
+})
+
+const finalTotal = computed(() => {
+  return props.total - discountAmount.value
+})
+
+const currentDate = computed(() => {
+  return new Date().toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+})
+
+const currentDateTime = computed(() => {
+  return new Date().toLocaleString('fr-FR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+})
+
+const formatPrice = (price) => {
+  const value = Number.parseFloat(price)
+  if (!Number.isFinite(value)) return '—'
+  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar`
+}
+
+const closeModal = () => {
+  emit('close-modal')
+}
+
+const printInvoice = () => {
+  window.print()
 }
 </script>
 
 <style scoped>
-.invoice-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  z-index: 1100;
-}
-
-.invoice-card {
-  width: 100%;
-  max-width: 760px;
-  background: #fff;
-  border-radius: 1.5rem;
-  box-shadow: 0 35px 80px rgba(15, 23, 42, 0.25);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.invoice-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1.5rem;
-  padding: 2rem 2.25rem;
-  background: linear-gradient(135deg, rgba(216, 31, 51, 0.08) 0%, #f8fafc 100%);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-}
-
-.brand {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.brand-logo {
-  height: 60px;
-  max-width: 180px;
-  object-fit: contain;
-}
-
-.brand-name {
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.invoice-meta {
-  text-align: right;
-  color: #1e293b;
-}
-
-.invoice-meta h1 {
-  margin: 0 0 0.75rem;
-  font-size: 2rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.invoice-body {
-  padding: 0 2.25rem;
-}
-
-.invoice-body table {
-  width: 100%;
-  border-collapse: collapse;
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.6);
-}
-
-.invoice-body th {
-  background: rgba(248, 250, 252, 0.9);
-  color: #475569;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.9rem 1rem;
-}
-
-.invoice-body td {
-  padding: 0.9rem 1rem;
-  color: #1f2937;
-  font-weight: 600;
-  border-top: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-.invoice-body tbody tr:nth-child(2n) {
-  background: rgba(248, 250, 252, 0.6);
-}
-
-.invoice-summary {
-  padding: 0 2.25rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  color: #475569;
-}
-
-.summary-row.total {
-  padding: 1rem;
-  border-radius: 1rem;
-  background: rgba(216, 31, 51, 0.12);
-  color: #d81f33;
-  font-size: 1.1rem;
-}
-
-.invoice-footer {
-  border-top: 1px solid rgba(226, 232, 240, 0.6);
-  padding: 1.5rem 2.25rem 2rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.invoice-footer button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  border: none;
-  border-radius: 9999px;
-  padding: 0.7rem 1.4rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.invoice-footer button:hover {
-  transform: translateY(-1px);
-}
-
-.invoice-footer .ghost {
-  background: rgba(148, 163, 184, 0.16);
-  color: #475569;
-}
-
-.invoice-footer .ghost:hover {
-  box-shadow: 0 12px 25px rgba(148, 163, 184, 0.25);
-}
-
-.invoice-footer .primary {
-  background: rgba(216, 31, 51, 0.95);
-  color: #fff;
-  box-shadow: 0 18px 40px rgba(216, 31, 51, 0.35);
-}
-
-.invoice-footer .primary:hover {
-  box-shadow: 0 22px 50px rgba(216, 31, 51, 0.4);
-}
-
-@media (max-width: 768px) {
-  .invoice-card {
-    border-radius: 1rem;
+@media print {
+  .fixed {
+    position: relative !important;
   }
-
-  .invoice-header {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: left;
+  
+  .fixed button {
+    display: none !important;
   }
-
-  .invoice-meta {
-    text-align: left;
+  
+  .overflow-y-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  
+  .bg-black {
+    background: none !important;
+  }
+  
+  .shadow-xl {
+    box-shadow: none !important;
   }
 }
 </style>

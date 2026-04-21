@@ -1,77 +1,82 @@
 <template>
-  <div class="pos-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)]">
-    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div>
-          <h1 class="text-base font-semibold text-slate-800">Gestion des points de vente</h1>
-          <p class="text-xs text-slate-400">Administrez les différents points de vente disponibles.</p>
+<tbody class="divide-y divide-slate-100">
+  <template v-for="pos in pointsOfSale" :key="pos.id">
+    <tr class="bg-white hover:bg-slate-50 transition">
+      <td class="px-4 py-3 font-medium text-slate-800">
+        <div class="flex items-center gap-2">
+          <FontAwesomeIcon icon="fa-solid fa-store" class="text-indigo-400" />
+          {{ pos.name }}
         </div>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-          @click="openCreate"
-        >
-          <FontAwesomeIcon icon="fa-solid fa-plus" />
-          Nouveau point de vente
-        </button>
-      </div>
-
-      <div class="mt-3 flex-1 overflow-hidden">
-        <div
-          v-if="loading"
-          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-10 text-center text-sm text-slate-500"
-        >
-          <span class="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></span>
-          <p class="mt-4 font-medium">Chargement des points de vente...</p>
+      </td>
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-1">
+          <FontAwesomeIcon icon="fa-solid fa-users" class="text-slate-400 text-xs" />
+          <span class="text-sm font-semibold text-slate-700">{{ pos.users?.length || 0 }}</span>
+          <span class="text-xs text-slate-500">utilisateur(s)</span>
         </div>
-
-        <div
-          v-else-if="!pointsOfSale.length"
-          class="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-sm text-slate-500"
-        >
-          Aucun point de vente enregistré.
+      </td>
+      <td class="px-4 py-3 text-slate-500 text-xs">{{ formatDate(pos.created_at) }}</td>
+      <td class="px-4 py-3">
+        <div class="flex justify-end gap-2">
+          <button type="button" class="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition" @click="editPointOfSale(pos)">
+            <FontAwesomeIcon icon="fa-solid fa-pen" class="text-sm" />
+          </button>
+          <button type="button" class="p-1.5 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" @click="deletePointOfSale(pos.id)">
+            <FontAwesomeIcon icon="fa-solid fa-trash" class="text-sm" />
+          </button>
         </div>
+      </td>
+    </tr>
 
-        <div v-else class="flex h-full flex-col overflow-hidden">
-          <div class="flex-1 overflow-y-auto">
-            <table class="min-w-full divide-y divide-slate-100 text-sm">
-              <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th class="px-4 py-3 text-left">Nom</th>
-                  <th class="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="pos in pointsOfSale" :key="pos.id" class="bg-white">
-                  <td class="px-4 py-3 text-slate-700">{{ pos.name }}</td>
-                  <td class="px-4 py-3">
-                    <div class="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                        @click="editPointOfSale(pos)"
-                        aria-label="Éditer"
-                      >
-                        <FontAwesomeIcon icon="fa-solid fa-pen" />
-                      </button>
-                      <button
-                        type="button"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
-                        @click="deletePointOfSale(pos.id)"
-                        aria-label="Supprimer"
-                      >
-                        <FontAwesomeIcon icon="fa-solid fa-trash" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <!-- Ligne détaillée : utilisateurs associés + formulaire d'association -->
+    <tr class="bg-slate-50/40">
+      <td colspan="4" class="px-4 py-3">
+        <div class="text-xs space-y-3">
+          <!-- Titre et compteur -->
+          <div class="flex items-center justify-between">
+            <div class="font-semibold text-slate-600 flex items-center gap-1">
+              <FontAwesomeIcon icon="fa-solid fa-user-check" class="text-indigo-500" />
+              Utilisateurs affectés
+            </div>
+            <span class="text-slate-400 text-[11px]">{{ pos.users?.length || 0 }} membre(s)</span>
+          </div>
+
+          <!-- Liste des utilisateurs (badges) -->
+          <div v-if="pos.users && pos.users.length" class="flex flex-wrap gap-2">
+            <div v-for="user in pos.users" :key="user.id" class="flex items-center gap-2 bg-white rounded-full border border-slate-200 pl-2 pr-1 py-1 shadow-sm">
+              <FontAwesomeIcon icon="fa-solid fa-user-circle" class="text-slate-400 text-sm" />
+              <span class="text-slate-700 text-xs font-medium">{{ user.name }}</span>
+              <span class="text-slate-400 text-[10px] hidden sm:inline">{{ user.email }}</span>
+              <div class="flex gap-1 ml-1">
+                <button @click="openEditUserModal(user)" class="text-indigo-500 hover:text-indigo-700 p-1" title="Modifier">
+                  <FontAwesomeIcon icon="fa-solid fa-pen" class="text-[10px]" />
+                </button>
+                <button @click="deleteUserFromPos(user.id, pos.id)" class="text-rose-500 hover:text-rose-700 p-1" title="Retirer">
+                  <FontAwesomeIcon icon="fa-solid fa-trash" class="text-[10px]" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-slate-400 italic text-xs">Aucun utilisateur pour ce point de vente.</div>
+
+          <!-- Formulaire d'association -->
+          <div class="pt-2 border-t border-slate-200 flex flex-wrap items-center gap-2">
+            <span class="text-slate-500 text-xs">➕ Ajouter un utilisateur :</span>
+            <select v-model="selectedUserForPos[pos.id]" class="rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white w-48">
+              <option :value="null">-- Sélectionner --</option>
+              <option v-for="user in getAvailableUsersForPos(pos)" :key="user.id" :value="user.id">
+                {{ user.name }} ({{ user.email }})
+              </option>
+            </select>
+            <button @click="attachUserToPos(selectedUserForPos[pos.id], pos.id)" :disabled="!selectedUserForPos[pos.id]" class="inline-flex items-center gap-1 rounded-full bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-50 transition">
+              <FontAwesomeIcon icon="fa-solid fa-plus" class="text-[10px]" /> Attacher
+            </button>
           </div>
         </div>
-      </div>
-    </section>
-  </div>
+      </td>
+    </tr>
+  </template>
+</tbody>
 
   <PointOfSaleModal
     :is-open="showAddForm || showEditForm"
@@ -84,95 +89,167 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import axios from 'axios'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import PointOfSaleModal from './PointOfSaleModal.vue'
 import { API_BASE_URL } from '@/utils/api'
+import { faStore, faUserCheck, faUserCircle } from '@fortawesome/free-solid-svg-icons'
 
 const pointsOfSale = ref([])
 const loading = ref(true)
+const error = ref(null)
 const showAddForm = ref(false)
 const showEditForm = ref(false)
-const form = ref({
-  id: null,
-  name: '',
-})
+const form = ref({ id: null, name: '' })
+
+// Tous les utilisateurs et sélection par point de vente
+const allUsers = ref([])
+const selectedUserForPos = reactive({})
+
+const formatDate = (dateString) => {
+  if (!dateString) return '—'
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  }).format(date)
+}
 
 const fetchPointsOfSale = async () => {
   loading.value = true
+  error.value = null
   try {
-    const response = await axios.get(`${API_BASE_URL}/point_of_sales`)
-    pointsOfSale.value = response.data.data || response.data
-  } catch (error) {
-    console.error('Erreur lors du chargement des points de vente:', error)
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`${API_BASE_URL}/point-of-sales`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    pointsOfSale.value = response.data.data || response.data || []
+  } catch (err) {
+    console.error('Erreur chargement:', err)
+    if (err.response?.status === 401) {
+      error.value = 'Session expirée. Veuillez vous reconnecter.'
+      localStorage.removeItem('token')
+      setTimeout(() => { window.location.href = '/login' }, 2000)
+    } else {
+      error.value = err.response?.data?.message || 'Impossible de charger les points de vente'
+    }
   } finally {
     loading.value = false
   }
 }
 
-const submitForm = async (name) => {
-  if (typeof name === 'string') {
-    form.value.name = name
+const fetchAllUsers = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`${API_BASE_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    allUsers.value = response.data.data || response.data || []
+  } catch (err) {
+    console.error('Erreur chargement utilisateurs:', err)
   }
-  if (showEditForm.value) {
-    // Update existing point of sale
-    try {
-      await axios.put(`${API_BASE_URL}/point_of_sales/${form.value.id}`, {
-        name: form.value.name,
-      })
-      await fetchPointsOfSale()
-      closeForm()
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du point de vente:', error)
+}
+
+const getAvailableUsersForPos = (pos) => {
+  const currentUserIds = pos.users?.map(u => u.id) || []
+  return allUsers.value.filter(user => 
+    !currentUserIds.includes(user.id) && (user.point_of_sale_id === null || user.point_of_sale_id === pos.id)
+  )
+}
+
+const submitForm = async (name) => {
+  if (typeof name === 'string') form.value.name = name
+  const token = localStorage.getItem('token')
+  try {
+    if (showEditForm.value) {
+      await axios.put(`${API_BASE_URL}/point-of-sales/${form.value.id}`,
+        { name: form.value.name },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    } else {
+      await axios.post(`${API_BASE_URL}/point-of-sales`,
+        { name: form.value.name },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
     }
-  } else {
-    // Add new point of sale
-    try {
-      await axios.post(`${API_BASE_URL}/point_of_sales`, {
-        name: form.value.name,
-      })
-      await fetchPointsOfSale()
-      closeForm()
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout du point de vente:', error)
-    }
+    await fetchPointsOfSale()
+    closeForm()
+  } catch (err) {
+    console.error('Erreur submission:', err)
+    alert(err.response?.data?.message || 'Une erreur est survenue')
   }
 }
 
 const editPointOfSale = (pos) => {
-  form.value.id = pos.id
-  form.value.name = pos.name
+  form.value = { id: pos.id, name: pos.name }
   showEditForm.value = true
   showAddForm.value = false
 }
 
 const deletePointOfSale = async (id) => {
-  if (confirm('Voulez-vous vraiment supprimer ce point de vente ?')) {
-    try {
-      await axios.delete(`${API_BASE_URL}/point_of_sales/${id}`)
-      await fetchPointsOfSale()
-    } catch (error) {
-      console.error('Erreur lors de la suppression du point de vente:', error)
-    }
+  if (!confirm('Voulez-vous vraiment supprimer ce point de vente ?')) return
+  const token = localStorage.getItem('token')
+  try {
+    await axios.delete(`${API_BASE_URL}/point-of-sales/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    await fetchPointsOfSale()
+  } catch (err) {
+    console.error('Erreur suppression:', err)
+    alert(err.response?.data?.message || 'Suppression impossible')
+  }
+}
+
+const deleteUserFromPos = async (userId, pointOfSaleId) => {
+  if (!confirm('Voulez-vous vraiment retirer cet utilisateur de ce point de vente ?')) return
+  const token = localStorage.getItem('token')
+  try {
+    const userResponse = await axios.get(`${API_BASE_URL}/users/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const userData = userResponse.data
+    await axios.put(`${API_BASE_URL}/users/${userId}`,
+      { name: userData.name, email: userData.email, point_of_sale_id: null },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    // Recharger les deux listes pour mettre à jour les données
+    await Promise.all([fetchPointsOfSale(), fetchAllUsers()])
+  } catch (err) {
+    console.error('Erreur retrait utilisateur:', err)
+    alert(err.response?.data?.message || 'Impossible de retirer cet utilisateur')
+  }
+}
+
+const attachUserToPos = async (userId, pointOfSaleId) => {
+  if (!userId) return
+  const token = localStorage.getItem('token')
+  try {
+    await axios.post(`${API_BASE_URL}/point-of-sales/${pointOfSaleId}/users/${userId}`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    // Recharger les deux listes pour que l'utilisateur disparaisse de la liste déroulante
+    await Promise.all([fetchPointsOfSale(), fetchAllUsers()])
+    delete selectedUserForPos[pointOfSaleId]  // réinitialiser la sélection
+  } catch (err) {
+    console.error('Erreur association:', err)
+    alert(err.response?.data?.message || 'Impossible d\'associer l\'utilisateur')
   }
 }
 
 const closeForm = () => {
   showAddForm.value = false
   showEditForm.value = false
-  form.value.id = null
-  form.value.name = ''
+  form.value = { id: null, name: '' }
 }
 
 const openCreate = () => {
   showAddForm.value = true
-  form.value.id = null
-  form.value.name = ''
+  form.value = { id: null, name: '' }
 }
 
 onMounted(() => {
   fetchPointsOfSale()
+  fetchAllUsers()
 })
 </script>
 
@@ -181,7 +258,6 @@ onMounted(() => {
   min-height: calc(100vh - 5rem);
   min-height: calc(100dvh - 5rem);
 }
-
 @media (min-width: 1024px) {
   .pos-layout {
     height: calc(100vh - 5.5rem);

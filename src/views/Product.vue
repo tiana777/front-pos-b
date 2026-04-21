@@ -7,7 +7,6 @@
           {{ totalProducts }}
         </span>
       </div>
-
       <div class="mt-4 flex-1 overflow-y-auto space-y-2 pb-1">
         <button
           type="button"
@@ -20,7 +19,6 @@
             {{ totalProducts }}
           </span>
         </button>
-
         <button
           v-for="cat in categories"
           :key="cat.id"
@@ -51,9 +49,9 @@
               class="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
-
           <div class="flex justify-end gap-2">
             <button
+              v-if="isAdmin"
               type="button"
               class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
               @click="openAddModal"
@@ -85,7 +83,7 @@
             <span>Produit</span>
             <span>Catégorie</span>
             <span>Prix</span>
-            <span>Status</span>
+            <span>Statut</span>
             <span class="text-right">Actions</span>
           </div>
 
@@ -134,18 +132,18 @@
 
                   <div class="flex justify-end gap-2">
                     <button
+                      v-if="isAdmin"
                       type="button"
                       class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
                       @click.stop="openEditModal(product)"
-                      aria-label="Modifier"
                     >
                       <FontAwesomeIcon icon="fa-solid fa-pencil" />
                     </button>
                     <button
+                      v-if="isAdmin"
                       type="button"
                       class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-rose-500 transition hover:border-rose-200 hover:text-rose-600"
                       @click.stop="confirmDelete(product)"
-                      aria-label="Supprimer"
                     >
                       <FontAwesomeIcon icon="fa-solid fa-trash" />
                     </button>
@@ -194,36 +192,20 @@
         </button>
       </div>
     </div>
-
-    <!-- Modal de confirmation de suppression de catégorie -->
-    <div v-if="isCategoryDeleteConfirmOpen" class="modal is-active">
-      <div class="modal-background" @click="closeCategoryDeleteConfirm"></div>
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Confirmer la suppression</p>
-          <button class="delete" @click="closeCategoryDeleteConfirm"></button>
-        </header>
-        <section class="modal-card-body">
-          <p>Êtes-vous sûr de vouloir supprimer la catégorie <strong>{{ categoryToDelete?.name }}</strong> ?</p>
-          <p class="has-text-danger">Cette action est irréversible et supprimera également tous les produits associés.</p>
-        </section>
-        <footer class="modal-card-foot">
-          <button class="button is-danger" @click="deleteCategory" :disabled="isCategoryDeleting">Supprimer</button>
-          <button class="button" @click="closeCategoryDeleteConfirm">Annuler</button>
-        </footer>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
-import { API_URL } from '@/utils/api'
+import { API_BASE_URL } from '@/utils/api'
 import ProductEditModal from './ProductEditModal.vue'
 import AddProductModal from './AddProductModal.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import placeholderImage from '@/assets/avatar.png'
+import { useAuth } from '@/composables/useAuth'
+
+const { isAdmin } = useAuth()
 
 const products = ref([])
 const categories = ref([])
@@ -240,96 +222,78 @@ const isDeleteConfirmOpen = ref(false)
 const productToDelete = ref(null)
 const isDeleting = ref(false)
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token')
+  if (!token) throw new Error('Token manquant')
+  return { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+}
+
 const fetchData = async () => {
   try {
     loading.value = true
-    const token = localStorage.getItem('token')
-    const user = JSON.parse(localStorage.getItem('user'))
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
     const pointOfSaleId = user?.point_of_sale_id
+    if (!pointOfSaleId) throw new Error('Point de vente non configuré')
 
-    if (!pointOfSaleId) {
-      throw new Error('Point de vente non configuré pour cet utilisateur')
-    }
-
-    const response = await axios.get(`${API_URL}/api/categories`, {
+    const response = await axios.get(`${API_BASE_URL}/categories`, {
       params: { with_products: 1, point_of_sale_id: pointOfSaleId, with_pricing: 1 },
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: getAuthHeaders(),
     })
 
-    const apiResponse = response.data
+    let data = response.data
+    if (data?.data && Array.isArray(data.data)) data = data.data
+    if (!Array.isArray(data)) throw new Error('Structure de réponse invalide')
 
-    if (!Array.isArray(apiResponse)) {
-      throw new Error('Structure de réponse API invalide')
-    }
-
-    categories.value = apiResponse
-
-    products.value = categories.value.reduce((allProducts, category) => {
-      if (Array.isArray(category.products)) {
-        const categoryProducts = category.products.map((product) => ({
+    categories.value = data
+    const allProducts = []
+    for (const category of data) {
+      if (!Array.isArray(category.products)) continue
+      for (const product of category.products) {
+        let price = 0
+        if (Array.isArray(product.pricing)) {
+          const pricing = product.pricing.find(p => p.point_of_sale_id === pointOfSaleId)
+          if (pricing) price = parseFloat(pricing.price)
+        }
+        allProducts.push({
           ...product,
           category_id: category.id,
           category_name: category.name,
-          price: extractProductPrice(product, pointOfSaleId),
-        }))
-        return [...allProducts, ...categoryProducts]
+          price,
+        })
       }
-      return allProducts
-    }, [])
+    }
+    products.value = allProducts
   } catch (e) {
-    console.error('Erreur de chargement des données :', e)
-    error.value = e.response?.data?.message || e.message || 'Erreur de chargement des données'
+    console.error(e)
+    error.value = e.response?.data?.message || e.message || 'Erreur de chargement'
   } finally {
     loading.value = false
   }
 }
 
-const extractProductPrice = (product, pointOfSaleId) => {
-  if (!Array.isArray(product.pricing)) return null
-  const pricing = product.pricing.find((p) => p.point_of_sale_id === pointOfSaleId)
-  return pricing ? parseFloat(pricing.price) : null
-}
-
 onMounted(fetchData)
 
-const selectCategory = (catId) => {
-  selectedCategory.value = catId
-}
-
+const selectCategory = (catId) => { selectedCategory.value = catId }
 const formatPrice = (price) => {
-  if (price === null || price === undefined || Number.isNaN(price)) {
-    return 'Non disponible'
-  }
+  if (price === null || price === undefined || isNaN(price)) return 'Non disponible'
   return `${new Intl.NumberFormat('fr-FR').format(price)} Ar`
 }
 
 const getProductImage = (product) => {
   const raw = product?.image || product?.product?.image
-  if (!raw) {
-    return placeholderImage
-  }
-
-  if (/^https?:\/\//i.test(raw)) {
-    return raw
-  }
-
-  if (raw.startsWith('storage/')) {
-    return `${API_URL}/${raw}`
-  }
-
-  if (raw.startsWith('products/')) {
-    return `${API_URL}/storage/${raw}`
-  }
-
-  return `${API_URL}/storage/products/${raw}`
+  if (!raw) return placeholderImage
+  if (/^https?:\/\//i.test(raw)) return raw
+  const baseImageUrl = API_BASE_URL.replace('/api', '')
+  if (raw.startsWith('storage/')) return `${baseImageUrl}/${raw}`
+  if (raw.startsWith('products/')) return `${baseImageUrl}/storage/${raw}`
+  return `${baseImageUrl}/storage/products/${raw}`
 }
 
 const onProductImageError = (event) => {
-  if (!event?.target) {
-    return
+  if (event?.target) {
+    event.target.onerror = null
+    event.target.src = placeholderImage
   }
-  event.target.onerror = null
-  event.target.src = placeholderImage
 }
 
 const productsCountByCategory = computed(() => {
@@ -339,27 +303,18 @@ const productsCountByCategory = computed(() => {
   }
   return counts
 })
-
 const totalProducts = computed(() => products.value.length)
-
 const getCategoryCount = (catId) => productsCountByCategory.value[catId] || 0
 
 const filteredProducts = computed(() => {
   let result = products.value
-
   if (selectedCategory.value !== null) {
-    result = result.filter((product) => product.category_id === selectedCategory.value)
+    result = result.filter(p => p.category_id === selectedCategory.value)
   }
-
-  if (searchQuery.value.trim() !== '') {
+  if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(
-      (product) =>
-        product.name.toLowerCase().includes(query) ||
-        (product.ref && product.ref.toLowerCase().includes(query))
-    )
+    result = result.filter(p => p.name.toLowerCase().includes(query) || (p.ref && p.ref.toLowerCase().includes(query)))
   }
-
   return result
 })
 
@@ -367,49 +322,30 @@ const openEditModal = (product) => {
   selectedProduct.value = JSON.parse(JSON.stringify(product))
   isEditModalOpen.value = true
 }
-
 const closeEditModal = () => {
   isEditModalOpen.value = false
   selectedProduct.value = null
 }
-
 const handleSave = (updatedProduct) => {
-  const index = products.value.findIndex((p) => p.id === updatedProduct.id)
+  const index = products.value.findIndex(p => p.id === updatedProduct.id)
   if (index !== -1) {
-    products.value[index] = {
-      ...products.value[index],
-      ...updatedProduct,
-      category_id: updatedProduct.category_id,
-      category_name: updatedProduct.category_name,
-      price:
-        updatedProduct.price !== undefined ? updatedProduct.price : products.value[index].price,
-    }
+    products.value[index] = { ...products.value[index], ...updatedProduct }
   }
   closeEditModal()
 }
-
-const openAddModal = () => {
-  isAddModalOpen.value = true
-}
-
-const closeAddModal = () => {
-  isAddModalOpen.value = false
-}
-
+const openAddModal = () => { isAddModalOpen.value = true }
+const closeAddModal = () => { isAddModalOpen.value = false }
 const handleAdd = async (newProduct) => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/api/products/${newProduct.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await axios.get(`${API_BASE_URL}/products/${newProduct.id}`, {
+      headers: getAuthHeaders(),
     })
-
     const fullProduct = {
       ...response.data,
       category_id: newProduct.category_id,
-      category_name: categories.value.find((c) => c.id === newProduct.category_id)?.name || '',
+      category_name: categories.value.find(c => c.id === newProduct.category_id)?.name || '',
       price: newProduct.price ?? response.data.price ?? null,
     }
-
     products.value = [fullProduct, ...products.value]
   } catch (error) {
     console.error('Erreur lors de la récupération du produit ajouté:', error)
@@ -417,35 +353,30 @@ const handleAdd = async (newProduct) => {
   }
   closeAddModal()
 }
-
 const confirmDelete = (product) => {
   productToDelete.value = product
   isDeleteConfirmOpen.value = true
 }
-
 const closeDeleteConfirm = () => {
   isDeleteConfirmOpen.value = false
   productToDelete.value = null
 }
-
 const deleteProduct = async () => {
   if (!productToDelete.value) return
   isDeleting.value = true
   try {
-    const token = localStorage.getItem('token')
-    await axios.delete(`${API_URL}/api/products/${productToDelete.value.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    await axios.delete(`${API_BASE_URL}/products/${productToDelete.value.id}`, {
+      headers: getAuthHeaders(),
     })
-    products.value = products.value.filter((p) => p.id !== productToDelete.value.id)
+    products.value = products.value.filter(p => p.id !== productToDelete.value.id)
     closeDeleteConfirm()
   } catch (error) {
-    console.error('Erreur lors de la suppression:', error.response?.data || error)
-    alert(error.response?.data?.message || 'Erreur lors de la suppression du produit')
+    console.error('Erreur suppression:', error.response?.data || error)
+    alert(error.response?.data?.message || 'Erreur lors de la suppression')
   } finally {
     isDeleting.value = false
   }
 }
-
 const statusBadgeClass = (isActive) =>
   isActive
     ? 'inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600'
@@ -457,7 +388,6 @@ const statusBadgeClass = (isActive) =>
   min-height: calc(100vh - 5rem);
   min-height: calc(100dvh - 5rem);
 }
-
 @media (min-width: 1024px) {
   .product-layout {
     height: calc(100vh - 5.5rem);

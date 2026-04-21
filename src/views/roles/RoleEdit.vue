@@ -111,8 +111,7 @@
                 :key="permission.id"
                 class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-1 text-xs font-semibold text-indigo-600"
               >
-                <font-awesome-icon icon="fa-solid fa-shield-check" />
-                {{ permission.name }}
+<font-awesome-icon icon="fa-solid fa-shield-halved" />                {{ permission.name }}
                 <button
                   type="button"
                   class="rounded-full border border-indigo-100 px-1 text-[11px] text-indigo-500 transition hover:bg-white"
