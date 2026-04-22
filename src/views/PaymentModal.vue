@@ -1,5 +1,6 @@
 <template>
   <div v-if="isOpen" class="payment-overlay" @click.self="closeModal">
+
     <section class="payment-card">
       <!-- HEADER -->
       <header class="payment-header">
@@ -14,7 +15,6 @@
 
       <!-- BODY -->
       <div class="payment-body">
-
         <!-- COL 1 : Montants + détails paiement -->
         <div class="payment-col col-1">
 
@@ -432,65 +432,135 @@ const removePayment = (idx) => {
   paymentsList.value.splice(idx, 1)
 }
 
+// const confirmPayment = async () => {
+//   if (!canConfirmPayment.value || isProcessing.value) return
+//   isProcessing.value = true
+
+//   try {
+//     const user    = JSON.parse(localStorage.getItem('user')    || '{}')
+//     const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}')
+
+//     const items = (props.saleData?.items || []).map((item) => ({
+//       product_id: item.product_id || item.id,
+//       quantity:   Number(item.quantity)  || 0,
+//       unit_price: Number(item.price)     || 0,
+//       price:      Number(item.price)     || 0,
+//       total:      (Number(item.price) || 0) * (Number(item.quantity) || 0),
+//     }))
+
+//     const payload = {
+//       point_of_sale_id:        props.saleData?.point_of_sale_id || user.point_of_sale_id,
+//       cash_register_session_id: session?.id || null,
+//       table_id:                props.saleData?.table_id || null,
+//       user_id:                 user.id,
+//       total_amount:            props.totalAmount,
+//       discount_percentage:     selectedDiscount.value,
+//       final_amount:            discountedTotal.value,
+//       status:                  'completed',
+//       items,
+//       payments: paymentsList.value.map((p) => ({
+//         payment_id: p.payment_id,
+//         amount:     Number(p.amount),
+//         reference:  p.reference || null,
+//         notes:      p.notes     || null,
+//       })),
+//     }
+
+//     const response = await axios.post(`${API_BASE_URL}/sales`, payload, {
+//       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+//     })
+
+//     const saleId = response.data?.data?.sale?.id
+//     if (!saleId) throw new Error('ID de vente non reçu du serveur')
+
+//     emit('payment-success', {
+//       sale_id:             saleId,
+//       sale:                response.data?.data?.sale,
+//       payments:            response.data?.data?.payments || paymentsList.value,
+//       discount_percentage: selectedDiscount.value,
+//       final_total:         discountedTotal.value,
+//     })
+
+//     closeModal()
+//   } catch (error) {
+//     console.error('Erreur confirmPayment:', error)
+//     const message = error.response?.data?.message || error.message || 'Erreur lors de la vente'
+//     emit('payment-error', message)
+//     alert(message)
+//   } finally {
+//     isProcessing.value = false
+//   }
+// }
 const confirmPayment = async () => {
-  if (!canConfirmPayment.value || isProcessing.value) return
-  isProcessing.value = true
+  if (!canConfirmPayment.value || isProcessing.value) return;
+  isProcessing.value = true;
 
   try {
-    const user    = JSON.parse(localStorage.getItem('user')    || '{}')
-    const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}')
+    // Récupération des données utilisateur et session
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}');
 
-    const items = (props.saleData?.items || []).map((item) => ({
-      product_id: item.product_id || item.id,
-      quantity:   Number(item.quantity)  || 0,
-      unit_price: Number(item.price)     || 0,
-      price:      Number(item.price)     || 0,
-      total:      (Number(item.price) || 0) * (Number(item.quantity) || 0),
-    }))
+    // Transformation des articles avec gestion correcte du prix unitaire
+    const items = (props.saleData?.items || []).map((item) => {
+      // 🔥 Correction : utiliser unit_price en priorité, puis price, puis 0
+      const unitPrice = item.unit_price ?? item.price ?? 0;
+      const quantity = Number(item.quantity) || 0;
+      
+      return {
+        product_id: item.product_id || item.id,
+        quantity: quantity,
+        unit_price: Number(unitPrice),
+        price: Number(unitPrice),           // optionnel, pour compatibilité
+        total: Number(unitPrice) * quantity,
+      };
+    });
 
+    // Construction du payload
     const payload = {
-      point_of_sale_id:        props.saleData?.point_of_sale_id || user.point_of_sale_id,
+      point_of_sale_id: props.saleData?.point_of_sale_id || user.point_of_sale_id,
       cash_register_session_id: session?.id || null,
-      table_id:                props.saleData?.table_id || null,
-      user_id:                 user.id,
-      total_amount:            props.totalAmount,
-      discount_percentage:     selectedDiscount.value,
-      final_amount:            discountedTotal.value,
-      status:                  'completed',
+      table_id: props.saleData?.table_id || null,
+      user_id: user.id,
+      total_amount: props.totalAmount,
+      discount_percentage: selectedDiscount.value,
+      final_amount: discountedTotal.value,
+      status: 'completed',
       items,
       payments: paymentsList.value.map((p) => ({
         payment_id: p.payment_id,
-        amount:     Number(p.amount),
-        reference:  p.reference || null,
-        notes:      p.notes     || null,
+        amount: Number(p.amount),
+        reference: p.reference || null,
+        notes: p.notes || null,
       })),
-    }
+    };
 
+    // Envoi de la requête
     const response = await axios.post(`${API_BASE_URL}/sales`, payload, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    })
+    });
 
-    const saleId = response.data?.data?.sale?.id
-    if (!saleId) throw new Error('ID de vente non reçu du serveur')
+    const saleId = response.data?.data?.sale?.id;
+    if (!saleId) throw new Error('ID de vente non reçu du serveur');
 
+    // Émission des événements de succès
     emit('payment-success', {
-      sale_id:             saleId,
-      sale:                response.data?.data?.sale,
-      payments:            response.data?.data?.payments || paymentsList.value,
+      sale_id: saleId,
+      sale: response.data?.data?.sale,
+      payments: response.data?.data?.payments || paymentsList.value,
       discount_percentage: selectedDiscount.value,
-      final_total:         discountedTotal.value,
-    })
+      final_total: discountedTotal.value,
+    });
 
-    closeModal()
+    closeModal();
   } catch (error) {
-    console.error('Erreur confirmPayment:', error)
-    const message = error.response?.data?.message || error.message || 'Erreur lors de la vente'
-    emit('payment-error', message)
-    alert(message)
+    console.error('Erreur confirmPayment:', error);
+    const message = error.response?.data?.message || error.message || 'Erreur lors de la vente';
+    emit('payment-error', message);
+    alert(message);
   } finally {
-    isProcessing.value = false
+    isProcessing.value = false;
   }
-}
+};
 
 const closeModal = () => {
   paymentsList.value     = []

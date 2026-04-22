@@ -982,11 +982,11 @@ export default {
       if (saleId) {
         try {
           const token = localStorage.getItem('token')
-          await axios.post(
-            `${API_BASE_URL}/printers/invoice/${saleId}`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } },
-          )
+          // await axios.post(
+          //   `${API_BASE_URL}/printers/invoice/${saleId}`,
+          //   {},
+          //   { headers: { Authorization: `Bearer ${token}` } },
+          // )
         } catch (e) {
           console.warn('Impression facture échouée :', e)
         }
