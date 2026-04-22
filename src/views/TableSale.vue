@@ -361,6 +361,7 @@
       :is-open="isPaymentModalOpen"
       :total-amount="paymentTotalAmount"
       :sale-data="paymentSaleData"
+      :sale-id="currentPendingOrder?.id ?? null"
       @close-modal="handleCloseModal"
       @payment-success="onPaymentSuccess"
       @payment-error="onPaymentError"
@@ -389,7 +390,7 @@ import { useAuth } from '@/composables/useAuth'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { API_BASE_URL, API_URL } from '@/utils/api'
 import { faClock } from '@fortawesome/free-solid-svg-icons'
-const iconClock = faClock
+
 export default {
   name: 'TableSale',
   components: { TableSelectorModal, PaymentModal, InvoiceModal, Profile, FontAwesomeIcon },
@@ -410,7 +411,7 @@ export default {
       searchQuery: '',
       selectedTable: null,
       showTableSelector: false,
-      isPaymentModalOpen: false,
+      isPaymentModalOpen: false,      // ← OUVERTURE MODAL
       isInvoiceModalOpen: false,
       currentInvoiceNumber: '',
       currentPaymentMethod: '',
@@ -419,10 +420,10 @@ export default {
       lastAdditionLines: [],
       isAddingToPending: false,
       user: { name: '', email: '', point_of_sale_name: '' },
+      isProcessing: false,
     }
   },
 
-  // ✅ CORRECTION : computed au bon niveau, sans imbrication
   computed: {
     totalPrice() {
       return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -499,7 +500,6 @@ export default {
 
   methods: {
     // ========== GESTION DE LA TABLE ==========
-
     getCurrentUserPointOfSaleId() {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -518,9 +518,7 @@ export default {
     },
 
     normalizeStatus(status) {
-      const s = String(status || 'available')
-        .trim()
-        .toLowerCase()
+      const s = String(status || 'available').trim().toLowerCase()
       const map = {
         disponible: 'available',
         occupée: 'occupied',
@@ -536,8 +534,7 @@ export default {
     normalizeTableResponse(payload) {
       if (!payload) return null
       if (Array.isArray(payload)) return payload[0] || null
-      if (typeof payload === 'object' && 'data' in payload)
-        return this.normalizeTableResponse(payload.data)
+      if (typeof payload === 'object' && 'data' in payload) return this.normalizeTableResponse(payload.data)
       return payload
     },
 
@@ -595,7 +592,6 @@ export default {
     },
 
     // ========== PRODUITS ==========
-
     formatPrice(price) {
       const val = Number.parseFloat(price) || 0
       return `${val.toLocaleString('fr-FR')} Ar`
@@ -618,8 +614,7 @@ export default {
     },
 
     productCardClasses() {
-      const base =
-        'product-card group flex flex-col rounded-3xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
+      const base = 'product-card group flex flex-col rounded-3xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
       return this.isInteractionLocked
         ? `${base} border-rose-200 opacity-60 cursor-not-allowed`
         : `${base} border-slate-100 hover:border-indigo-200`
@@ -685,20 +680,14 @@ export default {
     },
 
     addToCart(product) {
-      // 1. On récupère l'identifiant de manière sécurisée et on le force en texte
       const incomingId = String(product.id || product.product_id)
-
-      // 2. On cherche dans le panier en comparant de la même manière
       const existing = this.cart.find((p) => String(p.id || p.product_id) === incomingId)
-
       if (existing) {
-        // Si trouvé, on ajoute simplement +1 à la quantité
         existing.quantity++
       } else {
-        // Sinon, on crée la nouvelle ligne
         this.cart.push({
           ...product,
-          id: incomingId, // On force un ID propre pour le panier
+          id: incomingId,
           quantity: 1,
           price: Number(product.price) || 0,
         })
@@ -723,7 +712,6 @@ export default {
     },
 
     // ========== COMMANDES EN ATTENTE ==========
-
     prepareCartLines(cartItems = []) {
       return cartItems.map((i) => ({
         product_id: i.id,
@@ -764,7 +752,6 @@ export default {
     },
 
     async holdOrder() {
-      // 1. Initialisation des données de session
       let sessionData = null
       try {
         sessionData = await this.fetchCurrentSession()
@@ -772,10 +759,8 @@ export default {
         console.error('Erreur session:', e)
       }
 
-      // 2. Vérifications de sécurité (Early returns)
       if (!sessionData || !sessionData.id) {
-        // Note: 'router' doit être défini au top du script (const router = useRouter())
-        router.push({ name: 'cash-registers-machine-link' })
+        this.$router.push({ name: 'cash-registers-machine-link' })
         return
       }
 
@@ -793,58 +778,33 @@ export default {
         const token = localStorage.getItem('token')
         const user = JSON.parse(localStorage.getItem('user'))
 
-        // Préparation des lignes (on s'assure que c'est propre pour l'API)
         const cartLines = this.prepareCartLines(this.cart)
-
         const orderData = {
           table_id: Number(this.selectedTable.id),
           user_id: user.id,
           point_of_sale_id: user.point_of_sale_id,
-          cash_register_session_id: sessionData.id, // On sait qu'il existe ici
+          cash_register_session_id: sessionData.id,
           order_lines: cartLines.map((l) => this.stripLineForApi(l)),
         }
 
-        // 3. Appel API
         const response = await axios.post(`${API_BASE_URL}/sales/pending-order`, orderData, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
-        // Extraction de la réponse
         const pendingOrder = response.data?.data || response.data
+        if (!pendingOrder || !pendingOrder.id) throw new Error("Le serveur n'a pas renvoyé d'ID de commande")
 
-        if (!pendingOrder || !pendingOrder.id) {
-          throw new Error("Le serveur n'a pas renvoyé d'ID de commande")
-        }
-
-        // 4. Mise à jour de l'état local
         this.currentPendingOrder = pendingOrder
-
-        // On met à jour le statut de la table en DB et localement
         await this.updateTableStatus(this.selectedTable.id, 'occupied')
         this.selectedTable = { ...this.selectedTable, status: 'occupied' }
-
-        // Rechargement des commandes pour synchroniser l'affichage
-        await this.loadPendingOrdersForTable(this.selectedTable.id, {
-          showToast: false,
-          syncCart: false,
-        })
-
-        // 5. Nettoyage de l'interface
+        await this.loadPendingOrdersForTable(this.selectedTable.id, { showToast: false, syncCart: false })
         this.clearCart()
         this.lastAdditionLines = []
         this.isAddingToPending = false
-
         this.showNotification('Commande envoyée avec succès', 'success')
       } catch (error) {
-        console.error('Erreur holdOrder détaillée:', error.response?.data || error.message)
-
-        // Message d'erreur plus précis si erreur de validation (422)
-        const errorMsg =
-          error.response?.status === 422
-            ? 'Données invalides (vérifiez la session ou la table)'
-            : "Impossible d'envoyer la commande"
-
-        this.showNotification(errorMsg, 'error')
+        console.error('Erreur holdOrder:', error.response?.data || error.message)
+        this.showNotification("Impossible d'envoyer la commande", 'error')
       }
     },
 
@@ -900,7 +860,6 @@ export default {
         const existingLines = this.currentPendingOrder.order_lines || []
         const finalMap = new Map()
 
-        // 1. Ajouter les lignes existantes (clés en nombre)
         for (const line of existingLines) {
           finalMap.set(parseInt(line.product_id), {
             quantity: line.quantity,
@@ -908,7 +867,6 @@ export default {
           })
         }
 
-        // 2. Fusionner avec le panier (clés en nombre)
         for (const item of this.cart) {
           const productId = parseInt(item.id)
           const additionalQty = item.quantity
@@ -918,19 +876,17 @@ export default {
           finalMap.set(productId, { quantity: newQty, price: unitPrice })
         }
 
-        // 3. Construire le payload (une seule ligne par produit)
         const orderLines = []
         for (const [productId, { quantity, price }] of finalMap.entries()) {
           if (quantity <= 0) continue
           orderLines.push({
-            product_id: productId, // déjà un nombre
+            product_id: productId,
             quantity: quantity,
             price: Math.round(price),
             total: Math.round(quantity * price),
           })
         }
 
-        // 4. Envoyer la requête
         await axios.put(
           `${API_BASE_URL}/sales/${saleId}/order-lines`,
           { order_lines: orderLines },
@@ -951,67 +907,72 @@ export default {
     },
 
     // ========== PAIEMENT ==========
-
     openPaymentModalDirectly() {
+      console.log('openPaymentModalDirectly appelée');
       if (!this.selectedTable) {
-        this.showNotification('Sélectionnez une table', 'warning')
-        return
+        this.showNotification('Sélectionnez une table', 'warning');
+        return;
       }
       if (this.cart.length === 0 && !this.currentPendingOrder) {
-        this.showNotification('Panier vide', 'warning')
-        return
+        this.showNotification('Panier vide', 'warning');
+        return;
       }
-      this.isPaymentModalOpen = true
+      // Force l'ouverture du modal
+      this.isPaymentModalOpen = true;
+      console.log('isPaymentModalOpen =', this.isPaymentModalOpen);
     },
 
     handleCloseModal() {
-      this.isPaymentModalOpen = false
+      console.log('handleCloseModal appelée');
+      this.isPaymentModalOpen = false;
     },
 
     closeInvoiceModal() {
-      this.isInvoiceModalOpen = false
+      this.isInvoiceModalOpen = false;
     },
 
     openPaymentModal() {
-      this.isInvoiceModalOpen = false
-      this.isPaymentModalOpen = true
+      this.isInvoiceModalOpen = false;
+      this.isPaymentModalOpen = true;
     },
 
     async onPaymentSuccess(data) {
-      const saleId = data.sale_id
-      if (saleId) {
+      console.log('onPaymentSuccess reçu :', data);
+      if (data.sale_id) {
         try {
-          const token = localStorage.getItem('token')
-          // await axios.post(
-          //   `${API_BASE_URL}/printers/invoice/${saleId}`,
-          //   {},
-          //   { headers: { Authorization: `Bearer ${token}` } },
-          // )
+          const token = localStorage.getItem('token');
+          // Impression facultative
+          // await axios.post(`${API_BASE_URL}/printers/invoice/${data.sale_id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
         } catch (e) {
-          console.warn('Impression facture échouée :', e)
+          console.warn('Impression facture échouée :', e);
         }
       }
+
       if (this.selectedTable) {
-        await this.updateTableStatus(this.selectedTable.id, 'available')
+        await this.updateTableStatus(this.selectedTable.id, 'available');
+        await this.loadPendingOrdersForTable(this.selectedTable.id, { syncCart: false });
       }
-      this.showNotification('Commande validée avec succès !', 'success')
-      this.clearCart()
-      this.currentPendingOrder = null
-      this.existingPendingLines = []
-      this.isAddingToPending = false
-      this.isPaymentModalOpen = false
-      this.selectedTable = null
+
+      this.showNotification('Commande validée avec succès !', 'success');
+      this.clearCart();
+      this.currentPendingOrder = null;
+      this.existingPendingLines = [];
+      this.isAddingToPending = false;
+      this.isPaymentModalOpen = false;
+      // Ne pas réinitialiser selectedTable si on veut rester sur la table
+      // this.selectedTable = null;
     },
 
     onPaymentError(error) {
-      this.showNotification(error || 'Erreur paiement', 'error')
+      this.showNotification(error || 'Erreur paiement', 'error');
+      this.isPaymentModalOpen = false;
     },
 
     // ========== UTILITAIRES ==========
-
     showNotification(message, type = 'info') {
-      // Remplacez alert() par votre système de toast si disponible
-      //alert(message)
+      // À remplacer par un système de toast si disponible
+      console.log(`[${type}] ${message}`);
+      // alert(message);
     },
 
     getStatusIcon(status) {
@@ -1053,17 +1014,8 @@ export default {
 }
 
 @keyframes cartPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
-  }
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
-  }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); }
+  50% { transform: scale(1.02); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); }
 }
 </style>

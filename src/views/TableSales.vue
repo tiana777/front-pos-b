@@ -641,7 +641,7 @@ export default {
     },
 
     async loadTables() {
-      this.loading = true
+     this.loading = true
       try {
         const token = localStorage.getItem('token')
         const response = await axios.get(`${API_BASE_URL}/tables`, {
@@ -656,6 +656,8 @@ export default {
 
         const rawTables = Array.isArray(response.data) ? response.data : response.data.data || []
         this.tables = rawTables.map(table => this.normalizeTable(table))
+              console.log('Nombre total de tables chargées :', this.tables.length)
+    console.log('Tables brutes :', rawTables.length)
         await this.populateSaleLines(this.tables)
         await this.loadPendingOrdersForTables(this.tables)
       } catch (error) {

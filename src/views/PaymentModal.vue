@@ -1,8 +1,6 @@
 <template>
   <div v-if="isOpen" class="payment-overlay" @click.self="closeModal">
-
     <section class="payment-card">
-      <!-- HEADER -->
       <header class="payment-header">
         <div class="title">
           <FontAwesomeIcon icon="fa-solid fa-credit-card" />
@@ -13,12 +11,9 @@
         </button>
       </header>
 
-      <!-- BODY -->
       <div class="payment-body">
         <!-- COL 1 : Montants + détails paiement -->
         <div class="payment-col col-1">
-
-          <!-- Panneau montants -->
           <div class="panel">
             <div class="solde-row">
               <label>Total de la vente</label>
@@ -200,7 +195,7 @@
                   :disabled="key === '•'"
                   @click="key === 'DEL' ? onKeypadDelete() : onKeypadPress(key)"
                 >
-                  <FontAwesomeIcon v-if="key === 'DEL'" icon="fa-solid fa-delete-left" />
+                  <FontAwesomeIcon v-if="key === 'DEL'" icon="fa-solid fa-backspace" />
                   <span v-else>{{ key }}</span>
                 </button>
               </div>
@@ -219,7 +214,6 @@
         </div>
       </div>
 
-      <!-- FOOTER -->
       <footer class="payment-footer">
         <button type="button" class="btn ghost" @click="closeModal">
           <FontAwesomeIcon icon="fa-solid fa-xmark" /> Annuler
@@ -242,42 +236,43 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { API_BASE_URL } from '@/utils/api'
 
-// ─── Props & Emits ────────────────────────────────────────────────────────────
 const props = defineProps({
-  isOpen:      { type: Boolean, default: false },
-  totalAmount: { type: Number,  default: 0 },
-  saleData:    { type: Object,  default: () => ({}) },
+  saleId: { type: [Number, String], default: null },
+  isOpen: { type: Boolean, default: false },
+  totalAmount: { type: Number, default: 0 },
+  saleData: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['close-modal', 'payment-success', 'payment-error'])
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const token          = localStorage.getItem('token')
+const token = localStorage.getItem('token')
 const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
 const discountOptions = [0, 5, 10, 20]
-const keypadRows      = [['7','8','9'], ['4','5','6'], ['1','2','3'], ['0','•','DEL']]
+const keypadRows = [
+  ['7', '8', '9'],
+  ['4', '5', '6'],
+  ['1', '2', '3'],
+  ['0', '•', 'DEL'],
+]
 
-// ─── État réactif ─────────────────────────────────────────────────────────────
-const paymentsListApi  = ref([])
-const loadingPayments  = ref(false)
-const selectedPayment  = ref('')
-const amountReceived   = ref('')
-const phoneNumber      = ref('')
-const cardNumber       = ref('')
-const paymentNotes     = ref('')
+const paymentsListApi = ref([])
+const loadingPayments = ref(false)
+const selectedPayment = ref('')
+const amountReceived = ref('')
+const phoneNumber = ref('')
+const cardNumber = ref('')
+const paymentNotes = ref('')
 const selectedDiscount = ref(0)
-const paymentsList     = ref([])
-const activeInput      = ref('amountReceived')
-const isProcessing     = ref(false)
+const paymentsList = ref([])
+const activeInput = ref('amountReceived')
+const isProcessing = ref(false)
 
-// ─── Computed ─────────────────────────────────────────────────────────────────
 const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value))
-
 const amountReceivedValue = computed(() => parseInt(amountReceived.value.replace(/\D/g, '')) || 0)
 
 const discountedTotal = computed(() => {
@@ -286,17 +281,13 @@ const discountedTotal = computed(() => {
 })
 
 const totalPaymentsAmount = computed(() =>
-  paymentsList.value.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+  paymentsList.value.reduce((sum, p) => sum + Number(p.amount || 0), 0)
 )
 
-const remainingToPay = computed(() =>
-  Math.max(0, discountedTotal.value - totalPaymentsAmount.value),
-)
+const remainingToPay = computed(() => Math.max(0, discountedTotal.value - totalPaymentsAmount.value))
 
 const paymentProgress = computed(() =>
-  discountedTotal.value === 0
-    ? 0
-    : Math.min(100, (totalPaymentsAmount.value / discountedTotal.value) * 100),
+  discountedTotal.value === 0 ? 0 : Math.min(100, (totalPaymentsAmount.value / discountedTotal.value) * 100)
 )
 
 const canAddPayment = computed(() => {
@@ -320,23 +311,21 @@ const addButtonText = computed(() => {
   return `Ajouter ${formatPrice(amount)}`
 })
 
-const canConfirmPayment = computed(() =>
-  paymentsList.value.length > 0 && remainingToPay.value <= 0,
-)
+const canConfirmPayment = computed(() => paymentsList.value.length > 0 && remainingToPay.value <= 0)
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatPrice = (p) =>
-  `${new Intl.NumberFormat('fr-FR').format(Math.round(Number(p) || 0))} Ar`
+const formatPrice = (p) => `${new Intl.NumberFormat('fr-FR').format(Math.round(Number(p) || 0))} Ar`
 
-const getPaymentIcon = (name) => ({
-  'Espèce':       'fa-solid fa-hand-holding-dollar',
-  'TPE':          'fa-solid fa-credit-card',
-  'Orange Money': 'fa-solid fa-mobile-screen',
-  'MVola':        'fa-solid fa-mobile-screen',
-  'Airtel Money': 'fa-solid fa-mobile-screen',
-}[name] || 'fa-solid fa-credit-card')
+const getPaymentIcon = (name) => {
+  const icons = {
+    'Espèce': 'fa-solid fa-hand-holding-dollar',
+    'TPE': 'fa-solid fa-credit-card',
+    'Orange Money': 'fa-solid fa-mobile-screen-button',
+    'MVola': 'fa-solid fa-mobile-screen-button',
+    'Airtel Money': 'fa-solid fa-mobile-screen-button',
+  }
+  return icons[name] || 'fa-solid fa-credit-card'
+}
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
 const fetchPayments = async () => {
   loadingPayments.value = true
   try {
@@ -379,11 +368,11 @@ const onKeypadDelete = () => {
 
 const selectPaymentMethod = (method) => {
   selectedPayment.value = method
-  amountReceived.value  = ''
-  phoneNumber.value     = ''
-  cardNumber.value      = ''
-  paymentNotes.value    = ''
-  activeInput.value     = 'amountReceived'
+  amountReceived.value = ''
+  phoneNumber.value = ''
+  cardNumber.value = ''
+  paymentNotes.value = ''
+  activeInput.value = 'amountReceived'
 }
 
 const selectDiscount = (value) => {
@@ -416,106 +405,43 @@ const addPayment = () => {
 
   paymentsList.value.push({
     payment_id: found.id,
-    method:    selectedPayment.value,
+    method: selectedPayment.value,
     amount,
     reference,
     notes: paymentNotes.value || null,
   })
 
   amountReceived.value = ''
-  phoneNumber.value    = ''
-  cardNumber.value     = ''
-  paymentNotes.value   = ''
+  phoneNumber.value = ''
+  cardNumber.value = ''
+  paymentNotes.value = ''
 }
 
 const removePayment = (idx) => {
   paymentsList.value.splice(idx, 1)
 }
 
-// const confirmPayment = async () => {
-//   if (!canConfirmPayment.value || isProcessing.value) return
-//   isProcessing.value = true
-
-//   try {
-//     const user    = JSON.parse(localStorage.getItem('user')    || '{}')
-//     const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}')
-
-//     const items = (props.saleData?.items || []).map((item) => ({
-//       product_id: item.product_id || item.id,
-//       quantity:   Number(item.quantity)  || 0,
-//       unit_price: Number(item.price)     || 0,
-//       price:      Number(item.price)     || 0,
-//       total:      (Number(item.price) || 0) * (Number(item.quantity) || 0),
-//     }))
-
-//     const payload = {
-//       point_of_sale_id:        props.saleData?.point_of_sale_id || user.point_of_sale_id,
-//       cash_register_session_id: session?.id || null,
-//       table_id:                props.saleData?.table_id || null,
-//       user_id:                 user.id,
-//       total_amount:            props.totalAmount,
-//       discount_percentage:     selectedDiscount.value,
-//       final_amount:            discountedTotal.value,
-//       status:                  'completed',
-//       items,
-//       payments: paymentsList.value.map((p) => ({
-//         payment_id: p.payment_id,
-//         amount:     Number(p.amount),
-//         reference:  p.reference || null,
-//         notes:      p.notes     || null,
-//       })),
-//     }
-
-//     const response = await axios.post(`${API_BASE_URL}/sales`, payload, {
-//       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-//     })
-
-//     const saleId = response.data?.data?.sale?.id
-//     if (!saleId) throw new Error('ID de vente non reçu du serveur')
-
-//     emit('payment-success', {
-//       sale_id:             saleId,
-//       sale:                response.data?.data?.sale,
-//       payments:            response.data?.data?.payments || paymentsList.value,
-//       discount_percentage: selectedDiscount.value,
-//       final_total:         discountedTotal.value,
-//     })
-
-//     closeModal()
-//   } catch (error) {
-//     console.error('Erreur confirmPayment:', error)
-//     const message = error.response?.data?.message || error.message || 'Erreur lors de la vente'
-//     emit('payment-error', message)
-//     alert(message)
-//   } finally {
-//     isProcessing.value = false
-//   }
-// }
 const confirmPayment = async () => {
-  if (!canConfirmPayment.value || isProcessing.value) return;
-  isProcessing.value = true;
+  if (!canConfirmPayment.value || isProcessing.value) return
+  isProcessing.value = true
 
   try {
-    // Récupération des données utilisateur et session
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}');
+    console.group('💳 confirmPayment')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const session = JSON.parse(localStorage.getItem('cash_register_session') || '{}')
 
-    // Transformation des articles avec gestion correcte du prix unitaire
     const items = (props.saleData?.items || []).map((item) => {
-      // 🔥 Correction : utiliser unit_price en priorité, puis price, puis 0
-      const unitPrice = item.unit_price ?? item.price ?? 0;
-      const quantity = Number(item.quantity) || 0;
-      
+      const unitPrice = item.unit_price ?? item.price ?? 0
+      const quantity = Number(item.quantity) || 0
       return {
         product_id: item.product_id || item.id,
-        quantity: quantity,
+        quantity,
         unit_price: Number(unitPrice),
-        price: Number(unitPrice),           // optionnel, pour compatibilité
+        price: Number(unitPrice),
         total: Number(unitPrice) * quantity,
-      };
-    });
+      }
+    })
 
-    // Construction du payload
     const payload = {
       point_of_sale_id: props.saleData?.point_of_sale_id || user.point_of_sale_id,
       cash_register_session_id: session?.id || null,
@@ -532,50 +458,73 @@ const confirmPayment = async () => {
         reference: p.reference || null,
         notes: p.notes || null,
       })),
-    };
+    }
 
-    // Envoi de la requête
-    const response = await axios.post(`${API_BASE_URL}/sales`, payload, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    });
+    const existingSaleId = props.saleId || props.saleData?.id
+    console.log('existingSaleId utilisé :', existingSaleId)
 
-    const saleId = response.data?.data?.sale?.id;
-    if (!saleId) throw new Error('ID de vente non reçu du serveur');
+    let response
+    if (existingSaleId) {
+      console.log(`🟢 Mise à jour PUT /sales/${existingSaleId}`)
+      response = await axios.put(`${API_BASE_URL}/sales/${existingSaleId}`, payload, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      })
+    } else {
+      console.log('🔴 Création POST /sales')
+      response = await axios.post(`${API_BASE_URL}/sales`, payload, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      })
+    }
 
-    // Émission des événements de succès
+    console.log('📡 Réponse serveur :', response.data)
+    const saleId = response.data?.data?.sale?.id
+    if (!saleId) throw new Error('ID de vente non reçu du serveur')
+    console.log('✅ Vente finalisée avec ID :', saleId)
+    console.groupEnd()
+
     emit('payment-success', {
       sale_id: saleId,
       sale: response.data?.data?.sale,
       payments: response.data?.data?.payments || paymentsList.value,
       discount_percentage: selectedDiscount.value,
       final_total: discountedTotal.value,
-    });
+    })
 
-    closeModal();
+    closeModal()
   } catch (error) {
-    console.error('Erreur confirmPayment:', error);
-    const message = error.response?.data?.message || error.message || 'Erreur lors de la vente';
-    emit('payment-error', message);
-    alert(message);
+    console.error('Erreur confirmPayment:', error)
+    const message = error.response?.data?.message || error.message || 'Erreur lors de la vente'
+    emit('payment-error', message)
+    alert(message)
   } finally {
-    isProcessing.value = false;
+    isProcessing.value = false
   }
-};
+}
 
 const closeModal = () => {
-  paymentsList.value     = []
-  selectedPayment.value  = ''
+  paymentsList.value = []
+  selectedPayment.value = ''
   selectedDiscount.value = 0
-  amountReceived.value   = ''
-  phoneNumber.value      = ''
-  cardNumber.value       = ''
-  paymentNotes.value     = ''
-  isProcessing.value     = false
+  amountReceived.value = ''
+  phoneNumber.value = ''
+  cardNumber.value = ''
+  paymentNotes.value = ''
+  isProcessing.value = false
   emit('close-modal')
 }
 
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
-onMounted(fetchPayments)
+onMounted(() => {
+  fetchPayments()
+  console.log('🟣 PaymentModal mounted - saleId =', props.saleId)
+})
+
+watch(
+  () => props.saleId,
+  (newVal) => {
+    console.log('🟣 PaymentModal watch saleId :', newVal)
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -642,9 +591,18 @@ onMounted(fetchPayments)
   overflow-y: auto;
 }
 
-.col-1 { flex: 1; min-width: 0; }
-.col-2 { flex: 1; min-width: 0; }
-.col-3 { width: 300px; flex-shrink: 0; }
+.col-1 {
+  flex: 1;
+  min-width: 0;
+}
+.col-2 {
+  flex: 1;
+  min-width: 0;
+}
+.col-3 {
+  width: 300px;
+  flex-shrink: 0;
+}
 
 /* ── Panel ── */
 .panel {
@@ -654,7 +612,9 @@ onMounted(fetchPayments)
   border: 1px solid #e2e8f0;
 }
 
-.panel.mt { margin-top: 0; }
+.panel.mt {
+  margin-top: 0;
+}
 
 /* ── Solde rows ── */
 .solde-row {
@@ -665,13 +625,26 @@ onMounted(fetchPayments)
   border-bottom: 1px solid #f1f5f9;
   font-size: 0.875rem;
 }
-.solde-row:last-child { border-bottom: none; }
+.solde-row:last-child {
+  border-bottom: none;
+}
 
-.solde-row label { color: #64748b; }
-.value           { font-weight: 600; color: #0f172a; }
-.value.highlight { color: #4f46e5; }
-.value.success   { color: #059669; }
-.value.warning   { color: #d97706; }
+.solde-row label {
+  color: #64748b;
+}
+.value {
+  font-weight: 600;
+  color: #0f172a;
+}
+.value.highlight {
+  color: #4f46e5;
+}
+.value.success {
+  color: #059669;
+}
+.value.warning {
+  color: #d97706;
+}
 
 /* ── Chip remise ── */
 .chip-group {
@@ -713,10 +686,20 @@ onMounted(fetchPayments)
   background: #f8fafc;
 }
 
-.info-row.success     { background: #ecfdf5; color: #065f46; }
-.info-row.warning     { background: #fffbeb; color: #92400e; }
-.info-row.change      { background: #eef2ff; }
-.change-amount        { color: #4f46e5; }
+.info-row.success {
+  background: #ecfdf5;
+  color: #065f46;
+}
+.info-row.warning {
+  background: #fffbeb;
+  color: #92400e;
+}
+.info-row.change {
+  background: #eef2ff;
+}
+.change-amount {
+  color: #4f46e5;
+}
 
 /* ── Fixed amount ── */
 .fixed-amount-row {
@@ -747,13 +730,18 @@ onMounted(fetchPayments)
   box-sizing: border-box;
 }
 
-.field-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+.field-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
 
 .input-wrapper {
   position: relative;
 }
 
-.input-wrapper .field-input { padding-right: 2.5rem; }
+.input-wrapper .field-input {
+  padding-right: 2.5rem;
+}
 
 .input-suffix {
   position: absolute;
@@ -783,7 +771,11 @@ onMounted(fetchPayments)
   font-size: 0.75rem;
 }
 
-.payments-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.payments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
 
 .payment-item {
   display: flex;
@@ -802,8 +794,14 @@ onMounted(fetchPayments)
   font-size: 0.82rem;
 }
 
-.payment-method-name { font-weight: 600; color: #1e293b; }
-.payment-reference   { color: #64748b; font-size: 0.75rem; }
+.payment-method-name {
+  font-weight: 600;
+  color: #1e293b;
+}
+.payment-reference {
+  color: #64748b;
+  font-size: 0.75rem;
+}
 
 .payment-item-right {
   display: flex;
@@ -811,7 +809,11 @@ onMounted(fetchPayments)
   gap: 0.5rem;
 }
 
-.payment-amount { font-weight: 600; color: #4f46e5; font-size: 0.875rem; }
+.payment-amount {
+  font-weight: 600;
+  color: #4f46e5;
+  font-size: 0.875rem;
+}
 
 /* ── Progress bar ── */
 .progress-bar {
@@ -862,7 +864,11 @@ onMounted(fetchPayments)
   color: #475569;
 }
 
-.method-btn:hover { border-color: #a5b4fc; background: #eef2ff; color: #4f46e5; }
+.method-btn:hover {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  color: #4f46e5;
+}
 
 .method-btn.active {
   background: #4f46e5;
@@ -879,7 +885,11 @@ onMounted(fetchPayments)
 }
 
 /* ── Keypad ── */
-.keypad { display: flex; flex-direction: column; gap: 0.4rem; }
+.keypad {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
 
 .keypad-row {
   display: flex;
@@ -900,11 +910,26 @@ onMounted(fetchPayments)
   transition: all 0.12s;
 }
 
-.keypad-btn:hover:not(:disabled) { background: #eef2ff; border-color: #a5b4fc; color: #4f46e5; }
-.keypad-btn:active:not(:disabled){ transform: scale(0.95); }
-.keypad-btn.danger               { color: #e11d48; }
-.keypad-btn.danger:hover         { background: #fff1f2; border-color: #fda4af; }
-.keypad-btn.disabled, .keypad-btn:disabled { opacity: 0.3; cursor: default; }
+.keypad-btn:hover:not(:disabled) {
+  background: #eef2ff;
+  border-color: #a5b4fc;
+  color: #4f46e5;
+}
+.keypad-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.keypad-btn.danger {
+  color: #e11d48;
+}
+.keypad-btn.danger:hover {
+  background: #fff1f2;
+  border-color: #fda4af;
+}
+.keypad-btn.disabled,
+.keypad-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
 
 /* ── Add payment button ── */
 .btn-add-payment {
@@ -925,8 +950,13 @@ onMounted(fetchPayments)
   border: none;
 }
 
-.btn-add-payment:hover:not(:disabled) { background: #4338ca; }
-.btn-add-payment:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-add-payment:hover:not(:disabled) {
+  background: #4338ca;
+}
+.btn-add-payment:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ── Footer ── */
 .payment-footer {
@@ -952,12 +982,26 @@ onMounted(fetchPayments)
   border: none;
 }
 
-.btn.ghost   { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-.btn.ghost:hover { background: #e2e8f0; }
+.btn.ghost {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.btn.ghost:hover {
+  background: #e2e8f0;
+}
 
-.btn.primary { background: #4f46e5; color: #fff; }
-.btn.primary:hover:not(:disabled) { background: #4338ca; }
-.btn.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary {
+  background: #4f46e5;
+  color: #fff;
+}
+.btn.primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+.btn.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ── Icon buttons ── */
 .btn-icon {
@@ -974,6 +1018,12 @@ onMounted(fetchPayments)
   color: #64748b;
 }
 
-.btn-icon.ghost:hover  { background: rgba(255,255,255,0.15); color: #fff; }
-.btn-icon.danger:hover { background: #fff1f2; color: #e11d48; }
+.btn-icon.ghost:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+.btn-icon.danger:hover {
+  background: #fff1f2;
+  color: #e11d48;
+}
 </style>
