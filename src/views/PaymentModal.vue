@@ -252,7 +252,7 @@ const emit = defineEmits(['close-modal', 'payment-success', 'payment-error'])
 
 const token = localStorage.getItem('token')
 const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
-const discountOptions = [0, 5, 10, 20]
+const discountOptions = [0, 25,50, 75, 100]
 const keypadRows = [
   ['7', '8', '9'],
   ['4', '5', '6'],
@@ -311,8 +311,10 @@ const addButtonText = computed(() => {
   return `Ajouter ${formatPrice(amount)}`
 })
 
-const canConfirmPayment = computed(() => paymentsList.value.length > 0 && remainingToPay.value <= 0)
-
+const canConfirmPayment = computed(() => {
+  if (discountedTotal.value === 0) return true;
+  return paymentsList.value.length > 0 && remainingToPay.value <= 0;
+});
 const formatPrice = (p) => `${new Intl.NumberFormat('fr-FR').format(Math.round(Number(p) || 0))} Ar`
 
 const getPaymentIcon = (name) => {

@@ -181,10 +181,7 @@ initUser();
 function showKeyboard(field) {
   activeField.value = field
   keyboardVisible.value = true
-  nextTick(() => {
-    updateKeyboardPosition()
-  })
-}
+  }
 
 function handleKeyPress(key) {
   if (key === 'BACKSPACE') {

@@ -131,8 +131,13 @@
           </div>
         </div>
 
+        <!-- Zone produits avec indicateur de chargement -->
         <div class="mt-3 flex-1 overflow-hidden">
-          <div v-if="filteredProducts.length" class="h-full overflow-y-auto pr-1">
+          <div v-if="loadingProducts" class="flex h-full items-center justify-center py-10">
+            <span class="spinner"></span>
+            <span class="ml-2 text-slate-500">Chargement des produits...</span>
+          </div>
+          <div v-else-if="filteredProducts.length" class="h-full overflow-y-auto pr-1">
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               <button
                 v-for="product in filteredProducts"
@@ -239,6 +244,7 @@
             </div>
           </div>
 
+          <!-- Commande en attente (affichage si panier vide mais commande existante) -->
           <div v-else-if="currentPendingOrder" class="flex h-full flex-col overflow-hidden">
             <div
               class="flex flex-1 flex-col rounded-2xl border border-amber-200 bg-gradient-to-b from-amber-50 to-white p-3.5 shadow-sm"
@@ -391,6 +397,10 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { API_BASE_URL, API_URL } from '@/utils/api'
 import { faClock } from '@fortawesome/free-solid-svg-icons'
 
+// Cache global pour les catégories/produits (une seule requête pour tout le site)
+let categoriesCache = null
+let productsCache = []
+
 export default {
   name: 'TableSale',
   components: { TableSelectorModal, PaymentModal, InvoiceModal, Profile, FontAwesomeIcon },
@@ -411,7 +421,7 @@ export default {
       searchQuery: '',
       selectedTable: null,
       showTableSelector: false,
-      isPaymentModalOpen: false,      // ← OUVERTURE MODAL
+      isPaymentModalOpen: false,
       isInvoiceModalOpen: false,
       currentInvoiceNumber: '',
       currentPaymentMethod: '',
@@ -421,6 +431,7 @@ export default {
       isAddingToPending: false,
       user: { name: '', email: '', point_of_sale_name: '' },
       isProcessing: false,
+      loadingProducts: false,
     }
   },
 
@@ -487,7 +498,9 @@ export default {
     tableId: {
       immediate: true,
       handler(newVal) {
-        this.handleTableIdChange(newVal)
+        if (newVal && String(newVal) !== String(this.selectedTable?.id)) {
+          this.loadTableAndData(Number(newVal))
+        }
       },
     },
   },
@@ -495,10 +508,93 @@ export default {
   async mounted() {
     const { loadUserData } = useAuth()
     await loadUserData()
-    await this.loadCategories()
+    if (this.tableId) {
+      await this.loadTableAndData(Number(this.tableId))
+    }
   },
 
   methods: {
+    // ========== CHARGEMENT OPTIMISÉ ==========
+    async loadTableAndData(tableId) {
+      this.clearCart()
+      this.currentPendingOrder = null
+      this.existingPendingLines = []
+      this.isAddingToPending = false
+
+      const promises = [this.loadTable(tableId)]
+      if (!categoriesCache) {
+        promises.push(this.loadCategories())
+      } else {
+        this.categories = categoriesCache
+        this.products = productsCache
+        this.filteredProducts = [...this.products]
+      }
+      await Promise.all(promises)
+    },
+
+    async loadTable(tableId) {
+      try {
+        const token = localStorage.getItem('token')
+        const response = await axios.get(`${API_BASE_URL}/tables/${tableId}`, {
+          params: { with_sales: 1, with_point_of_sale: 1 },
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const table = this.normalizeTableResponse(response.data)
+        if (!table) {
+          this.showNotification('Table introuvable', 'error')
+          return
+        }
+        const userPointOfSaleId = this.getCurrentUserPointOfSaleId()
+        if (userPointOfSaleId && this.resolveTablePointOfSaleId(table) !== userPointOfSaleId) {
+          this.showNotification("Cette table n'appartient pas à votre point de vente", 'error')
+          return
+        }
+        this.selectedTable = { ...table, status: this.normalizeStatus(table.status) }
+        if (this.selectedTable.status === 'occupied') {
+          await this.loadPendingOrdersForTable(this.selectedTable.id, { syncCart: true })
+        }
+      } catch (error) {
+        console.error('Erreur chargement table:', error)
+        this.showNotification('Erreur lors du chargement de la table', 'error')
+      }
+    },
+
+    async loadCategories() {
+      if (categoriesCache) {
+        this.categories = categoriesCache
+        this.products = productsCache
+        this.filteredProducts = [...this.products]
+        return
+      }
+      this.loadingProducts = true
+      try {
+        const token = localStorage.getItem('token')
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        if (!user.point_of_sale_id || !token) return
+        const res = await axios.get(`${API_BASE_URL}/categories`, {
+          params: { with_products: 1, point_of_sale_id: user.point_of_sale_id, with_pricing: 1 },
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = Array.isArray(res.data) ? res.data : res.data.data || []
+        this.categories = data
+        categoriesCache = data
+        this.products = data.flatMap((cat) =>
+          (cat.products || []).map((p) => ({
+            ...p,
+            category_id: cat.id,
+            category_name: cat.name,
+            price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0,
+          })),
+        )
+        productsCache = this.products
+        this.filteredProducts = [...this.products]
+      } catch (e) {
+        console.error('Erreur chargement catégories:', e)
+      } finally {
+        this.loadingProducts = false
+      }
+    },
+
     // ========== GESTION DE LA TABLE ==========
     getCurrentUserPointOfSaleId() {
       try {
@@ -538,36 +634,11 @@ export default {
       return payload
     },
 
-    async loadTableFromRoute(tableId) {
-      try {
-        const token = localStorage.getItem('token')
-        const response = await axios.get(`${API_BASE_URL}/tables/${tableId}`, {
-          params: { with_sales: 1, with_point_of_sale: 1 },
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const table = this.normalizeTableResponse(response.data)
-        if (!table) {
-          this.showNotification('Table introuvable', 'error')
-          return
-        }
-        const userPointOfSaleId = this.getCurrentUserPointOfSaleId()
-        if (userPointOfSaleId && this.resolveTablePointOfSaleId(table) !== userPointOfSaleId) {
-          this.showNotification("Cette table n'appartient pas à votre point de vente", 'error')
-          return
-        }
-        await this.onTableSelected({ ...table, status: this.normalizeStatus(table.status) })
-      } catch (error) {
-        console.error('Erreur chargement table:', error)
-        this.showNotification('Erreur lors du chargement de la table', 'error')
-      }
-    },
-
     handleTableIdChange(newVal) {
-      if (newVal === undefined || newVal === null || newVal === '') return
-      const numericId = Number(newVal)
-      if (!Number.isFinite(numericId) || numericId <= 0) return
-      if (this.selectedTable && Number(this.selectedTable.id) === numericId) return
-      this.loadTableFromRoute(numericId)
+      // Remplacé par le watcher, mais on garde pour compatibilité
+      if (newVal && String(newVal) !== String(this.selectedTable?.id)) {
+        this.loadTableAndData(Number(newVal))
+      }
     },
 
     async onTableSelected(table) {
@@ -618,31 +689,6 @@ export default {
       return this.isInteractionLocked
         ? `${base} border-rose-200 opacity-60 cursor-not-allowed`
         : `${base} border-slate-100 hover:border-indigo-200`
-    },
-
-    async loadCategories() {
-      try {
-        const token = localStorage.getItem('token')
-        const user = JSON.parse(localStorage.getItem('user') || '{}')
-        if (!user.point_of_sale_id || !token) return
-        const res = await axios.get(`${API_BASE_URL}/categories`, {
-          params: { with_products: 1, point_of_sale_id: user.point_of_sale_id, with_pricing: 1 },
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = Array.isArray(res.data) ? res.data : res.data.data || []
-        this.categories = data
-        this.products = data.flatMap((cat) =>
-          (cat.products || []).map((p) => ({
-            ...p,
-            category_id: cat.id,
-            category_name: cat.name,
-            price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0,
-          })),
-        )
-        this.filteredProducts = [...this.products]
-      } catch (e) {
-        console.error('Erreur chargement catégories:', e)
-      }
     },
 
     loadProducts(category) {
@@ -908,71 +954,63 @@ export default {
 
     // ========== PAIEMENT ==========
     openPaymentModalDirectly() {
-      console.log('openPaymentModalDirectly appelée');
       if (!this.selectedTable) {
-        this.showNotification('Sélectionnez une table', 'warning');
-        return;
+        this.showNotification('Sélectionnez une table', 'warning')
+        return
       }
       if (this.cart.length === 0 && !this.currentPendingOrder) {
-        this.showNotification('Panier vide', 'warning');
-        return;
+        this.showNotification('Panier vide', 'warning')
+        return
       }
-      // Force l'ouverture du modal
-      this.isPaymentModalOpen = true;
-      console.log('isPaymentModalOpen =', this.isPaymentModalOpen);
+      this.isPaymentModalOpen = true
     },
 
     handleCloseModal() {
-      console.log('handleCloseModal appelée');
-      this.isPaymentModalOpen = false;
+      this.isPaymentModalOpen = false
     },
 
     closeInvoiceModal() {
-      this.isInvoiceModalOpen = false;
+      this.isInvoiceModalOpen = false
     },
 
     openPaymentModal() {
-      this.isInvoiceModalOpen = false;
-      this.isPaymentModalOpen = true;
+      this.isInvoiceModalOpen = false
+      this.isPaymentModalOpen = true
     },
 
     async onPaymentSuccess(data) {
-      console.log('onPaymentSuccess reçu :', data);
       if (data.sale_id) {
         try {
-          const token = localStorage.getItem('token');
+          const token = localStorage.getItem('token')
           // Impression facultative
-          // await axios.post(`${API_BASE_URL}/printers/invoice/${data.sale_id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+          // await axios.post(`${API_BASE_URL}/printers/invoice/${data.sale_id}`, {}, { headers: { Authorization: `Bearer ${token}` } })
         } catch (e) {
-          console.warn('Impression facture échouée :', e);
+          console.warn('Impression facture échouée :', e)
         }
       }
 
       if (this.selectedTable) {
-        await this.updateTableStatus(this.selectedTable.id, 'available');
-        await this.loadPendingOrdersForTable(this.selectedTable.id, { syncCart: false });
+        await this.updateTableStatus(this.selectedTable.id, 'available')
+        await this.loadPendingOrdersForTable(this.selectedTable.id, { syncCart: false })
       }
 
-      this.showNotification('Commande validée avec succès !', 'success');
-      this.clearCart();
-      this.currentPendingOrder = null;
-      this.existingPendingLines = [];
-      this.isAddingToPending = false;
-      this.isPaymentModalOpen = false;
-      // Ne pas réinitialiser selectedTable si on veut rester sur la table
-      // this.selectedTable = null;
+      this.showNotification('Commande validée avec succès !', 'success')
+      this.clearCart()
+      this.currentPendingOrder = null
+      this.existingPendingLines = []
+      this.isAddingToPending = false
+      this.isPaymentModalOpen = false
     },
 
     onPaymentError(error) {
-      this.showNotification(error || 'Erreur paiement', 'error');
-      this.isPaymentModalOpen = false;
+      this.showNotification(error || 'Erreur paiement', 'error')
+      this.isPaymentModalOpen = false
     },
 
     // ========== UTILITAIRES ==========
     showNotification(message, type = 'info') {
-      // À remplacer par un système de toast si disponible
-      console.log(`[${type}] ${message}`);
-      // alert(message);
+      console.log(`[${type}] ${message}`)
+      // À remplacer par un système de toast
     },
 
     getStatusIcon(status) {
