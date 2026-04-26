@@ -106,9 +106,9 @@
               type="button"
               class="whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition"
               :class="
-                activeCategory
-                  ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  : 'bg-indigo-500 text-white shadow'
+                activeCategory === null
+                  ? 'bg-indigo-500 text-white shadow'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
               "
               @click="showAllProducts"
             >
@@ -131,41 +131,42 @@
           </div>
         </div>
 
-        <!-- Zone produits avec indicateur de chargement -->
         <div class="mt-3 flex-1 overflow-hidden">
           <div v-if="loadingProducts" class="flex h-full items-center justify-center py-10">
-            <span class="spinner"></span>
+            <div
+              class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-indigo-500"
+              role="status"
+            >
+              <span class="visually-hidden">Chargement...</span>
+            </div>
             <span class="ml-2 text-slate-500">Chargement des produits...</span>
           </div>
           <div v-else-if="filteredProducts.length" class="h-full overflow-y-auto pr-1">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <button
                 v-for="product in filteredProducts"
                 :key="product.id"
                 type="button"
+                class="group flex flex-col rounded-xl border border-slate-100 bg-white p-0 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
                 :disabled="isInteractionLocked"
-                :class="productCardClasses(product)"
                 @click="addToCart(product)"
               >
-                <div class="relative overflow-hidden rounded-2xl bg-slate-100">
+                <div class="overflow-hidden rounded-lg bg-slate-100">
                   <img
                     :src="getProductImageUrl(product)"
-                    :alt="product.name"
-                    class="aspect-square w-full object-cover transition duration-300 group-hover:scale-105"
+                    class="h-20 w-20 object-cover transition duration-300 group-hover:scale-105"
                     @error="handleImageError"
+                    loading="lazy"
                   />
                 </div>
-                <div class="mt-3 space-y-1 text-left">
-                  <p class="text-sm font-semibold text-slate-900">{{ product.name }}</p>
-                  <p class="text-xs text-slate-400">{{ product.category_name || '—' }}</p>
-                  <div
-                    class="flex items-center justify-between text-sm font-semibold text-slate-900"
-                  >
-                    <span class="flex items-baseline gap-1">
-                      {{ formatPrice(product.price) }}
-                      <span class="text-xs font-medium text-slate-400">/portion</span>
-                    </span>
-                  </div>
+                <div class="mt-1.5 space-y-0.5">
+                  <p class="truncate text-xs font-semibold text-slate-900">{{ product.name }}</p>
+                  <p class="truncate text-[10px] text-slate-400">
+                    {{ product.category_name || '—' }}
+                  </p>
+                  <p class="text-xs font-bold text-slate-900">
+                    {{ formatPrice(product.price) }}
+                  </p>
                 </div>
               </button>
             </div>
@@ -309,7 +310,6 @@
           </div>
 
           <div class="flex flex-col gap-2 pt-2">
-            <!-- Envoyer & imprimer (nouveau panier, pas de commande en attente) -->
             <button
               v-if="cart.length > 0 && !currentPendingOrder"
               type="button"
@@ -320,7 +320,6 @@
               <FontAwesomeIcon icon="fa-solid fa-receipt" /> Envoyer & imprimer
             </button>
 
-            <!-- Ajouter de nouveaux articles (commande en attente, pas en mode ajout) -->
             <button
               v-if="currentPendingOrder && !isAddingToPending"
               type="button"
@@ -330,7 +329,6 @@
               <FontAwesomeIcon icon="fa-solid fa-plus" /> Ajouter de nouveaux articles
             </button>
 
-            <!-- Commander & imprimer (mode ajout actif) -->
             <button
               v-if="currentPendingOrder && isAddingToPending"
               type="button"
@@ -341,7 +339,6 @@
               <FontAwesomeIcon icon="fa-solid fa-check" /> Commander & imprimer
             </button>
 
-            <!-- Payer / Valider -->
             <button
               v-if="cart.length > 0 || currentPendingOrder"
               type="button"
@@ -397,7 +394,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { API_BASE_URL, API_URL } from '@/utils/api'
 import { faClock } from '@fortawesome/free-solid-svg-icons'
 
-// Cache global pour les catégories/produits (une seule requête pour tout le site)
+// Cache global
 let categoriesCache = null
 let productsCache = []
 
@@ -439,7 +436,6 @@ export default {
     totalPrice() {
       return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
     },
-
     displayTotal() {
       if (this.cart.length > 0) return this.totalPrice
       if (this.currentPendingOrder) {
@@ -449,7 +445,6 @@ export default {
       }
       return 0
     },
-
     paymentTotalAmount() {
       if (this.cart.length > 0) return this.totalPrice
       if (this.currentPendingOrder) {
@@ -459,7 +454,6 @@ export default {
       }
       return 0
     },
-
     paymentSaleData() {
       if (this.cart.length > 0) {
         return {
@@ -488,7 +482,6 @@ export default {
       }
       return { items: [], total_amount: 0, point_of_sale_id: null, table_id: null }
     },
-
     isInteractionLocked() {
       return !!this.currentPendingOrder && !this.isAddingToPending
     },
@@ -578,13 +571,22 @@ export default {
         const data = Array.isArray(res.data) ? res.data : res.data.data || []
         this.categories = data
         categoriesCache = data
+
+        // Extraction robuste des produits avec prix depuis pricing
         this.products = data.flatMap((cat) =>
-          (cat.products || []).map((p) => ({
-            ...p,
-            category_id: cat.id,
-            category_name: cat.name,
-            price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0,
-          })),
+          (cat.products || []).map((p) => {
+            let price = 0
+            if (p.pricing && Array.isArray(p.pricing) && p.pricing.length > 0) {
+              // Prendre le premier pricing (ou celui correspondant au point de vente)
+              price = parseFloat(p.pricing[0].price) || 0
+            }
+            return {
+              ...p,
+              category_id: cat.id,
+              category_name: cat.name,
+              price: price,
+            }
+          }),
         )
         productsCache = this.products
         this.filteredProducts = [...this.products]
@@ -614,7 +616,9 @@ export default {
     },
 
     normalizeStatus(status) {
-      const s = String(status || 'available').trim().toLowerCase()
+      const s = String(status || 'available')
+        .trim()
+        .toLowerCase()
       const map = {
         disponible: 'available',
         occupée: 'occupied',
@@ -630,15 +634,9 @@ export default {
     normalizeTableResponse(payload) {
       if (!payload) return null
       if (Array.isArray(payload)) return payload[0] || null
-      if (typeof payload === 'object' && 'data' in payload) return this.normalizeTableResponse(payload.data)
+      if (typeof payload === 'object' && 'data' in payload)
+        return this.normalizeTableResponse(payload.data)
       return payload
-    },
-
-    handleTableIdChange(newVal) {
-      // Remplacé par le watcher, mais on garde pour compatibilité
-      if (newVal && String(newVal) !== String(this.selectedTable?.id)) {
-        this.loadTableAndData(Number(newVal))
-      }
     },
 
     async onTableSelected(table) {
@@ -684,21 +682,19 @@ export default {
       }
     },
 
-    productCardClasses() {
-      const base = 'product-card group flex flex-col rounded-3xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
-      return this.isInteractionLocked
-        ? `${base} border-rose-200 opacity-60 cursor-not-allowed`
-        : `${base} border-slate-100 hover:border-indigo-200`
+    productCardClasses(product) {
+      const base =
+        'product-card group flex flex-col rounded-3xl border bg-white p-3 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
+      if (this.isInteractionLocked) {
+        return `${base} border-rose-200 opacity-60 cursor-not-allowed`
+      }
+      return `${base} border-slate-100 hover:border-indigo-200`
     },
 
     loadProducts(category) {
       this.activeCategory = category
-      this.filteredProducts = (category?.products || []).map((p) => ({
-        ...p,
-        category_id: category.id,
-        category_name: category.name,
-        price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0,
-      }))
+      // Utiliser les produits déjà chargés dans this.products pour éviter de re-filtrer à chaque fois
+      this.filteredProducts = this.products.filter((p) => p.category_id === category.id)
       if (this.searchQuery) this.filterProducts()
     },
 
@@ -710,12 +706,7 @@ export default {
 
     filterProducts() {
       let base = this.activeCategory
-        ? (this.activeCategory.products || []).map((p) => ({
-            ...p,
-            category_id: this.activeCategory.id,
-            category_name: this.activeCategory.name,
-            price: p.pricing?.[0]?.price ? parseFloat(p.pricing[0].price) : 0,
-          }))
+        ? this.products.filter((p) => p.category_id === this.activeCategory.id)
         : [...this.products]
 
       if (this.searchQuery) {
@@ -726,8 +717,9 @@ export default {
     },
 
     addToCart(product) {
+      if (this.isInteractionLocked) return
       const incomingId = String(product.id || product.product_id)
-      const existing = this.cart.find((p) => String(p.id || p.product_id) === incomingId)
+      const existing = this.cart.find((p) => String(p.id) === incomingId)
       if (existing) {
         existing.quantity++
       } else {
@@ -838,12 +830,16 @@ export default {
         })
 
         const pendingOrder = response.data?.data || response.data
-        if (!pendingOrder || !pendingOrder.id) throw new Error("Le serveur n'a pas renvoyé d'ID de commande")
+        if (!pendingOrder || !pendingOrder.id)
+          throw new Error("Le serveur n'a pas renvoyé d'ID de commande")
 
         this.currentPendingOrder = pendingOrder
         await this.updateTableStatus(this.selectedTable.id, 'occupied')
         this.selectedTable = { ...this.selectedTable, status: 'occupied' }
-        await this.loadPendingOrdersForTable(this.selectedTable.id, { showToast: false, syncCart: false })
+        await this.loadPendingOrdersForTable(this.selectedTable.id, {
+          showToast: false,
+          syncCart: false,
+        })
         this.clearCart()
         this.lastAdditionLines = []
         this.isAddingToPending = false
@@ -982,6 +978,10 @@ export default {
       if (data.sale_id) {
         try {
           const token = localStorage.getItem('token')
+          if (this.selectedTable) {
+            await this.updateTableStatus(this.selectedTable.id, 'available')
+            await this.loadPendingOrdersForTable(this.selectedTable.id, { syncCart: false })
+          }
           // Impression facultative
           // await axios.post(`${API_BASE_URL}/printers/invoice/${data.sale_id}`, {}, { headers: { Authorization: `Bearer ${token}` } })
         } catch (e) {
@@ -1010,7 +1010,7 @@ export default {
     // ========== UTILITAIRES ==========
     showNotification(message, type = 'info') {
       console.log(`[${type}] ${message}`)
-      // À remplacer par un système de toast
+      // À remplacer par un système de toast si disponible
     },
 
     getStatusIcon(status) {
@@ -1050,10 +1050,18 @@ export default {
 .product-card.adding-to-cart {
   animation: cartPulse 0.4s ease;
 }
-
 @keyframes cartPulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); }
-  50% { transform: scale(1.02); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2);
+  }
 }
 </style>

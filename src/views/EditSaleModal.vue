@@ -161,7 +161,7 @@ const getAuthHeaders = () => {
 const fetchAllProducts = async (url) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`
   const { data } = await axios.get(fullUrl, { headers: getAuthHeaders() })
-  
+
   let pageProducts = []
   if (Array.isArray(data)) pageProducts = data
   else if (data?.data && Array.isArray(data.data)) pageProducts = data.data
@@ -175,7 +175,7 @@ const fetchAllProducts = async (url) => {
       }
     }
   }
-  
+
   // Extraction du prix depuis le tableau pricing
   const userPointOfSaleId = currentUser.value?.point_of_sale_id
   pageProducts = pageProducts.map(product => {
@@ -187,7 +187,7 @@ const fetchAllProducts = async (url) => {
     }
     return { ...product, price }
   })
-  
+
   // Récupération de la page suivante (plusieurs formats possibles)
   let nextUrl = data?.links?.next || data?.next_page_url || null
   if (nextUrl) {
@@ -241,12 +241,13 @@ const addSelectedProduct = () => {
 // Synchronisation avec la prop sale
 watch(() => props.sale, (newSale) => {
   if (newSale) {
-    editableSale.value = JSON.parse(JSON.stringify(newSale))
-    if (!editableSale.value.orderlines) editableSale.value.orderlines = []
-    // S'assurer que chaque ligne a un total cohérent
-    editableSale.value.orderlines.forEach(line => {
-      if (!line.total) line.total = line.quantity * line.price
-    })
+    const cloned = JSON.parse(JSON.stringify(newSale))
+    // Convertir order_lines (API) → orderlines (modale)
+    if (cloned.order_lines && !cloned.orderlines) {
+      cloned.orderlines = cloned.order_lines
+    }
+    if (!cloned.orderlines) cloned.orderlines = []
+    editableSale.value = cloned
     isOpen.value = true
     if (isAdmin.value) fetchProducts()
   } else {

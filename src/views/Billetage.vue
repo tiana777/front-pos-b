@@ -23,8 +23,10 @@
             </button>
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
+              class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700 disabled:opacity-60"
               @click="showCashCount = true"
+              :disabled="!hasAnySale"
+              :title="!hasAnySale ? 'Aucune vente dans cette session, billetage inutile' : 'Commencer le comptage'"
             >
               <i class="fas fa-coins text-xs"></i> Billetage
             </button>
@@ -50,6 +52,15 @@
             <h2 class="text-lg font-semibold text-slate-900">Produits vendus</h2>
             <p class="text-sm text-slate-500">Liste des articles écoulés pendant la session (hors montants).</p>
           </div>
+
+          <!-- Indicateur de chargement des détails -->
+          <div v-if="loadingDetails" class="mb-3 rounded-xl bg-slate-100 p-2 text-center text-xs text-slate-600">
+            Chargement des détails des produits… {{ loadingProgress }}%
+            <div class="mt-1 h-1 w-full rounded-full bg-slate-200 overflow-hidden">
+              <div class="h-full bg-indigo-500 transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+            </div>
+          </div>
+
           <div class="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p class="text-xs font-semibold uppercase text-slate-400">Total tickets</p>
@@ -64,6 +75,7 @@
               <p class="mt-2 text-2xl font-bold text-slate-800">{{ totalProductTypes }}</p>
             </div>
           </div>
+
           <div v-if="categoryGroups.length" class="space-y-3">
             <article v-for="category in categoryGroups" :key="category.label" class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
               <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
@@ -107,7 +119,8 @@
               <i class="fas fa-info-circle mr-2"></i> Aucune session active. Veuillez ouvrir une session depuis la page d’accueil.
             </div>
 
-            <div v-if="showCashCount && sessionId && !sessionClosed" class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <!-- Comptage avec gestion des permissions + condition hasAnySale -->
+            <div v-if="showCashCount && sessionId && !sessionClosed && hasAnySale" class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div v-for="denomination in denominations" :key="denomination.value" class="grid items-center gap-3 sm:grid-cols-[120px_minmax(0,1fr)_110px]">
                 <label :for="`denom-${denomination.value}`" class="text-sm font-semibold text-slate-700">{{ denomination.label }} Ar</label>
                 <input
@@ -117,12 +130,15 @@
                   inputmode="numeric"
                   min="0"
                   step="1"
-                  :disabled="isSubmitting || isLoading || sessionClosed || hasRecordedBilletage"
+                  :disabled="isSubmitting || isLoading || sessionClosed || hasRecordedBilletage || !canEditBilletage"
                   @focus="showKeyboard({ type: 'denomination', value: denomination.value })"
                   class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:opacity-60"
                 />
                 <span class="text-right text-sm font-semibold text-slate-600">{{ formatCurrency(denominationTotal(denomination.value)) }}</span>
               </div>
+            </div>
+            <div v-else-if="showCashCount && !hasAnySale" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              <i class="fas fa-info-circle mr-2"></i> Aucune vente dans cette session. Le billetage n’est pas nécessaire.
             </div>
             <div v-else-if="!showCashCount" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
               <i class="fas fa-calculator mb-2 text-2xl text-slate-300"></i>
@@ -160,7 +176,7 @@
             <button
               type="submit"
               class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700 disabled:opacity-60"
-              :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || hasRecordedBilletage || !showCashCount"
+              :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || hasRecordedBilletage || !showCashCount || !canEditBilletage || !hasAnySale"
             >
               <i v-if="isSubmitting" class="fas fa-circle-notch animate-spin"></i>
               {{ isSubmitting ? 'Enregistrement...' : 'Valider le billetage' }}
@@ -169,7 +185,7 @@
               type="button"
               class="inline-flex items-center gap-2 rounded-xl bg-rose-100 px-5 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-200 disabled:opacity-60"
               @click="closeSession"
-              :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || !hasRecordedBilletage"
+              :disabled="isSubmitting || isLoading || !sessionId || sessionClosed || !hasRecordedBilletage || !canEditBilletage"
             >
               Clôturer la session
             </button>
@@ -205,19 +221,22 @@ const denominations = [
 const router = useRouter()
 const { isAdmin, currentUser, loadUserData } = useAuth()
 
-// Droit de sélectionner une session (admin ou manager)
+// Permissions
 const canSelectSession = computed(() => {
-  const userRoles = currentUser.value?.roles?.map(r => r.name) || []
-  return isAdmin.value || userRoles.includes('gerant')
+  const roles = currentUser.value?.roles?.map(r => r.name) || []
+  return isAdmin.value || roles.includes('gerant')
 })
-
-// Droit de voir les infos sensibles (idem)
 const canViewSensitiveInfo = computed(() => {
-  const userRoles = currentUser.value?.roles?.map(r => r.name) || []
-  return isAdmin.value || userRoles.includes('gerant')
+  const roles = currentUser.value?.roles?.map(r => r.name) || []
+  return isAdmin.value || roles.includes('gerant')
+})
+// 🔧 MODIFICATION : autoriser également le caissier à faire le billetage
+const canEditBilletage = computed(() => {
+  const roles = currentUser.value?.roles?.map(r => r.name) || []
+  return isAdmin.value || roles.includes('gerant') || roles.includes('caissier')
 })
 
-// ========== ÉTATS ==========
+// États
 const counts = reactive(Object.fromEntries(denominations.map(d => [d.value, 0])))
 const keyboardVisible = ref(false)
 const activeField = ref(null)
@@ -235,61 +254,182 @@ const showCashCount = ref(false)
 const sessionSales = ref([])
 const sessionData = ref(null)
 const cashTransactions = ref([])
-
-// Sessions ouvertes (pour le sélecteur)
 const openSessions = ref([])
 const selectedSessionId = ref(null)
+const loadingDetails = ref(false)
+const loadingProgress = ref(0)
 
-// ========== COMPUTED ==========
-const actualTotal = computed(() => {
-  const total = denominations.reduce((sum, d) => sum + d.value * (Number(counts[d.value]) || 0), 0)
-  return Number(total.toFixed(2))
-})
+// ========== UTILITAIRES ==========
+const authHeaders = () => {
+  const token = localStorage.getItem('token')
+  if (!token) throw new Error('Token manquant')
+  return { Authorization: `Bearer ${token}` }
+}
 
-const startingAmount = computed(() => Number(sessionData.value?.starting_amount ?? 0))
+const formatCurrency = (amount) => {
+  const num = Number(amount)
+  if (!Number.isFinite(num)) return '0 Ar'
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(num) + ' Ar'
+}
+const denominationTotal = (value) => value * (Number(counts[value]) || 0)
+const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('fr-FR') : ''
+const resetForm = () => {
+  denominations.forEach(d => { counts[d.value] = 0 })
+  errorMessage.value = ''
+  successMessage.value = ''
+}
 
-const cashSalesAmount = computed(() => {
-  return cashTransactions.value.filter(t => t.type === 'sale').reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
-})
+// ========== CHARGEMENT OPTIMISÉ DES VENTES ==========
+const fetchAllSalesFast = async (sessionId) => {
+  let allSales = []
+  let currentPage = 1
+  let lastPage = 1
+  try {
+    do {
+      const { data } = await axios.get(`${API_BASE_URL}/sales`, {
+        params: {
+          cash_register_session_id: sessionId,
+          page: currentPage,
+          per_page: 250
+        },
+        headers: authHeaders()
+      })
+      let items = []
+      if (Array.isArray(data)) items = data
+      else if (data?.data && Array.isArray(data.data)) {
+        items = data.data
+        lastPage = data.last_page || data.meta?.last_page || currentPage
+      } else if (data?.items) items = data.items
+      else items = []
+      allSales.push(...items)
+      currentPage++
+    } while (currentPage <= lastPage)
+    return allSales
+  } catch (err) {
+    console.error('Erreur chargement ventes:', err)
+    return []
+  }
+}
 
-const expectedCashAmount = computed(() => startingAmount.value + cashSalesAmount.value)
-const varianceAmount = computed(() => actualTotal.value - expectedCashAmount.value)
+const loadMissingLines = async (sales, concurrency = 5) => {
+  const missing = sales.filter(s => !s.order_lines || s.order_lines.length === 0)
+  if (missing.length === 0) return sales
 
-const varianceStatus = computed(() => {
-  if (Math.abs(varianceAmount.value) < 0.01) return 'conforme'
-  return varianceAmount.value > 0 ? 'positif' : 'negatif'
-})
+  loadingDetails.value = true
+  loadingProgress.value = 0
+  const results = [...sales]
+  let processed = 0
 
-const varianceStatusLabel = computed(() => {
-  if (varianceStatus.value === 'conforme') return 'Caisse conforme'
-  if (varianceStatus.value === 'positif') return 'Excédent (alerte)'
-  return 'Manquant (alerte)'
-})
+  for (let i = 0; i < missing.length; i += concurrency) {
+    const batch = missing.slice(i, i + concurrency)
+    await Promise.all(batch.map(async (sale) => {
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/sales/${sale.id}`, { headers: authHeaders() })
+        const details = data?.data || data
+        const index = results.findIndex(s => s.id === sale.id)
+        if (index !== -1) results[index] = { ...sale, order_lines: details.order_lines || [] }
+      } catch (err) {
+        console.warn(`Erreur lignes vente ${sale.id}:`, err)
+        const index = results.findIndex(s => s.id === sale.id)
+        if (index !== -1) results[index] = { ...sale, order_lines: [] }
+      }
+      processed++
+      loadingProgress.value = Math.round((processed / missing.length) * 100)
+    }))
+  }
+  loadingDetails.value = false
+  return results
+}
 
-const varianceCardClass = computed(() => {
-  if (varianceStatus.value === 'conforme') return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  return 'border-amber-200 bg-amber-50 text-amber-700'
-})
+const loadSessionSales = async (sessionId) => {
+  isLoading.value = true
+  sessionSales.value = []
+  try {
+    const rawSales = await fetchAllSalesFast(sessionId)
+    const filtered = rawSales.filter(s => String(s.cash_register_session_id) === String(sessionId))
+    const enriched = await loadMissingLines(filtered)
+    sessionSales.value = enriched
+  } catch (err) {
+    console.error('Erreur loadSessionSales:', err)
+    sessionSales.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
-const varianceBadgeClass = computed(() => {
-  if (varianceStatus.value === 'conforme') return 'bg-emerald-100 text-emerald-700'
-  return 'bg-amber-100 text-amber-700'
-})
+const fetchCashTransactions = async (sessionId) => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-transactions/session/${sessionId}`, { headers: authHeaders() })
+    if (Array.isArray(data)) cashTransactions.value = data
+    else if (data?.in && data?.out) cashTransactions.value = [...data.in, ...data.out]
+    else cashTransactions.value = []
+  } catch (err) {
+    console.error('Erreur transactions:', err)
+    cashTransactions.value = []
+  }
+}
+
+const fetchSessionData = async (id) => {
+  isLoading.value = true
+  errorMessage.value = ''
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/${id}`, { headers: authHeaders() })
+    const session = data?.data || data
+    if (!session?.id) throw new Error('Session introuvable')
+
+    sessionData.value = session
+    sessionId.value = session.id
+    sessionClosed.value = Boolean(session.is_closed)
+    hasRecordedBilletage.value = session.actual_cash_amount !== null
+
+    await Promise.all([
+      loadSessionSales(session.id),
+      fetchCashTransactions(session.id)
+    ])
+
+    if (hasRecordedBilletage.value) {
+      let remaining = Math.round(Number(session.actual_cash_amount) || 0)
+      for (const d of denominations) {
+        const qty = Math.floor(remaining / d.value)
+        counts[d.value] = qty
+        remaining -= qty * d.value
+      }
+    } else {
+      resetForm()
+    }
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || err.message || 'Erreur chargement session.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const fetchOpenSessions = async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/open`, { headers: authHeaders() })
+    openSessions.value = Array.isArray(data) ? data : data?.data || []
+    if (openSessions.value.length) {
+      selectedSessionId.value = openSessions.value[0].id
+      await fetchSessionData(selectedSessionId.value)
+    } else {
+      errorMessage.value = 'Aucune session ouverte.'
+    }
+  } catch (err) {
+    errorMessage.value = 'Impossible de charger les sessions ouvertes.'
+  }
+}
+const onSessionChange = () => {
+  if (selectedSessionId.value) fetchSessionData(selectedSessionId.value)
+}
 
 // ========== PRODUITS VENDUS ==========
-const resolveCategoryLabel = (line) => {
-  return line?.product?.category?.name ?? line?.category?.name ?? line?.category_name ?? 'Sans catégorie'
-}
-
-const getSaleLines = (sale) => {
-  const rawLines = sale?.order_lines ?? []
-  return rawLines.map((line, idx) => ({
-    key: line?.id ?? `${sale.id}-${idx}`,
-    name: line?.product?.name ?? line?.name ?? 'Produit supprimé',
-    quantity: Number(line?.quantity ?? 0),
-    categoryLabel: resolveCategoryLabel(line)
-  }))
-}
+const resolveCategoryLabel = (line) => line?.product?.category?.name ?? line?.category?.name ?? line?.category_name ?? 'Sans catégorie'
+const getSaleLines = (sale) => (sale?.order_lines || []).map(line => ({
+  id: line.id,
+  name: line.product?.name ?? line.name ?? 'Produit supprimé',
+  quantity: Number(line.quantity ?? 0),
+  categoryLabel: resolveCategoryLabel(line)
+}))
 
 const categoryGroups = computed(() => {
   const groups = new Map()
@@ -299,13 +439,13 @@ const categoryGroups = computed(() => {
       if (!groups.has(label)) {
         groups.set(label, { label, products: 0, productTypes: 0, itemsMap: new Map() })
       }
-      const group = groups.get(label)
-      group.products += line.quantity
-      if (!group.itemsMap.has(line.name)) {
-        group.itemsMap.set(line.name, { name: line.name, quantity: 0 })
-        group.productTypes++
+      const g = groups.get(label)
+      g.products += line.quantity
+      if (!g.itemsMap.has(line.name)) {
+        g.itemsMap.set(line.name, { name: line.name, quantity: 0 })
+        g.productTypes++
       }
-      group.itemsMap.get(line.name).quantity += line.quantity
+      g.itemsMap.get(line.name).quantity += line.quantity
     }
   }
   return Array.from(groups.values()).map(g => ({
@@ -319,190 +459,66 @@ const categoryGroups = computed(() => {
 const sessionProductsCount = computed(() => {
   return sessionSales.value.reduce((sum, sale) => sum + getSaleLines(sale).reduce((s, l) => s + l.quantity, 0), 0)
 })
-
 const totalProductTypes = computed(() => categoryGroups.value.reduce((s, c) => s + c.productTypes, 0))
 
-// ========== FONCTIONS AUTH ==========
-const authHeaders = () => {
-  const token = localStorage.getItem('token')
-  if (!token) throw new Error("Token manquant")
-  return { Authorization: `Bearer ${token}` }
-}
-
-const formatCurrency = (amount) => {
-  const number = Number(amount)
-  if (!Number.isFinite(number)) return '0 Ar'
-  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(number) + ' Ar'
-}
-
-const denominationTotal = (value) => value * (Number(counts[value]) || 0)
-const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('fr-FR') : ''
-
-const resetForm = () => {
-  for (const d of denominations) counts[d.value] = 0
-  errorMessage.value = ''
-  successMessage.value = ''
-}
-
-// ========== RÉCUPÉRATION DES TRANSACTIONS ESPÈCES ==========
-const fetchCashTransactions = async (sessionId) => {
-  try {
-    const { data } = await axios.get(`${API_BASE_URL}/cash-transactions/session/${sessionId}`, { headers: authHeaders() })
-    cashTransactions.value = [...(data.in || []), ...(data.out || [])]
-  } catch (error) {
-    console.error('Erreur chargement transactions :', error)
-    cashTransactions.value = []
-  }
-}
-
-// ========== RÉCUPÉRATION DES VENTES ==========
-const extractSalesArray = (payload) => {
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.data)) return payload.data
-  if (Array.isArray(payload?.items)) return payload.items
-  if (Array.isArray(payload?.results)) return payload.results
-  return []
-}
-
-const getSaleSessionId = (sale) => sale.cash_register_session_id ?? sale.cashRegisterSessionId ?? sale.session_id ?? sale.sessionId ?? null
-
-const fetchSessionSales = async (activeSessionId) => {
-  try {
-    const { data } = await axios.get(`${API_BASE_URL}/sales`, {
-      params: { cash_register_session_id: activeSessionId },
-      headers: authHeaders()
-    })
-    let sales = extractSalesArray(data).filter(s => s && typeof s === 'object')
-    sales = sales.filter(s => String(getSaleSessionId(s) ?? '') === String(activeSessionId))
-
-    const enriched = await Promise.all(sales.map(async (sale) => {
-      if (sale.order_lines && sale.order_lines.length) return sale
-      try {
-        const { data: detail } = await axios.get(`${API_BASE_URL}/sales/${sale.id}`, { headers: authHeaders() })
-        return { ...sale, order_lines: detail?.data?.order_lines ?? detail?.order_lines ?? [] }
-      } catch { return { ...sale, order_lines: [] } }
-    }))
-    sessionSales.value = enriched
-  } catch (error) {
-    console.error('Erreur chargement des ventes :', error)
-    sessionSales.value = []
-  }
-}
-
-// ========== CHARGEMENT DES SESSIONS OUVERTES (point de vente) ==========
-const fetchOpenSessions = async () => {
-  try {
-    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/open`, { headers: authHeaders() })
-    openSessions.value = Array.isArray(data) ? data : data?.data || []
-    if (openSessions.value.length) {
-      // Sélectionner la première session par défaut
-      selectedSessionId.value = openSessions.value[0].id
-      await fetchSessionData(selectedSessionId.value)
-    } else {
-      errorMessage.value = 'Aucune session ouverte pour ce point de vente.'
-    }
-  } catch (error) {
-    console.error('Erreur chargement sessions ouvertes :', error)
-    errorMessage.value = 'Impossible de charger les sessions ouvertes.'
-  }
-}
-
-// ========== CHARGEMENT D'UNE SESSION SPÉCIFIQUE ==========
-const fetchSessionData = async (id) => {
-  isLoading.value = true
-  errorMessage.value = ''
-  try {
-    console.log(`🔍 Tentative de chargement de la session ${id}`)
-    const { data } = await axios.get(`${API_BASE_URL}/cash-register-sessions/${id}`, { headers: authHeaders() })
-    console.log('📦 Réponse brute de /cash-register-sessions/' + id, data)
-
-    // Extraction flexible selon la structure de la réponse
-    let session = null
-    if (data?.data && typeof data.data === 'object') {
-      session = data.data
-    } else if (data && typeof data === 'object') {
-      session = data
-    }
-
-    if (!session || !session.id) {
-      console.error('❌ Session non trouvée ou mal formatée', data)
-      throw new Error('Session introuvable ou format de réponse invalide')
-    }
-
-    console.log('✅ Session chargée :', session)
-    sessionData.value = session
-    sessionId.value = session.id
-    sessionClosed.value = Boolean(session.is_closed)
-    hasRecordedBilletage.value = session.actual_cash_amount !== null && session.actual_cash_amount !== undefined
-
-    await Promise.all([fetchSessionSales(session.id), fetchCashTransactions(session.id)])
-
-    if (hasRecordedBilletage.value) {
-      let remaining = Math.max(0, Math.round(Number(session.actual_cash_amount) || 0))
-      for (const d of denominations) {
-        const qty = Math.floor(remaining / d.value)
-        counts[d.value] = qty
-        remaining -= qty * d.value
-      }
-    } else {
-      resetForm()
-    }
-  } catch (error) {
-    console.error('❌ Erreur dans fetchSessionData :', error)
-    if (error.response) {
-      console.error('Status:', error.response.status)
-      console.error('Données erreur:', error.response.data)
-      errorMessage.value = error.response.data?.message || `Erreur ${error.response.status} : session introuvable`
-    } else {
-      errorMessage.value = error.message || 'Erreur de chargement de la session.'
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const onSessionChange = () => {
-  if (selectedSessionId.value) {
-    fetchSessionData(selectedSessionId.value)
-  }
-}
+// ========== CONDITION POUR BILLETAGE : au moins une vente ==========
+const hasAnySale = computed(() => {
+  return sessionSales.value.length > 0
+})
 
 // ========== BILLETAGE ==========
+const actualTotal = computed(() => {
+  return denominations.reduce((sum, d) => sum + d.value * (Number(counts[d.value]) || 0), 0)
+})
+const startingAmount = computed(() => Number(sessionData.value?.starting_amount ?? 0))
+const cashSalesAmount = computed(() => {
+  return cashTransactions.value.filter(t => t.type === 'sale').reduce((s, t) => s + (Number(t.amount) || 0), 0)
+})
+const expectedCashAmount = computed(() => startingAmount.value + cashSalesAmount.value)
+const varianceAmount = computed(() => actualTotal.value - expectedCashAmount.value)
+const varianceStatus = computed(() => {
+  if (Math.abs(varianceAmount.value) < 1) return 'conforme'
+  return varianceAmount.value > 0 ? 'positif' : 'negatif'
+})
+const varianceStatusLabel = computed(() => {
+  if (varianceStatus.value === 'conforme') return 'Caisse conforme'
+  return varianceStatus.value === 'positif' ? 'Excédent (alerte)' : 'Manquant (alerte)'
+})
+const varianceCardClass = computed(() => varianceStatus.value === 'conforme' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700')
+const varianceBadgeClass = computed(() => varianceStatus.value === 'conforme' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')
+
 const submit = async () => {
   if (!sessionId.value) { errorMessage.value = 'Session introuvable.'; return }
   if (sessionClosed.value) { errorMessage.value = 'Session déjà clôturée.'; return }
   if (hasRecordedBilletage.value) { errorMessage.value = 'Billetage déjà enregistré.'; return }
-  const totalCounted = actualTotal.value
-  if (totalCounted === 0) { errorMessage.value = 'Saisissez au moins un billet ou une pièce.'; return }
-  if (!confirm(`Valider le billetage à ${formatCurrency(totalCounted)} ?`)) return
+  if (!canEditBilletage.value) { errorMessage.value = 'Vous n’avez pas la permission de valider le billetage.'; return }
+  if (!hasAnySale.value) { errorMessage.value = 'Aucune vente dans cette session. Le billetage n’est pas requis.'; return }
+  if (actualTotal.value === 0) { errorMessage.value = 'Saisissez au moins un billet.'; return }
+  if (!confirm(`Valider le billetage à ${formatCurrency(actualTotal.value)} ?`)) return
 
   isSubmitting.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
   try {
     await axios.put(`${API_BASE_URL}/cash-register-sessions/${sessionId.value}`, {
-      actual_cash_amount: totalCounted
+      actual_cash_amount: actualTotal.value
     }, { headers: authHeaders() })
     successMessage.value = 'Billetage enregistré avec succès.'
     hasRecordedBilletage.value = true
-    if (sessionData.value) sessionData.value.actual_cash_amount = totalCounted
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Erreur d’enregistrement.'
+    if (sessionData.value) sessionData.value.actual_cash_amount = actualTotal.value
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || 'Erreur d’enregistrement.'
   } finally {
     isSubmitting.value = false
   }
 }
 
-// ========== CLÔTURE SESSION ==========
 const closeSession = async () => {
   if (!sessionId.value) { errorMessage.value = 'Session introuvable.'; return }
   if (sessionClosed.value) { successMessage.value = 'Session déjà clôturée.'; return }
   if (!hasRecordedBilletage.value) { errorMessage.value = 'Veuillez d’abord enregistrer le billetage.'; return }
+  if (!canEditBilletage.value) { errorMessage.value = 'Vous n’avez pas la permission de clôturer la session.'; return }
   if (!confirm('Clôturer définitivement cette session ?')) return
 
   isSubmitting.value = true
-  errorMessage.value = ''
-  successMessage.value = ''
   try {
     await axios.put(`${API_BASE_URL}/cash-register-sessions/${sessionId.value}`, {
       actual_cash_amount: actualTotal.value,
@@ -515,10 +531,9 @@ const closeSession = async () => {
     sessionData.value = null
     sessionSales.value = []
     cashTransactions.value = []
-    // Rafraîchir la liste des sessions ouvertes (la session clôturée disparaît)
     await fetchOpenSessions()
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Erreur lors de la clôture.'
+  } catch (err) {
+    errorMessage.value = err.response?.data?.message || 'Erreur lors de la clôture.'
   } finally {
     isSubmitting.value = false
   }
@@ -527,9 +542,8 @@ const closeSession = async () => {
 // ========== CLAVIER VIRTUEL ==========
 const KEYBOARD_WIDTH = 600, KEYBOARD_HEIGHT = 400, KEYBOARD_MARGIN = 16
 const updateKeyboardPosition = () => {
-  const formEl = formRef.value
-  if (!formEl) return
-  const rect = formEl.getBoundingClientRect()
+  if (!formRef.value) return
+  const rect = formRef.value.getBoundingClientRect()
   const viewportWidth = window.innerWidth, viewportHeight = window.innerHeight
   let left = rect.right + KEYBOARD_MARGIN
   if (left + KEYBOARD_WIDTH > viewportWidth - KEYBOARD_MARGIN) left = viewportWidth - KEYBOARD_WIDTH - KEYBOARD_MARGIN
@@ -553,27 +567,24 @@ const showKeyboard = async (field) => {
 const handleKeyPress = (key) => {
   if (!activeField.value || activeField.value.type !== 'denomination') return
   const denom = activeField.value.value
-  const current = counts[denom]
-  const str = current === 0 || current === '' ? '' : String(current)
+  let val = counts[denom] === 0 || counts[denom] === '' ? 0 : counts[denom]
+  let str = val === 0 ? '' : String(val)
   if (key === 'BACKSPACE') {
-    const newStr = str.slice(0, -1)
-    counts[denom] = newStr === '' ? '' : Number(newStr)
+    str = str.slice(0, -1)
+    counts[denom] = str === '' ? 0 : Number(str)
     return
   }
-  if (!/^[0-9]$/.test(key)) return
-  counts[denom] = Number(str + key)
+  if (/^[0-9]$/.test(key)) counts[denom] = Number(str + key)
 }
 const hideKeyboard = () => {
   keyboardVisible.value = false
   activeField.value = null
 }
 
-// ========== CYCLE DE VIE ==========
 onMounted(async () => {
   await loadUserData()
-  const userRoles = currentUser.value?.roles?.map(r => r.name) || []
-  const hasAccess = isAdmin.value || userRoles.includes('gerant')
-  if (!hasAccess) {
+  const roles = currentUser.value?.roles?.map(r => r.name) || []
+  if (!isAdmin.value && !roles.includes('gerant') && !roles.includes('caissier')) {
     router.push({ name: 'dashboard-overview' })
     return
   }
@@ -591,6 +602,5 @@ watch(keyboardVisible, (visible) => {
     detachKeyboardListeners()
   }
 })
-
 onBeforeUnmount(detachKeyboardListeners)
 </script>
