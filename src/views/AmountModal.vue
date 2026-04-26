@@ -5,7 +5,7 @@
   >
     <div class="absolute inset-0" @click="closeModal" />
 
-    <div class="relative mx-4 w-full max-w-xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
+    <div ref="modalRef" class="relative mx-4 w-full max-w-xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
       <header class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-500">Fond de caisse</p>
@@ -28,10 +28,10 @@
         <div>
           <label class="text-sm font-medium text-slate-700">Montant du fond de caisse</label>
           <input
-            type="number"
-            min="0"
-            step="0.01"
-            v-model.number="amount"
+            ref="amountInput"
+            type="text"
+            v-model="amount"
+            @focus="showKeyboard('amount')"
             @input="validateAmount"
             placeholder="Montant"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
@@ -43,8 +43,10 @@
           <label class="text-sm font-medium text-slate-700">Numéro de ticket initial</label>
           <div class="relative mt-2">
             <select
+              ref="ticketInput"
               v-model.number="ticketNumber"
               @change="validateTicketNumber"
+              @focus="hideKeyboard"
               class="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
             >
               <option value="">Sélectionnez un numéro</option>
@@ -62,8 +64,10 @@
         <div>
           <label class="text-sm font-medium text-slate-700">Note</label>
           <input
+            ref="noteInput"
             type="text"
             v-model="note"
+            @focus="showKeyboard('note')"
             maxlength="50"
             placeholder="Note (max 50 caractères)"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
@@ -85,7 +89,7 @@
           type="button"
           class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           @click="sendAmount"
-          :disabled="isSending || !!amountError || !!ticketError || amount === null || ticketNumber === null || ticketNumber === ''"
+          :disabled="isSending || !!amountError || !!ticketError || amount === null || amount === '' || ticketNumber === null || ticketNumber === ''"
         >
           <i v-if="isSending" class="fas fa-circle-notch animate-spin text-xs"></i>
           Envoyer
@@ -93,10 +97,21 @@
       </footer>
     </div>
   </div>
+
+  <Teleport to="body">
+    <Keyboard
+      v-if="keyboardVisible"
+      :initial-position="keyboardPosition"
+      @key-pressed="handleKeyPress"
+      @close="hideKeyboard"
+      class="z-[100]"
+    />
+  </Teleport>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, nextTick, onBeforeUnmount, watch } from 'vue'
+import Keyboard from '../components/tools/Keyboard.vue'
 
 const props = defineProps({
   isOpen: Boolean
@@ -105,27 +120,131 @@ const props = defineProps({
 const emits = defineEmits(['close', 'send'])
 
 const ticketNumbers = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 7300]
-const amount = ref(null)
-const ticketNumber = ref(null)
+const amount = ref('')
+const ticketNumber = ref('')
 const note = ref('')
 const amountError = ref('')
 const ticketError = ref('')
 const isSending = ref(false)
 
+// Keyboard State
+const keyboardVisible = ref(false)
+const activeField = ref(null)
+const keyboardPosition = ref({ top: 0, left: 0 })
+const modalRef = ref(null)
+const amountInput = ref(null)
+const ticketInput = ref(null)
+const noteInput = ref(null)
+
+const inputRefs = {
+  amount: amountInput,
+  ticketNumber: ticketInput,
+  note: noteInput
+}
+
+// Strategy Pattern: define how each field handles input
+const inputStrategies = {
+  amount: (current, key) => {
+    if (key === 'BACKSPACE') return current.toString().slice(0, -1)
+    if (/[0-9]/.test(key)) return current.toString() + key
+    if (key === '.' || key === ',') {
+      const normalizedKey = '.'
+      if (!current.toString().includes(normalizedKey)) {
+        return current.toString() + normalizedKey
+      }
+    }
+    return current
+  },
+  ticketNumber: (current, key) => {
+    if (key === 'BACKSPACE') return current.toString().slice(0, -1)
+    if (/[0-9]/.test(key)) return current.toString() + key
+    return current
+  },
+  note: (current, key) => {
+    if (key === 'BACKSPACE') return current.slice(0, -1)
+    if (key === 'Espace') return current + ' '
+    if (key.length === 1) return current + key
+    return current
+  }
+}
+
+const showKeyboard = (field) => {
+  activeField.value = field
+  keyboardVisible.value = true
+  updateKeyboardPosition()
+}
+
+const hideKeyboard = () => {
+  keyboardVisible.value = false
+  activeField.value = null
+}
+
+const handleKeyPress = (key) => {
+  if (!activeField.value) return
+
+  const strategy = inputStrategies[activeField.value]
+  if (!strategy) return
+
+  if (activeField.value === 'amount') {
+    amount.value = strategy(amount.value, key)
+    validateAmount()
+  } else if (activeField.value === 'ticketNumber') {
+    ticketNumber.value = strategy(ticketNumber.value, key)
+    validateTicketNumber()
+  } else if (activeField.value === 'note') {
+    note.value = strategy(note.value, key)
+  }
+}
+
+const updateKeyboardPosition = () => {
+  nextTick(() => {
+    const fieldRef = inputRefs[activeField.value]
+    if (!fieldRef || !fieldRef.value) return
+
+    const rect = fieldRef.value.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const keyboardWidth = 640
+    const keyboardHeight = 280
+    const margin = 10
+
+    // Positionner juste en dessous du champ
+    let top = rect.bottom + margin
+    let left = rect.left
+
+    // Ajustement horizontal pour ne pas sortir de l'écran
+    if (left + keyboardWidth > viewportWidth - margin) {
+      left = viewportWidth - keyboardWidth - margin
+    }
+    if (left < margin) {
+      left = margin
+    }
+
+    // Si pas assez de place en bas, positionner au dessus
+    if (top + keyboardHeight > viewportHeight - margin) {
+      top = rect.top - keyboardHeight - margin
+    }
+
+    keyboardPosition.value = { top, left }
+  })
+}
+
 const validateAmount = () => {
+  const val = parseFloat(amount.value)
   if (amount.value === null || amount.value === '') {
     amountError.value = 'Le montant est requis.'
-  } else if (amount.value < 0) {
-    amountError.value = 'Le montant doit être positif.'
+  } else if (isNaN(val) || val < 0) {
+    amountError.value = 'Le montant doit être un nombre positif.'
   } else {
     amountError.value = ''
   }
 }
 
 const validateTicketNumber = () => {
+  const val = parseInt(ticketNumber.value)
   if (ticketNumber.value === null || ticketNumber.value === '') {
     ticketError.value = 'Le numéro de ticket est requis.'
-  } else if (ticketNumber.value < 1000) {
+  } else if (isNaN(val) || val < 1000) {
     ticketError.value = 'Le numéro doit être au moins 1000.'
   } else {
     ticketError.value = ''
@@ -140,8 +259,8 @@ const sendAmount = () => {
   isSending.value = true
 
   const data = {
-    amount: amount.value,
-    ticketNumber: ticketNumber.value,
+    amount: parseFloat(amount.value),
+    ticketNumber: parseInt(ticketNumber.value),
     note: note.value
   }
 
@@ -150,10 +269,39 @@ const sendAmount = () => {
   setTimeout(() => {
     isSending.value = false
     emits('close')
+    resetForm()
   }, 1000)
 }
 
+const resetForm = () => {
+  amount.value = ''
+  ticketNumber.value = ''
+  note.value = ''
+  amountError.value = ''
+  ticketError.value = ''
+  hideKeyboard()
+}
+
 const closeModal = () => {
+  resetForm()
   emits('close')
 }
+
+// Watch for window resize to reposition keyboard
+const handleResize = () => {
+  if (keyboardVisible.value) {
+    updateKeyboardPosition()
+  }
+}
+
+window.addEventListener('resize', handleResize)
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+watch(() => props.isOpen, (newVal) => {
+  if (!newVal) {
+    hideKeyboard()
+  }
+})
 </script>
