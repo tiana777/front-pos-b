@@ -74,6 +74,14 @@
                           <button
                             type="button"
                             class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
+                            @click.stop="printDuplicateSale(sale)"
+                            aria-label="Réimprimer"
+                          >
+                            <FontAwesomeIcon icon="fa-solid fa-print" class="text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
                             @click.stop="openEditModal(sale)"
                             aria-label="Modifier"
                           >
@@ -224,6 +232,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faPen, faReceipt, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '@/composables/useAuth'
+import { printingService } from '@/services/printing/PrintingService'
 
 library.add(faPen, faReceipt, faTrash)
 
@@ -328,10 +337,13 @@ const fetchSaleDetails = async (saleId) => {
 }
 
 const selectSale = async (sale) => {
-  selectedSale.value = sale
+  selectedSale.value = null // Réinitialisation pour déclencher la réactivité
   const details = await fetchSaleDetails(sale.id)
+  
   if (details) {
-    selectedSale.value = { ...sale, order_lines: details.order_lines || [] }
+    // Gestion robuste : on accepte order_lines ou orderlines
+    const lines = details.order_lines || details.orderlines || []
+    selectedSale.value = { ...sale, order_lines: lines }
   } else {
     selectedSale.value = { ...sale, order_lines: [] }
   }
@@ -351,6 +363,36 @@ const confirmDeleteSale = (sale) => {
     deleteSale(sale)
   }
 }
+
+const printDuplicateSale = async (sale) => {
+  // On s'assure d'avoir les détails (au cas où on clique sans avoir cliqué sur la ligne avant)
+  let saleToPrint = sale;
+  if (!sale.order_lines) {
+    const details = await fetchSaleDetails(sale.id);
+    saleToPrint = details ? { ...sale, order_lines: details.order_lines || [] } : sale;
+  }
+
+  const invoiceData = {
+    companyName: 'INTERNATIONAL GASTRONOMY PIZZA',
+    address: 'Antananarivo, Madagascar',
+    number: saleToPrint.ticket_number || 'DUP-' + saleToPrint.id,
+    date: formatDate(saleToPrint.created_at),
+    items: (saleToPrint.order_lines || []).map(line => ({
+      name: line.product?.name || 'Article',
+      price: line.price,
+      quantity: line.quantity
+    })),
+    total: saleToPrint.total_amount,
+    client: 'Client'
+  }
+
+  try {
+    await printingService.printInvoice(invoiceData)
+  } catch (error) {
+    console.error('Erreur impression duplicata:', error)
+  }
+}
+
 const deleteSale = async (sale) => {
   try {
     await axios.delete(`${API_BASE_URL}/sales/${sale.id}`, {

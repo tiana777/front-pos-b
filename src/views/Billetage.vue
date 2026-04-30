@@ -131,7 +131,7 @@
                   min="0"
                   step="1"
                   :disabled="isSubmitting || isLoading || sessionClosed || hasRecordedBilletage || !canEditBilletage"
-                  @focus="showKeyboard({ type: 'denomination', value: denomination.value })"
+                  @focus="showKeyboard({ type: 'denomination', value: denomination.value }, $event)"
                   class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 disabled:opacity-60"
                 />
                 <span class="text-right text-sm font-semibold text-slate-600">{{ formatCurrency(denominationTotal(denomination.value)) }}</span>
@@ -219,21 +219,19 @@ const denominations = [
 ]
 
 const router = useRouter()
-const { isAdmin, currentUser, loadUserData } = useAuth()
+const { isAdmin, currentUser, hasRole, loadUserData } = useAuth()
 
 // Permissions
 const canSelectSession = computed(() => {
-  const roles = currentUser.value?.roles?.map(r => r.name) || []
-  return isAdmin.value || roles.includes('gerant')
+  return isAdmin.value || hasRole('gerant')
 })
 const canViewSensitiveInfo = computed(() => {
-  const roles = currentUser.value?.roles?.map(r => r.name) || []
-  return isAdmin.value || roles.includes('gerant')
+  return isAdmin.value || hasRole('gerant')
 })
 // 🔧 MODIFICATION : autoriser également le caissier à faire le billetage
 const canEditBilletage = computed(() => {
-  const roles = currentUser.value?.roles?.map(r => r.name) || []
-  return isAdmin.value || roles.includes('gerant') || roles.includes('caissier')
+  // Autorise uniquement admin et caissier
+  return isAdmin.value || hasRole('caissier')
 })
 
 // États
@@ -526,12 +524,21 @@ const closeSession = async () => {
       closed_at: new Date().toISOString()
     }, { headers: authHeaders() })
     successMessage.value = 'Session clôturée avec succès.'
+    const closedSessionId = sessionId.value
     sessionClosed.value = true
     sessionId.value = null
     sessionData.value = null
     sessionSales.value = []
     cashTransactions.value = []
     await fetchOpenSessions()
+    
+    // Redirection vers le résumé
+    console.log("DEBUG: Données pour le résumé de session :", {
+      sessionId: closedSessionId,
+      sessionData: sessionData.value,
+      // On peut aussi récupérer le résumé ici si besoin via axios
+    })
+    router.push({ name: 'billetage-summary', params: { sessionId: closedSessionId } })
   } catch (err) {
     errorMessage.value = err.response?.data?.message || 'Erreur lors de la clôture.'
   } finally {
@@ -540,30 +547,13 @@ const closeSession = async () => {
 }
 
 // ========== CLAVIER VIRTUEL ==========
-const KEYBOARD_WIDTH = 600, KEYBOARD_HEIGHT = 400, KEYBOARD_MARGIN = 16
-const updateKeyboardPosition = () => {
-  if (!formRef.value) return
-  const rect = formRef.value.getBoundingClientRect()
-  const viewportWidth = window.innerWidth, viewportHeight = window.innerHeight
-  let left = rect.right + KEYBOARD_MARGIN
-  if (left + KEYBOARD_WIDTH > viewportWidth - KEYBOARD_MARGIN) left = viewportWidth - KEYBOARD_WIDTH - KEYBOARD_MARGIN
-  left = Math.max(KEYBOARD_MARGIN, left)
-  let top = rect.top
-  if (top + KEYBOARD_HEIGHT > viewportHeight - KEYBOARD_MARGIN) top = viewportHeight - KEYBOARD_HEIGHT - KEYBOARD_MARGIN
-  top = Math.max(KEYBOARD_MARGIN, top)
-  keyboardPosition.value = { top, left }
-}
-const handleViewportChange = () => updateKeyboardPosition()
-const detachKeyboardListeners = () => {
-  window.removeEventListener('resize', handleViewportChange)
-  window.removeEventListener('scroll', handleViewportChange, true)
-}
-const showKeyboard = async (field) => {
+const showKeyboard = async (field, event) => {
   activeField.value = field
   keyboardVisible.value = true
   await nextTick()
-  updateKeyboardPosition()
+  updateKeyboardPosition(event.target)
 }
+
 const handleKeyPress = (key) => {
   if (!activeField.value || activeField.value.type !== 'denomination') return
   const denom = activeField.value.value
@@ -576,15 +566,45 @@ const handleKeyPress = (key) => {
   }
   if (/^[0-9]$/.test(key)) counts[denom] = Number(str + key)
 }
+
+const updateKeyboardPosition = (targetElement) => {
+  const el = targetElement || document.activeElement
+  if (!el || el.tagName !== 'INPUT') return
+
+  const rect = el.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
+  const KEYBOARD_WIDTH = 640
+  const KEYBOARD_HEIGHT = 280
+  const MARGIN = 16
+
+  let top = rect.bottom + MARGIN
+  let left = rect.left
+
+  if (left + KEYBOARD_WIDTH > viewportWidth - MARGIN) left = viewportWidth - KEYBOARD_WIDTH - MARGIN
+  if (top + KEYBOARD_HEIGHT > viewportHeight - MARGIN) top = rect.top - KEYBOARD_HEIGHT - MARGIN
+
+  keyboardPosition.value = { 
+    top: Math.max(MARGIN, top), 
+    left: Math.max(MARGIN, Math.max(0, left)) 
+  }
+}
+
 const hideKeyboard = () => {
   keyboardVisible.value = false
   activeField.value = null
 }
 
+const handleViewportChange = () => { if (keyboardVisible.value) updateKeyboardPosition() }
+const detachKeyboardListeners = () => {
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('scroll', handleViewportChange, true)
+}
+
 onMounted(async () => {
   await loadUserData()
-  const roles = currentUser.value?.roles?.map(r => r.name) || []
-  if (!isAdmin.value && !roles.includes('gerant') && !roles.includes('caissier')) {
+  if (!isAdmin.value && !hasRole('gerant') && !hasRole('caissier')) {
     router.push({ name: 'dashboard-overview' })
     return
   }

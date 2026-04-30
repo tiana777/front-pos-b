@@ -12,6 +12,46 @@
       </header>
 
       <div class="payment-body">
+        <!-- NOUVELLE COLONNE : Détails des articles (Style Reçu Moderne) -->
+        <div class="payment-col col-0 hidden md:flex">
+          <div class="panel h-full flex flex-col bg-slate-50/50 border-dashed border-slate-200">
+            <div class="flex items-center justify-between mb-4 px-1">
+              <div class="section-title !mb-0">Détails commande</div>
+              <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">
+                {{ saleData.items?.length || 0 }} réf.
+              </span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-1 pr-1 scrollbar-hide">
+              <div v-for="(item, idx) in groupedItems" :key="idx" class="group flex items-center justify-between rounded-xl px-2 py-2.5 transition-colors hover:bg-white hover:shadow-sm">
+                <div class="flex-1 min-w-0">
+                  <p class="text-[11px] font-black text-slate-700 truncate leading-tight uppercase tracking-tight">{{ item.name || 'Produit' }}</p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 rounded-md">x{{ item.quantity }}</span>
+                    <span class="text-[9px] font-medium text-slate-400">{{ formatPrice(item.unit_price) }} / u</span>
+                  </div>
+                </div>
+                <div class="text-right ml-2">
+                  <p class="text-[11px] font-black text-slate-900">
+                    {{ formatPrice(item.unit_price * item.quantity) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-dashed border-slate-200 mt-4 px-1 space-y-2">
+              <div class="flex justify-between text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                <span>Sous-total HT</span>
+                <span>{{ formatPrice(totalAmount) }}</span>
+              </div>
+              <div class="flex justify-between text-sm font-black text-indigo-600 pt-1">
+                <span>TOTAL NET</span>
+                <span class="text-base">{{ formatPrice(totalAmount) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- COL 1 : Montants + détails paiement -->
         <div class="payment-col col-1">
           <div class="panel">
@@ -99,6 +139,9 @@
               class="field-input"
               @focus="activeInput = 'cardNumber'"
             />
+            <div v-if="cardNumber.replace(/\D/g, '').length > 0 && !isTpeComplete" class="text-xs font-semibold text-rose-500 mt-1">
+              Le numéro de carte doit comporter 16 chiffres.
+            </div>
           </div>
 
           <!-- Section Mobile Money -->
@@ -108,15 +151,21 @@
               <span class="value highlight">{{ formatPrice(remainingToPay) }}</span>
             </div>
             <label class="field-label">Numéro téléphone (10 chiffres)</label>
-            <input
-              type="tel"
-              v-model="phoneNumber"
-              placeholder="034 12 345 67"
-              class="field-input"
-              @focus="activeInput = 'phoneNumber'"
-            />
+            <div class="input-wrapper">
+              <input
+                type="tel"
+                v-model="phoneNumber"
+                placeholder="03X XX XXX XX"
+                class="field-input"
+                :class="{
+                  'border-red-500': phoneNumber.replace(/\D/g, '').length >= 3 && !phoneNumber.replace(/\D/g, '').startsWith(selectedPayment === 'Airtel Money' ? '033' : selectedPayment === 'MVola' ? '034' : '032'),
+                  'border-rose-400': phoneNumber.replace(/\D/g, '').length > 0 && phoneNumber.replace(/\D/g, '').length < 10 && phoneNumber.replace(/\D/g, '').startsWith(selectedPayment === 'Airtel Money' ? '033' : selectedPayment === 'MVola' ? '034' : '032'),
+                  'border-emerald-500': isPhoneNumberComplete
+                }"
+                @focus="activeInput = 'phoneNumber'"
+              />
+            </div>
           </div>
-
           <!-- Notes -->
           <div v-if="selectedPayment" class="panel mt">
             <label class="field-label">Notes (optionnel)</label>
@@ -191,11 +240,14 @@
                   :key="key"
                   type="button"
                   class="keypad-btn"
-                  :class="{ danger: key === 'DEL', disabled: key === '•' }"
-                  :disabled="key === '•'"
+                  :class="{
+                    danger: key === 'DEL',
+                    disabled: (key !== 'DEL' && ((selectedPayment === 'Espèce' && amountReceivedValue >= remainingToPay) || (isMobilePayment && isPhoneNumberComplete) || (isMobilePayment && phoneNumber.replace(/\D/g, '').length >= 3 && !phoneNumber.replace(/\D/g, '').startsWith(selectedPayment === 'Airtel Money' ? '033' : selectedPayment === 'MVola' ? '034' : '032')) || (selectedPayment === 'TPE' && isTpeComplete)))
+                  }"
+                  :disabled="(key !== 'DEL' && ((selectedPayment === 'Espèce' && amountReceivedValue >= remainingToPay) || (isMobilePayment && isPhoneNumberComplete) || (isMobilePayment && phoneNumber.replace(/\D/g, '').length >= 3 && !phoneNumber.replace(/\D/g, '').startsWith(selectedPayment === 'Airtel Money' ? '033' : selectedPayment === 'MVola' ? '034' : '032')) || (selectedPayment === 'TPE' && isTpeComplete)))"
                   @click="key === 'DEL' ? onKeypadDelete() : onKeypadPress(key)"
                 >
-                  <FontAwesomeIcon v-if="key === 'DEL'" icon="fa-solid fa-backspace" />
+                  <FontAwesomeIcon v-if="key === 'DEL'" icon="fa-delete-left" />
                   <span v-else>{{ key }}</span>
                 </button>
               </div>
@@ -239,7 +291,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faDeleteLeft } from '@fortawesome/free-solid-svg-icons'
 import { API_BASE_URL } from '@/utils/api'
+
+library.add(faDeleteLeft)
 
 const props = defineProps({
   saleId: { type: [Number, String], default: null },
@@ -251,7 +307,7 @@ const props = defineProps({
 const emit = defineEmits(['close-modal', 'payment-success', 'payment-error'])
 
 const token = localStorage.getItem('token')
-const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money']
+const mobilePayments = ['Orange Money', 'MVola', 'Airtel Money', 'Telma']
 const discountOptions = [0, 25,50, 75, 100]
 const keypadRows = [
   ['7', '8', '9'],
@@ -272,7 +328,42 @@ const paymentsList = ref([])
 const activeInput = ref('amountReceived')
 const isProcessing = ref(false)
 
+const groupedItems = computed(() => {
+  const map = new Map()
+  const items = props.saleData?.items || []
+  items.forEach(item => {
+    const key = `${item.product_id}-${item.unit_price}`
+    if (map.has(key)) {
+      map.get(key).quantity += Number(item.quantity)
+    } else {
+      map.set(key, { ...item, quantity: Number(item.quantity) })
+    }
+  })
+  return Array.from(map.values())
+})
+
 const isMobilePayment = computed(() => mobilePayments.includes(selectedPayment.value))
+
+const mobileRegex = {
+  'Airtel Money': /^033\d{7}$/,
+  'MVola': /^034\d{7}$/,
+  'Telma': /^034\d{7}$/,
+  'Orange Money': /^032\d{7}$/
+}
+
+const isPhoneNumberComplete = computed(() => {
+  if (!isMobilePayment.value) return false
+  const cleaned = phoneNumber.value.replace(/\D/g, '')
+  const regex = mobileRegex[selectedPayment.value]
+  return regex ? regex.test(cleaned) : cleaned.length >= 10
+})
+
+const isTpeComplete = computed(() => {
+  if (selectedPayment.value !== 'TPE') return false
+  const cleaned = cardNumber.value.replace(/\D/g, '')
+  return /^\d{16}$/.test(cleaned)
+})
+
 const amountReceivedValue = computed(() => parseInt(amountReceived.value.replace(/\D/g, '')) || 0)
 
 const discountedTotal = computed(() => {
@@ -291,7 +382,9 @@ const paymentProgress = computed(() =>
 )
 
 const canAddPayment = computed(() => {
+  // On autorise l'ajout tant qu'il reste à payer
   if (!selectedPayment.value || remainingToPay.value <= 0) return false
+  
   if (selectedPayment.value === 'Espèce') return amountReceivedValue.value > 0
   if (selectedPayment.value === 'TPE') {
     const cleaned = cardNumber.value.replace(/\s/g, '')
@@ -388,15 +481,14 @@ const addPayment = () => {
   let reference = null
 
   if (selectedPayment.value === 'Espèce') {
+    // Permet d'ajouter une partie du montant total en espèces
     amount = Math.min(amountReceivedValue.value, remainingToPay.value)
     if (amount <= 0) return
   } else {
-    amount = remainingToPay.value
-    if (selectedPayment.value === 'TPE') {
-      reference = cardNumber.value.replace(/\s/g, '')
-    } else if (isMobilePayment.value) {
-      reference = phoneNumber.value.replace(/\D/g, '')
-    }
+    // Pour TPE/Mobile, on prend le montant restant à payer
+    // Si l'utilisateur saisit un montant spécifique, on pourrait l'ajouter ici
+    // Pour l'instant, on prend le solde restant
+    amount = remainingToPay.value 
   }
 
   const found = paymentsListApi.value.find((p) => p.name === selectedPayment.value)
@@ -413,6 +505,7 @@ const addPayment = () => {
     notes: paymentNotes.value || null,
   })
 
+  // Réinitialisation des champs pour le prochain paiement
   amountReceived.value = ''
   phoneNumber.value = ''
   cardNumber.value = ''
@@ -467,12 +560,25 @@ const confirmPayment = async () => {
 
     let response
     if (existingSaleId) {
-      console.log(`🟢 Mise à jour PUT /sales/${existingSaleId}`)
-      response = await axios.put(`${API_BASE_URL}/sales/${existingSaleId}`, payload, {
+      console.log(`🟢 Validation POST /sales/${existingSaleId}/validate`)
+      // On envoie la liste des paiements pour supporter le multiple payment
+      const validatePayload = {
+        payment_id: paymentsList.value[0]?.payment_id, // Maintenu pour rétrocompatibilité backend
+        discount_percentage: selectedDiscount.value,
+        amount_received: totalPaymentsAmount.value,
+        change_amount: Math.max(0, totalPaymentsAmount.value - discountedTotal.value),
+        payments: paymentsList.value.map((p) => ({
+          payment_id: p.payment_id,
+          amount: Number(p.amount),
+          reference: p.reference || null,
+          notes: p.notes || null,
+        }))
+      }
+
+      response = await axios.post(`${API_BASE_URL}/sales/${existingSaleId}/validate`, validatePayload, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       })
-    } else {
-      console.log('🔴 Création POST /sales')
+    } else {      console.log('🔴 Création POST /sales')
       response = await axios.post(`${API_BASE_URL}/sales`, payload, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       })
@@ -491,6 +597,9 @@ const confirmPayment = async () => {
       discount_percentage: selectedDiscount.value,
       final_total: discountedTotal.value,
     })
+
+    // Émettre un événement pour vider le panier dans le composant parent
+    emit('clear-cart')
 
     closeModal()
   } catch (error) {
@@ -593,20 +702,50 @@ watch(
   overflow-y: auto;
 }
 
-.col-1 {
-  flex: 1;
-  min-width: 0;
-}
-.col-2 {
-  flex: 1;
-  min-width: 0;
-}
-.col-3 {
-  width: 300px;
+.col-0 {
+  width: 260px;
   flex-shrink: 0;
 }
+.col-1 {
+  flex: 1.2;
+  min-width: 0;
+}
 
-/* ── Panel ── */
+/* ── Item rows ── */
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #f1f5f9;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.2;
+}
+
+.item-qty {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.item-price {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #4f46e5;
+}
+
 .panel {
   background: #fff;
   border-radius: 1rem;

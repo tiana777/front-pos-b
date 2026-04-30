@@ -1,7 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur">
     <div class="relative mx-4 w-full max-w-4xl rounded-3xl border border-slate-200 bg-white shadow-2xl">
-      
+
       <!-- Header -->
       <header class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
         <div>
@@ -10,7 +10,7 @@
           <p class="mt-1 text-sm text-slate-500">Sélectionnez la caisse que vous souhaitez utiliser</p>
         </div>
         <div class="flex gap-2">
-          <button 
+          <button
             v-if="debugMode"
             type="button"
             class="inline-flex items-center gap-1 rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
@@ -18,9 +18,9 @@
           >
             <i class="fas fa-sync-alt"></i> Rafraîchir
           </button>
-          <button 
-            type="button" 
-            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600" 
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:text-rose-600"
             @click="closeModal"
           >
             <i class="fas fa-xmark"></i> Fermer
@@ -29,10 +29,10 @@
       </header>
 
       <div class="px-6 py-6">
-        
+
         <!-- Message machine détectée -->
         <div v-if="machineIdentifier" class="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-600">
-          <i class="fas fa-microchip mr-2"></i> 
+          <i class="fas fa-microchip mr-2"></i>
           Machine détectée : <strong>{{ machineIdentifier }}</strong>
           <span v-if="machineRegister"> → Caisse associée : {{ machineRegister.name }}</span>
           <span v-else> → Aucune caisse ne porte ce nom. Vous pouvez en créer une ci-dessous.</span>
@@ -42,7 +42,7 @@
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-6">
           <div class="flex justify-between items-center mb-4">
             <p class="text-sm font-semibold text-slate-700">Caisses disponibles</p>
-            <button 
+            <button
               v-if="debugMode"
               type="button"
               class="text-xs text-indigo-500 underline"
@@ -58,8 +58,8 @@
 
           <div v-else>
             <div v-if="cashRegisters.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <button 
-                v-for="register in cashRegisters" 
+              <button
+                v-for="register in cashRegisters"
                 :key="register.id"
                 type="button"
                 class="rounded-2xl border border-slate-200 px-5 py-5 text-left transition-all hover:border-indigo-200 hover:bg-indigo-50 disabled:cursor-not-allowed"
@@ -83,8 +83,8 @@
                 </div>
 
                 <div class="mt-4">
-                  <span 
-                    v-if="statusBadgeText(register.id)" 
+                  <span
+                    v-if="statusBadgeText(register.id)"
                     :class="['inline-block px-3.5 py-1 rounded-xl text-xs font-semibold', statusBadgeClass(register.id)]"
                   >
                     {{ statusBadgeText(register.id) }}
@@ -102,9 +102,9 @@
 
             <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
               Aucune caisse disponible.
-              <button 
-                type="button" 
-                class="ml-2 text-indigo-600 underline hover:text-indigo-700" 
+              <button
+                type="button"
+                class="ml-2 text-indigo-600 underline hover:text-indigo-700"
                 @click="goToMachineManagement"
               >
                 Créer une caisse
@@ -113,42 +113,38 @@
           </div>
         </div>
 
-        <!-- Messages de session -->
-        <p v-if="hasActiveSession" class="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-600">
-          <i class="fas fa-check-circle mr-2"></i> 
-          Session ouverte sur <strong>{{ activeSession }}</strong>
-        </p>
+
 
         <p v-if="isSelfConnected" class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-600">
           ✅ Caisse connectée : {{ activeSession?.cash_register?.name || connectedCashRegisterName }}
         </p>
 
         <!-- Bouton principal -->
-        <button 
-          type="button" 
+        <button
+          type="button"
           class="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="connectButtonDisabled" 
+          :disabled="connectButtonDisabled"
           @click="onConnectButtonClick"
         >
           <i class="fas fa-link"></i> {{ connectButtonText }}
         </button>
 
         <!-- Boutons supplémentaires (uniquement si connecté) -->
-        <div v-if="isSelfConnected" class="mt-4 flex flex-wrap gap-3">
-          <button 
-            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-600 transition hover:bg-amber-100" 
+        <div v-if="isSelfConnected && canAccessCashActions" class="mt-4 flex flex-wrap gap-3">
+          <button
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-2.5 text-sm font-semibold text-amber-600 transition hover:bg-amber-100"
             @click="resetCashRegister"
           >
             <i class="fas fa-sync-alt"></i> Remise à zéro
           </button>
-          <button 
-            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100" 
+          <button
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100"
             @click="performCashCount"
           >
             <i class="fas fa-money-bill-wave"></i> Billetage
           </button>
-          <button 
-            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100" 
+          <button
+            class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-100"
             @click="viewSales"
           >
             <i class="fas fa-chart-line"></i> Mes ventes
@@ -215,7 +211,11 @@ import { useAuth } from '@/composables/useAuth'
 import { API_BASE_URL } from '@/utils/api'
 
 const router = useRouter()
-const { currentUser, loadUserData } = useAuth()
+const { isAdmin, currentUser, hasRole, loadUserData } = useAuth()
+
+const canAccessCashActions = computed(() => {
+  return isAdmin.value || hasRole('caissier')
+})
 
 // Mode debug : activer avec ?debug=true dans l'URL
 const debugMode = ref(window.location.search.includes('debug=true'))
@@ -244,8 +244,8 @@ const machineRegister = computed(() => {
 
 const closeModal = () => router.push({ name: 'dashboard-overview' })
 
-const currentUserId = computed(() => currentUser.value?.id ?? null)
-const currentUserName = computed(() => currentUser.value?.name ?? null)
+const currentUserId = computed(() => currentUser?.value?.id ?? null)
+const currentUserName = computed(() => currentUser?.value?.name ?? null)
 
 const isSessionOpen = (session) => {
   if (!session) return false
@@ -283,13 +283,17 @@ const statusBadgeClass = (registerId) => {
 }
 
 const isRegisterLocked = (registerId) => {
+  // Sécuriser l'accès aux variables réactives
+  const userId = currentUserId.value
+  const userName = currentUserName.value
+
   if (isSelfConnected.value && registerId === activeRegisterId.value) return false
   const status = registerStatuses.value[registerId]
   const owner = registerOwners.value[registerId]
   if (status !== 'connected') return false
   if (!owner) return false
-  if (typeof owner === 'number') return owner !== currentUserId.value
-  return owner !== currentUserName.value
+  if (typeof owner === 'number') return owner !== userId
+  return owner !== userName
 }
 
 const statusBadgeText = (registerId) => {
@@ -297,7 +301,7 @@ const statusBadgeText = (registerId) => {
   const status = registerStatuses.value[registerId]
   const owner = registerOwners.value[registerId]
   if (status === 'connected') {
-    if (owner && ((typeof owner === 'number' && owner === currentUserId.value) || 
+    if (owner && ((typeof owner === 'number' && owner === currentUserId.value) ||
                    (typeof owner === 'string' && owner === currentUserName.value))) {
       return 'Occupée (vous)'
     }
@@ -376,8 +380,8 @@ const resolveMachineIdentifier = () => {
   }
 }
 
-function normalizeName(name) { 
-  return (name || '').toString().trim().toLowerCase() 
+function normalizeName(name) {
+  return (name || '').toString().trim().toLowerCase()
 }
 
 function findRegisterForMachine(registers) {
@@ -497,20 +501,21 @@ const closeAmountModal = () => { isAmountModalOpen.value = false }
 const handleAmountModalSend = (payload) => { if (!isProcessing.value) sendFondDeCaisse(payload) }
 
 const sendFondDeCaisse = async ({ amount, ticketNumber, note }) => {
-  if (!selectedCashRegister.value) { 
-    alert('Sélectionnez une caisse'); 
-    return 
+  if (!selectedCashRegister.value) {
+    alert('Sélectionnez une caisse');
+    return
   }
   isProcessing.value = true
   try {
-    const user = currentUser.value
+    // Utiliser une récupération directe via localStorage si currentUser est indisponible
+    const user = currentUser?.value || JSON.parse(localStorage.getItem('user') || '{}')
     if (!user?.id) throw new Error('Utilisateur non authentifié')
 
     const payload = {
       cash_register_id: selectedCashRegister.value,
       user_id: user.id,
       starting_amount: amount,
-      note,
+      note: note,
       expected_cash_amount: 0,
       start_ticket_number: ticketNumber ?? null
     }
@@ -542,9 +547,9 @@ const resetCashRegister = async () => {
     alert('Fermez votre session avant de réinitialiser la caisse.')
     return
   }
-  if (!selectedCashRegister.value) { 
-    alert('Sélectionnez une caisse'); 
-    return 
+  if (!selectedCashRegister.value) {
+    alert('Sélectionnez une caisse');
+    return
   }
   if (!confirm('Confirmez la remise à zéro ?')) return
 
@@ -564,13 +569,13 @@ const viewSales = () => router.push({ name: 'dashboard-user-sales' })
 
 const onConnectButtonClick = () => {
   if (isProcessing.value) return
-  if (isSelfConnected.value) { 
-    openSummaryModal(); 
-    return 
+  if (isSelfConnected.value) {
+    openSummaryModal();
+    return
   }
-  if (!selectedCashRegister.value) { 
-    alert('Sélectionnez une caisse'); 
-    return 
+  if (!selectedCashRegister.value) {
+    alert('Sélectionnez une caisse');
+    return
   }
   openAmountModal()
 }
@@ -633,10 +638,10 @@ onMounted(async () => {
   .summary-action { width: 100%; min-width: 0; }
 }
 
-.selected { 
-  border-color: #4f46e5 !important; 
-  background-color: #eef2ff !important; 
-  box-shadow: 0 0 0 2px #4f46e5; 
-  transition: all 0.2s ease; 
+.selected {
+  border-color: #4f46e5 !important;
+  background-color: #eef2ff !important;
+  box-shadow: 0 0 0 2px #4f46e5;
+  transition: all 0.2s ease;
 }
 </style>

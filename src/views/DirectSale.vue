@@ -1,217 +1,259 @@
 <template>
-  <!-- Modals -->
-  <PaymentModal
-    :isOpen="isPaymentModalOpen"
-    :saleId="currentSaleId || 0"
-    :totalAmount="totalPrice"
-    :saleData="saleDataForModal"
-    @close-modal="handleClosePaymentModal"
-    @payment-success="handlePaymentSuccess"
-    @payment-error="handlePaymentError"
-  />
+  <div class="contents">
+    <!-- Modals -->
+    <PaymentModal
+      :isOpen="isPaymentModalOpen"
+      :saleId="currentSaleId || 0"
+      :totalAmount="totalPrice"
+      :saleData="saleDataForModal"
+      @close-modal="handleClosePaymentModal"
+      @payment-success="handlePaymentSuccess"
+      @payment-error="handlePaymentError"
+    />
 
-  <InvoiceModal
-    :isOpen="isInvoiceModalOpen"
-    :items="cart"
-    :total="totalPrice"
-    :clientName="'Client'"
-    :invoiceNumber="currentInvoiceNumber"
-    :paymentMethod="currentPaymentMethod"
-    :payments="paymentsList"
-    :discountPercentage="selectedDiscount"
-    @close-modal="closeInvoiceModal"
-  />
+    <InvoiceModal
+      :isOpen="isInvoiceModalOpen"
+      :items="cart"
+      :total="totalPrice"
+      :clientName="'Client'"
+      :invoiceNumber="currentInvoiceNumber"
+      :paymentMethod="currentPaymentMethod"
+      :payments="paymentsList"
+      :discountPercentage="selectedDiscount"
+      @close-modal="closeInvoiceModal"
+    />
 
-  <div class="direct-sale-layout grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-    <!-- Produits -->
-    <section class="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div class="flex flex-col gap-3 border-b border-slate-100 pb-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
-            <FontAwesomeIcon icon="fa-solid fa-boxes" />
-            Produits
-          </h2>
-          <div class="relative w-full sm:max-w-xs">
-            <FontAwesomeIcon
-              icon="fa-solid fa-search"
-              class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="text"
-              placeholder="Rechercher un produit..."
-              v-model="searchQuery"
-              @input="filterProducts"
-              class="w-full rounded-full border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-600 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
-        </div>
-
-        <div class="flex gap-2 overflow-x-auto pb-1">
-          <button
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold transition"
-            :class="[
-              activeCategoryId === null
-                ? 'bg-indigo-500 text-white shadow'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            ]"
-            @click="setActiveCategory(null)"
-          >
-            Toutes
-          </button>
-          <button
-            v-for="category in categories"
-            :key="category.id"
-            type="button"
-            class="rounded-full px-4 py-2 text-sm font-semibold transition"
-            :class="[
-              activeCategoryId === category.id
-                ? 'bg-indigo-500 text-white shadow'
-                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-            ]"
-            @click="setActiveCategory(category.id)"
-          >
-            {{ category.name }}
-          </button>
-        </div>
-      </div>
-
-      <div class="mt-2.5 flex-1 overflow-hidden">
-        <div
-          v-if="filteredProducts.length"
-          class="grid h-full grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
-        >
-          <button
-            v-for="product in filteredProducts"
-            :key="product.id"
-            type="button"
-            class="group flex flex-col rounded-xl border border-slate-10 bg-white p-0 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            @click="addToCart(product)"
-          >
-            <div class="overflow-hidden rounded-lg bg-slate-100">
-              <img
-                :src="getProductImageUrl(product)"
-                class="h-20 w-20 object-cover transition duration-300 group-hover:scale-105"
-                @error="handleImageError"
-                loading="lazy"
+    <div class="direct-sale-layout grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] p-4 bg-slate-50/50">
+      <!-- Section Produits -->
+      <section class="flex min-h-0 flex-col overflow-hidden rounded-[2rem] border border-white bg-white/80 backdrop-blur-md p-5 shadow-xl shadow-slate-200/50">
+        <div class="flex flex-col gap-5 border-b border-slate-100 pb-5">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                Menu Digital
+              </h2>
+              <p class="text-xs text-slate-400 font-medium">Sélectionnez les articles pour la vente</p>
+            </div>
+            
+            <div class="relative w-full sm:max-w-xs group">
+              <FontAwesomeIcon
+                icon="fa-solid fa-search"
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500"
+              />
+              <input
+                type="text"
+                placeholder="Rechercher un délice..."
+                v-model="searchQuery"
+                class="w-full rounded-2xl border-none bg-slate-100/80 py-3 pl-11 pr-4 text-sm text-slate-700 shadow-inner outline-none transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
-            <div class="mt-1.5 space-y-0.5">
-              <p class="text-xs font-semibold text-slate-900 truncate">{{ product.name }}</p>
-              <p class="text-[10px] text-slate-400 truncate">{{ product.category_name || '—' }}</p>
-              <p class="text-xs font-bold text-slate-900">
-                {{ formatPrice(product.price) }}
-              </p>
+          </div>
+
+          <!-- Catégories Style "Grid" -->
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            <button
+              type="button"
+              class="rounded-xl px-2 py-3 text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm border"
+              :class="[
+                activeCategoryId === null
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-slate-200'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 border-slate-100'
+              ]"
+              @click="setActiveCategory(null)"
+            >
+              Tous
+            </button>
+            <button
+              v-for="category in categories"
+              :key="category.id"
+              type="button"
+              class="rounded-xl px-2 py-3 text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm border"
+              :class="[
+                activeCategoryId === category.id
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100 ring-2 ring-indigo-500 ring-offset-2'
+                  : 'bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/30 border-slate-100'
+              ]"
+              @click="setActiveCategory(category.id)"
+            >
+              {{ category.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid Produits -->
+        <div class="mt-5 flex-1 overflow-hidden">
+          <div
+            v-if="filteredProducts.length"
+            class="grid h-full grid-cols-2 gap-4 overflow-y-auto pr-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+          >
+            <button
+              v-for="product in filteredProducts"
+              :key="product.id"
+              type="button"
+              class="group relative flex flex-col items-center rounded-3xl border border-slate-100 bg-white p-3 text-center transition-all duration-300 hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-100/50 active:scale-95"
+              @click="addToCart(product)"
+            >
+              <div class="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-50">
+                <img
+                  :src="getProductImageUrl(product)"
+                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  @error="handleImageError"
+                  loading="lazy"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+              </div>
+              
+              <div class="mt-3 w-full space-y-1">
+                <p class="truncate text-sm font-bold text-slate-800">{{ product.name }}</p>
+                <div class="flex items-center justify-center gap-1.5">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                  <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    {{ product.category_name || 'Divers' }}
+                  </p>
+                </div>
+                <div class="pt-1">
+                  <span class="inline-block rounded-lg bg-indigo-50 px-2 py-1 text-xs font-black text-indigo-600">
+                    {{ formatPrice(product.price) }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Badge flottant "Plus" -->
+              <div class="absolute right-2 top-2 scale-0 rounded-full bg-indigo-600 p-1.5 text-white shadow-lg transition-transform group-hover:scale-100">
+                <FontAwesomeIcon icon="fa-solid fa-plus" class="text-[10px]" />
+              </div>
+            </button>
+          </div>
+
+          <!-- Empty State -->
+          <div
+            v-else
+            class="flex h-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-100 bg-slate-50/30 py-20"
+          >
+            <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm">
+              <FontAwesomeIcon icon="fa-solid fa-boxes" class="text-3xl text-slate-200" />
             </div>
+            <p class="text-base font-bold text-slate-400">Aucun produit trouvé</p>
+            <p class="text-sm text-slate-300">Essayez une autre catégorie ou recherche</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section Panier (Sidebar Premium - Mode Clair) -->
+      <aside class="flex h-full min-h-0 flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-200/50">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-5">
+          <div>
+            <h2 class="text-xl font-black text-slate-800 tracking-tight">Votre Panier</h2>
+            <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">{{ cart.length }} articles</p>
+          </div>
+          <button
+            v-if="cart.length"
+            type="button"
+            class="group flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-500 active:scale-95"
+            @click="clearCart"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-trash" class="text-sm" />
           </button>
         </div>
 
+        <!-- Liste Articles Panier (Compactée) -->
+        <div v-if="cart.length > 0" class="flex-1 space-y-1 overflow-y-auto py-4 scrollbar-hide">
+          <div
+            v-for="item in cart"
+            :key="item.id"
+            class="group relative rounded-xl border border-slate-100 bg-slate-50/50 p-2 transition-all hover:bg-white hover:shadow-md"
+          >
+            <div class="flex items-center gap-2">
+              <!-- Nom de l'article -->
+              <div class="flex-1 min-w-0">
+                <p class="truncate text-xs font-black text-slate-950 leading-none">{{ item.name }}</p>
+                <p class="text-[9px] font-medium text-slate-400 mt-0.5">{{ formatPrice(item.price) }}</p>
+              </div>
+
+              <!-- Contrôles de quantité compacts -->
+              <div class="flex items-center gap-1 rounded-lg bg-white p-0.5 shadow-sm border border-slate-100">
+                <button
+                  type="button"
+                  class="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+                  @click="decrementQuantity(item)"
+                >
+                  <FontAwesomeIcon icon="fa-solid fa-minus" class="text-[8px]" />
+                </button>
+                <span class="w-4 text-center text-[10px] font-black text-slate-700">{{ item.quantity }}</span>
+                <button
+                  type="button"
+                  class="flex h-5 w-5 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+                  @click="incrementQuantity(item)"
+                >
+                  <FontAwesomeIcon icon="fa-solid fa-plus" class="text-[8px]" />
+                </button>
+              </div>
+
+              <!-- Montant Total -->
+              <div class="min-w-[65px] text-right">
+                <p class="text-xs font-black text-indigo-600">
+                  {{ formatPrice(item.price * item.quantity) }}
+                </p>
+              </div>
+
+              <!-- Supprimer -->
+              <button
+                type="button"
+                class="text-slate-300 transition-colors hover:text-rose-500 p-1"
+                @click="removeItem(item)"
+              >
+                <FontAwesomeIcon icon="fa-solid fa-xmark" class="text-[10px]" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panier Vide -->
         <div
           v-else
-          class="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-500"
+          class="flex flex-1 flex-col items-center justify-center text-center"
         >
-          <FontAwesomeIcon icon="fa-solid fa-boxes" class="mb-3 text-2xl text-slate-300" />
-          Aucun produit disponible.
-        </div>
-      </div>
-    </section>
-
-    <!-- Panier -->
-    <aside class="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-        <h2 class="flex items-center gap-2 text-base font-semibold text-slate-800">
-          <FontAwesomeIcon icon="fa-solid fa-shopping-cart" />
-          Panier
-        </h2>
-        <button
-          v-if="cart.length"
-          type="button"
-          class="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-          @click="clearCart"
-        >
-          <FontAwesomeIcon icon="fa-solid fa-trash" />
-          Vider
-        </button>
-      </div>
-
-      <div v-if="cart.length > 0" class="flex-1 space-y-2 overflow-y-auto py-3">
-        <div
-          v-for="item in cart"
-          :key="item.id"
-          class="rounded-xl border border-slate-100 bg-slate-50/60 p-2"
-        >
-          <div class="flex items-start justify-between">
-            <div>
-              <p class="text-sm font-semibold text-slate-800">{{ item.name }}</p>
-              <p class="text-xs text-slate-400">{{ formatPrice(item.price) }}</p>
-            </div>
-            <button
-              type="button"
-              class="text-slate-400 transition hover:text-rose-500"
-              @click="removeItem(item)"
-            >
-              <FontAwesomeIcon icon="fa-solid fa-xmark" />
-            </button>
+          <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-50">
+            <FontAwesomeIcon icon="fa-solid fa-shopping-cart" class="text-2xl text-slate-200" />
           </div>
-          <div class="mt-2 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                @click="decrementQuantity(item)"
-              >
-                <FontAwesomeIcon icon="fa-solid fa-minus" />
-              </button>
-              <span class="text-sm font-semibold text-slate-700">{{ item.quantity }}</span>
-              <button
-                type="button"
-                class="flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600"
-                @click="incrementQuantity(item)"
-              >
-                <FontAwesomeIcon icon="fa-solid fa-plus" />
-              </button>
+          <p class="text-sm font-bold text-slate-400">Le panier est vide</p>
+          <p class="text-[10px] font-medium text-slate-300 uppercase tracking-widest mt-1">En attente d'articles</p>
+        </div>
+
+        <!-- Résumé et Validation -->
+        <div class="mt-auto space-y-4 border-t border-slate-100 pt-6">
+          <div class="space-y-2">
+            <div class="flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <span>Sous-total</span>
+              <span>{{ formatPrice(totalPrice) }}</span>
             </div>
-            <span class="text-sm font-semibold text-indigo-600">
-              {{ formatPrice(item.price * item.quantity) }}
-            </span>
+            <div class="flex justify-between items-end">
+              <span class="text-sm font-black text-slate-700">Total à payer</span>
+              <span class="text-2xl font-black text-slate-900 tracking-tight">{{ formatPrice(totalPrice) }}</span>
+            </div>
           </div>
+          
+          <button
+            type="button"
+            class="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-slate-900 py-4 font-black text-white shadow-xl shadow-slate-200 transition-all hover:bg-indigo-600 active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-300 disabled:shadow-none"
+            @click="openPaymentModal"
+            :disabled="!cart.length"
+          >
+            <FontAwesomeIcon icon="fa-solid fa-check" class="text-lg" />
+            <span>VALIDER L'ENCAISSEMENT</span>
+          </button>
         </div>
-      </div>
-
-      <div
-        v-else
-        class="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 text-center text-sm text-slate-400"
-      >
-        <FontAwesomeIcon icon="fa-solid fa-shopping-cart" class="mb-3 text-2xl" />
-        Panier vide
-      </div>
-
-      <div class="mt-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <div class="flex items-center justify-between text-sm font-semibold text-slate-700">
-          <span>Total</span>
-          <span class="text-indigo-600">{{ formatPrice(totalPrice) }}</span>
-        </div>
-        <button
-          type="button"
-          class="mt-3 w-full rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400"
-          @click="openPaymentModal"
-          :disabled="!cart.length"
-        >
-          <span class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
-            <FontAwesomeIcon icon="fa-solid fa-check" />
-          </span>
-          Valider la commande
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, shallowRef, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE_URL, API_URL } from '@/utils/api'
+import { dataCacheService } from '@/services/dataCacheService'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import {
@@ -236,12 +278,12 @@ const paymentsList = ref([])
 
 const cart = ref([])
 const categories = ref([])
-const products = ref([])
-const filteredProducts = ref([])
+const products = shallowRef([]) // Optimisation : pas de réactivité profonde sur les objets produits
 const activeCategoryId = ref(null)
 const searchQuery = ref('')
 const user = ref(null)
 const selectedDiscount = ref(0)
+const isLoading = ref(false)
 
 // Router pour redirection
 const router = useRouter()
@@ -251,12 +293,26 @@ const totalPrice = computed(() => {
   return cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 })
 
+// Filtrage ultra-rapide via computed
+const filteredProducts = computed(() => {
+  let base = products.value
+  if (activeCategoryId.value !== null) {
+    base = base.filter(p => p.category_id === activeCategoryId.value)
+  }
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    base = base.filter(p => p.name.toLowerCase().includes(query))
+  }
+  return base
+})
+
 const saleDataForModal = computed(() => ({
   items: cart.value.map(item => ({
     product_id: item.id,
     quantity: item.quantity,
     unit_price: Math.round(item.price),
-    total: Math.round(item.price * item.quantity)
+    total: Math.round(item.price * item.quantity),
+    name: item.name
   })),
   total_amount: Math.round(totalPrice.value),
   customer_id: null,
@@ -287,22 +343,19 @@ const handleImageError = (event) => {
 
 // Gestion du panier
 const addToCart = (product) => {
-  // Sécuriser la récupération de l'identifiant unique
   const uniqueId = product.id || product.product_id;
-
-  // Chercher si le produit existe déjà via cet ID unique
   const existing = cart.value.find(p => (p.id || p.product_id) === uniqueId);
 
   if (existing) {
-    // Le produit est déjà là, on augmente la quantité
     existing.quantity++;
   } else {
-    // C'est un nouveau produit, on l'ajoute
-    cart.value.push({ 
-      ...product, 
-      id: uniqueId, // On force la présence de l'ID
-      quantity: 1, 
-      price: Number(product.price) || 0 
+    cart.value.push({
+      ...product,
+      id: uniqueId,
+      quantity: 1,
+      price: Number(product.price) || 0,
+      category: product.category || { name: product.category_name },
+      printer: product.printer || product.category?.printer || null
     });
   }
 }
@@ -321,54 +374,101 @@ const clearCart = () => {
   cart.value = []
 }
 
-// Filtres produits
-const applyFilters = () => {
-  let base = products.value
-  if (activeCategoryId.value !== null) {
-    base = base.filter(p => p.category_id === activeCategoryId.value)
-  }
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase()
-    base = base.filter(p => p.name.toLowerCase().includes(query))
-  }
-  filteredProducts.value = base
-}
-
 const setActiveCategory = (categoryId) => {
   activeCategoryId.value = categoryId
-  applyFilters()
 }
 
-const filterProducts = () => applyFilters()
+// ========== LOGIQUE DE CHARGEMENT DES DONNÉES ==========
+const processData = (data) => {
+  categories.value = data
+  products.value = Object.freeze(data.flatMap(category =>
+    (category.products || []).map(product => ({
+      ...product,
+      category_id: category.id,
+      category_name: category.name,
+      printer: category.printer,
+      price: product.pricing?.[0]?.price
+        ? Number.parseFloat(product.pricing[0].price)
+        : 0,
+    }))
+  ))
+}
 
-// Ouverture du modal de paiement
-const openPaymentModal = () => {
-  if (cart.value.length === 0) {
-    alert('Ajoutez des produits au panier avant de valider')
-    return
+const loadData = async (forceRefresh = false) => {
+  const token = localStorage.getItem('token')
+  if (!user.value?.point_of_sale_id || !token) return
+
+  try {
+    isLoading.value = true
+    // Utilisation du cache pour un affichage instantané
+    const data = await dataCacheService.getCategories(
+      user.value.point_of_sale_id,
+      token,
+      forceRefresh
+    )
+    processData(data)
+  } catch (error) {
+    console.error('Erreur de chargement des données:', error)
+  } finally {
+    isLoading.value = false
   }
-  currentSaleId.value = null
-  isPaymentModalOpen.value = true
 }
+
+// ========== VÉRIFICATION SESSION ACTIVE ==========
+const checkActiveSessionAndRedirect = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    router.push({ name: 'login' })
+    return false
+  }
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/my-active-session`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const hasSession = response.data?.has_active_session === true
+    if (!hasSession) {
+      router.push({ name: 'cash-registers-machine-link' })
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Erreur vérification session:', error)
+    router.push({ name: 'cash-registers-machine-link' })
+    return false
+  }
+}
+
+// ========== INITIALISATION ==========
+onMounted(async () => {
+  const sessionOk = await checkActiveSessionAndRedirect()
+  if (!sessionOk) return
+
+  const userData = localStorage.getItem('user')
+  if (userData) {
+    try {
+      user.value = JSON.parse(userData)
+    } catch (e) {
+      console.error('Erreur parsing user:', e)
+    }
+  }
+
+  // Premier chargement (depuis cache si possible)
+  await loadData(false)
+  
+  // Mise à jour silencieuse en arrière-plan pour garantir la fraîcheur des données
+  setTimeout(() => loadData(true), 1000)
+})
 
 const handleClosePaymentModal = () => {
   isPaymentModalOpen.value = false
 }
 
-// ======================
-// SUCCÈS DU PAIEMENT
-// ======================
 const handlePaymentSuccess = (data) => {
   const saleId = data.sale_id || data.id
-
-  if (!saleId) {
-    console.error('ID de vente manquant dans la réponse', data)
-    alert('Erreur : ID de vente non reçu')
-    return
-  }
+  if (!saleId) return
 
   let receivedPayments = []
-
   if (data.payments && Array.isArray(data.payments)) {
     receivedPayments = data.payments
   } else if (data.sale?.payments && Array.isArray(data.sale.payments)) {
@@ -382,7 +482,8 @@ const handlePaymentSuccess = (data) => {
   }))
 
   currentSaleId.value = saleId
-  currentInvoiceNumber.value = `INV-${saleId.toString().padStart(6, '0')}`
+  const ticketNumber = data.ticket_number || data.sale?.ticket_number
+  currentInvoiceNumber.value = ticketNumber ? `Ticket #${ticketNumber}` : `INV-${saleId.toString().padStart(6, '0')}`
   currentPaymentMethod.value = paymentsList.value[0]?.payment_method_name || 'Espèces'
 
   isPaymentModalOpen.value = false
@@ -390,8 +491,7 @@ const handlePaymentSuccess = (data) => {
 }
 
 const handlePaymentError = (error) => {
-  console.error('Erreur lors du paiement :', error)
-  alert(error?.message || 'Une erreur est survenue lors du traitement du paiement')
+  console.error('Erreur paiement:', error)
 }
 
 const closeInvoiceModal = () => {
@@ -403,91 +503,14 @@ const closeInvoiceModal = () => {
   clearCart()
 }
 
-// ========== VÉRIFICATION SESSION ACTIVE ==========
-const checkActiveSessionAndRedirect = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    // Pas de token → rediriger vers login (ou modale)
-    router.push({ name: 'login' })
-    return false
-  }
-
-  try {
-    const response = await axios.get(`${API_BASE_URL}/my-active-session`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const hasSession = response.data?.has_active_session === true
-    if (!hasSession) {
-      // Rediriger vers la modale de connexion caisse
-      router.push({ name: 'cash-registers-machine-link' })
-      return false
-    }
-    return true
-  } catch (error) {
-    console.error('Erreur vérification session:', error)
-    // En cas d'erreur (404, etc.), on considère qu'il n'y a pas de session
-    router.push({ name: 'cash-registers-machine-link' })
-    return false
-  }
+const openPaymentModal = () => {
+  if (cart.value.length === 0) return
+  currentSaleId.value = null
+  isPaymentModalOpen.value = true
 }
-
-// ========== CHARGEMENT INITIAL ==========
-onMounted(async () => {
-  // 1. Vérifier la session active avant toute chose
-  const sessionOk = await checkActiveSessionAndRedirect()
-  if (!sessionOk) return
-
-  // 2. Charger les données utilisateur
-  const userData = localStorage.getItem('user')
-  if (userData) {
-    try {
-      user.value = JSON.parse(userData)
-    } catch (e) {
-      console.error('Erreur parsing user:', e)
-    }
-  }
-
-  const token = localStorage.getItem('token')
-  if (!user.value?.point_of_sale_id || !token) {
-    console.error('Utilisateur non authentifié ou point de vente manquant')
-    return
-  }
-
-  // 3. Charger catégories et produits
-  try {
-    const response = await axios.get(`${API_BASE_URL}/categories`, {
-      params: {
-        with_products: 1,
-        point_of_sale_id: user.value.point_of_sale_id,
-        with_pricing: 1,
-      },
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    const data = Array.isArray(response.data) ? response.data : response.data.data || []
-
-    categories.value = data
-
-    products.value = data.flatMap(category =>
-      (category.products || []).map(product => ({
-        ...product,
-        category_id: category.id,
-        category_name: category.name,
-        price: product.pricing?.[0]?.price 
-          ? Number.parseFloat(product.pricing[0].price) 
-          : 0,
-      }))
-    )
-
-    applyFilters()
-  } catch (error) {
-    console.error('Erreur de chargement des catégories/produits:', error.response?.data || error.message)
-  }
-})
 </script>
 
 <style scoped>
-/* Vos styles restent identiques */
 .direct-sale-layout {
   min-height: calc(100vh - 5rem);
   min-height: calc(100dvh - 5rem);
@@ -503,18 +526,22 @@ onMounted(async () => {
   }
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 .overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
+  background: transparent;
 }
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 10px;
-}
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
 }
 </style>

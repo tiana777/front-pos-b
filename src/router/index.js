@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import axios from 'axios'
+import { storage } from '@/utils/storage'
 import Login from '../views/Login.vue'
 import DirectSale from '../views/DirectSale.vue'
 import Pos from '../views/Pos.vue'
@@ -11,8 +12,8 @@ import PointOfSaleManage from '../views/PointOfSaleManage.vue'
 import CategoryManage from '../views/CategoryManage.vue'
 import Dashboard from '../views/Dashboard.vue'
 import DashboardOverview from '../views/DashboardOverview.vue'
-import TableSales from '../views/TableSales.vue'
 import TableSale from '../views/TableSale.vue'
+import FloorManager from '../views/FloorManager.vue'
 import TableManage from '../views/TableManage.vue'
 
 import RoleList from '@/views/roles/RoleList.vue'
@@ -27,65 +28,25 @@ import { API_BASE_URL } from '@/utils/api'
 
 // ==================== FONCTIONS UTILITAIRES ====================
 
-function checkTokenExpiration() {
-  const token = localStorage.getItem('token')
-  const tokenExpiration = localStorage.getItem('token_expiration')
+const ensureAdminAccess = async () => {
+  const auth = storage.getAuth();
+  if (!auth?.user) return false;
+  
+  if (auth.user.roles?.includes('admin')) return true;
 
-  if (token && tokenExpiration) {
-    const currentTime = new Date().getTime()
-    if (currentTime > parseInt(tokenExpiration)) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('token_expiration')
-      localStorage.removeItem('user')
-      localStorage.removeItem('user_expiration')
-      localStorage.removeItem('user_roles')
-      localStorage.removeItem('user_permissions')
-      return false
-    }
-    return true
-  }
-  return false
-}
-
-const readStoredRoles = () => {
   try {
-    const raw = localStorage.getItem('user_roles')
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const fetchRolesFromApi = async () => {
-  try {
-    const userStr = localStorage.getItem('user')
-    const token = localStorage.getItem('token')
-    if (!userStr || !token) return []
-    const parsedUser = JSON.parse(userStr)
-    const userId = parsedUser?.id
-    if (!userId) return []
-
-    const { data } = await axios.get(`${API_BASE_URL}/users/${userId}/roles`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const { data } = await axios.get(`${API_BASE_URL}/users/${auth.user.id}/roles`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
     })
 
     const roles = (data?.data || data || []).map((role) => role.name)
-    localStorage.setItem('user_roles', JSON.stringify(roles))
-    return roles
+    // Mettre à jour le stockage si les rôles ont changé
+    storage.setAuth(auth.token, auth.user, roles, auth.user.permissions);
+    return roles.includes('admin')
   } catch (error) {
     console.error('Erreur chargement des rôles:', error.response?.data || error.message)
-    return []
+    return false
   }
-}
-
-const ensureAdminAccess = async () => {
-  const storedRoles = readStoredRoles()
-  if (storedRoles.includes('admin')) return true
-
-  const fetchedRoles = await fetchRolesFromApi()
-  return fetchedRoles.includes('admin')
 }
 
 // === NOUVELLE FONCTION AJOUTÉE ===
@@ -126,7 +87,7 @@ const router = createRouter({
         {
           path: 'table',
           name: 'dashboard-table',
-          component: TableSales,
+          component: FloorManager,
           props: { embedded: true },
         },
         {
@@ -172,6 +133,11 @@ const router = createRouter({
           component: () => import('../views/CashRegisterSessions.vue'),
         },
         { path: 'printers', name: 'dashboard-printers', component: Printer },
+        { 
+          path: 'printers/test', 
+          name: 'dashboard-printers-test', 
+          component: () => import('../views/PrinterTest.vue') 
+        },
         {
           path: 'roles',
           name: 'dashboard-roles',
@@ -262,7 +228,9 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Vérification expiration token
-  if (!checkTokenExpiration()) {
+  // Vérification expiration token via storage.getAuth() (gère l'expiration)
+  const auth = storage.getAuth()
+  if (!auth || !auth.token) {
     next('/')
     return
   }
@@ -271,15 +239,9 @@ router.beforeEach(async (to, from, next) => {
     'dashboard-direct',
     'dashboard-table',
     'dashboard-table-order',
-    'dashboard-table-manage',
-    'dashboard-product',
-    'dashboard-ventes',
-    'dashboard-user-sales',
     'table',
     'table-sales',
     'direct',
-    'product',
-    'user-sales',
   ])
 
   const requiresCashRegister = to.matched.some((record) =>

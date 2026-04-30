@@ -31,7 +31,7 @@
             ref="amountInput"
             type="text"
             v-model="amount"
-            @focus="showKeyboard('amount')"
+            @focus="showKeyboard('amount', $event)"
             @input="validateAmount"
             placeholder="Montant"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
@@ -67,7 +67,7 @@
             ref="noteInput"
             type="text"
             v-model="note"
-            @focus="showKeyboard('note')"
+            @focus="showKeyboard('note', $event)"
             maxlength="50"
             placeholder="Note (max 50 caractères)"
             class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200"
@@ -106,16 +106,23 @@
       @close="hideKeyboard"
       class="z-[100]"
     />
-  </Teleport>
-</template>
+  </Teleport></template>
 
 <script setup>
 import { ref, reactive, nextTick, onBeforeUnmount, watch } from 'vue'
 import Keyboard from '../components/tools/Keyboard.vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faDeleteLeft, faXmark, faChevronDown, faCircleNotch } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faDeleteLeft, faXmark, faChevronDown, faCircleNotch)
 
 const props = defineProps({
   isOpen: Boolean
 })
+
+// ... dans le template, mettez à jour l'icône :
+// <FontAwesomeIcon v-if="key === 'DEL'" icon="fa-delete-left" />
 
 const emits = defineEmits(['close', 'send'])
 
@@ -168,12 +175,6 @@ const inputStrategies = {
   }
 }
 
-const showKeyboard = (field) => {
-  activeField.value = field
-  keyboardVisible.value = true
-  updateKeyboardPosition()
-}
-
 const hideKeyboard = () => {
   keyboardVisible.value = false
   activeField.value = null
@@ -196,39 +197,36 @@ const handleKeyPress = (key) => {
   }
 }
 
-const updateKeyboardPosition = () => {
-  nextTick(() => {
-    const fieldRef = inputRefs[activeField.value]
-    if (!fieldRef || !fieldRef.value) return
-
-    const rect = fieldRef.value.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const keyboardWidth = 640
-    const keyboardHeight = 280
-    const margin = 10
-
-    // Positionner juste en dessous du champ
-    let top = rect.bottom + margin
-    let left = rect.left
-
-    // Ajustement horizontal pour ne pas sortir de l'écran
-    if (left + keyboardWidth > viewportWidth - margin) {
-      left = viewportWidth - keyboardWidth - margin
-    }
-    if (left < margin) {
-      left = margin
-    }
-
-    // Si pas assez de place en bas, positionner au dessus
-    if (top + keyboardHeight > viewportHeight - margin) {
-      top = rect.top - keyboardHeight - margin
-    }
-
-    keyboardPosition.value = { top, left }
-  })
+const showKeyboard = async (field, event) => {
+  activeField.value = field
+  keyboardVisible.value = true
+  await nextTick()
+  updateKeyboardPosition(event.target)
 }
 
+const updateKeyboardPosition = (targetElement) => {
+  const el = targetElement || document.activeElement
+  if (!el) return
+
+  const rect = el.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  const KEYBOARD_WIDTH = activeField.value?.type === 'note' ? 400 : 240
+  const KEYBOARD_HEIGHT = 300
+  const MARGIN = 16
+
+  let top = rect.bottom + MARGIN
+  let left = rect.left
+
+  if (left + KEYBOARD_WIDTH > viewportWidth - MARGIN) left = viewportWidth - KEYBOARD_WIDTH - MARGIN
+  if (top + KEYBOARD_HEIGHT > viewportHeight - MARGIN) top = rect.top - KEYBOARD_HEIGHT - MARGIN
+
+  keyboardPosition.value = {
+    top: Math.max(MARGIN, top),
+    left: Math.max(MARGIN, Math.max(0, left))
+  }
+}
 const validateAmount = () => {
   const val = parseFloat(amount.value)
   if (amount.value === null || amount.value === '') {

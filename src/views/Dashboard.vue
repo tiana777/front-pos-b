@@ -31,7 +31,7 @@
           </div>
         </div>
 
-        <nav :class="['mt-6 flex-1 overflow-y-auto pb-8', isSidebarCollapsed ? 'px-1' : 'px-3']">
+        <nav :class="['mt-12 h-12', isSidebarCollapsed ? 'px-1' : 'px-3']">
           <div v-for="section in navigationSections" :key="section.title" class="mb-6">
             <p
               class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
@@ -111,6 +111,15 @@
             >
               <FontAwesomeIcon :icon="faBars" class="text-sm" />
             </button>
+
+            <!-- Header loading indicator -->
+            <transition name="fade">
+              <div v-if="globalLoading" class="ml-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-50/50">
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500"></div>
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.15s]"></div>
+                <div class="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.3s]"></div>
+              </div>
+            </transition>
           </div>
 
           <div class="flex flex-1 items-center justify-end gap-2">
@@ -174,7 +183,21 @@
       </header>
 
       <main class="flex-1 px-3 pb-6 pt-[3.5rem] sm:px-4 lg:px-5 lg:pt-[4rem]">
-        <RouterView />
+        <router-view v-slot="{ Component }">
+          <transition name="page-fade" mode="out-in">
+            <div v-if="globalLoading" class="flex h-[60vh] flex-col items-center justify-center space-y-6">
+              <div class="relative flex h-20 w-20 items-center justify-center">
+                <div class="absolute inset-0 animate-spin rounded-full border-4 border-slate-100 border-t-indigo-600"></div>
+                <img src="../assets/logoigp.jpg" alt="Loading" class="h-10 w-10 rounded-full shadow-sm" />
+              </div>
+              <div class="flex flex-col items-center gap-2">
+                <p class="animate-pulse text-base font-semibold text-slate-700">Préparation de votre session...</p>
+                <p class="text-xs text-slate-400">Chargement des données en cours</p>
+              </div>
+            </div>
+            <component v-else :is="Component" />
+          </transition>
+        </router-view>
       </main>
     </div>
   </div>
@@ -208,6 +231,7 @@ import {
   faListCheck
 } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '@/composables/useAuth'
+import { useCategories } from '@/composables/useCategories'
 
 defineOptions({ name: 'DashboardLayout' })
 
@@ -220,10 +244,12 @@ const searchQuery = ref('')
 const userMenuOpen = ref(false)
 const userMenuRef = ref(null)
 const expandedMenus = ref(new Set())
+const globalLoading = ref(true)
 
 const isDesktop = ref(false)
 
-const { user, isAdmin, loadUserData } = useAuth()
+const { user, isAdmin, hasRole, loadUserData } = useAuth()
+const { loadCategories } = useCategories()
 
 const isSidebarCollapsed = computed(() => sidebarCollapsed.value && isDesktop.value)
 
@@ -258,7 +284,19 @@ const handleResize = () => {
 
 onMounted(async () => {
   setInitialSidebarState()
-  await loadUserData()
+
+  try {
+    // Parallelize initialization of user data and categories/products
+    await Promise.all([
+      loadUserData(),
+      loadCategories()
+    ])
+  } catch (error) {
+    console.error('Initialisation Dashboard échouée:', error)
+  } finally {
+    globalLoading.value = false
+  }
+
   document.addEventListener('click', handleDocumentClick)
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', handleResize)
@@ -272,17 +310,26 @@ onBeforeUnmount(() => {
   }
 })
 
-const filterAdminItems = (items) =>
-  items
-    .filter((item) => !item.adminOnly || isAdmin.value)
+const filterAdminItems = (items) => {
+  return items
+    .filter((item) => {
+      if (item.adminOnly && !isAdmin.value) return false
+      if (item.caissierOnly && !hasRole('caissier') && !isAdmin.value) return false
+      return true
+    })
     .map((item) =>
       item.children
         ? {
             ...item,
-            children: item.children.filter((child) => !child.adminOnly || isAdmin.value),
+            children: item.children.filter((child) => {
+              if (child.adminOnly && !isAdmin.value) return false
+              if (child.caissierOnly && !hasRole('caissier') && !isAdmin.value) return false
+              return true
+            }),
           }
         : item,
     )
+}
 
 const navigationSections = computed(() => {
   const menuItems = filterAdminItems([
@@ -301,13 +348,12 @@ const navigationSections = computed(() => {
     { label: 'Catégories', name: 'dashboard-categories', icon: faLayerGroup },
     { label: 'Ventes', name: 'dashboard-ventes', icon: faChartLine, adminOnly: true },
     { label: 'Mes ventes', name: 'dashboard-user-sales', icon: faReceipt },
-    { label: 'Remise à zéro', name: 'dashboard-retour', icon: faArrowRotateLeft },
+    { label: 'Remise à zéro', name: 'dashboard-retour', icon: faArrowRotateLeft, caissierOnly: true },
   ])
 
   const toolItems = filterAdminItems([
     { label: 'Point de vente', name: 'dashboard-point-of-sale', icon: faStore, adminOnly: true },
-    { label: 'Imprimantes', name: 'dashboard-printers', icon: faPrint },
-    { label: 'Sessions caisse', name: 'dashboard-cash-register-sessions', icon: faClipboardList },
+    { label: 'Caisse', name: 'dashboard-cash-register-sessions', icon: faClipboardList },
     { label: 'Utilisateurs', name: 'dashboard-users', icon: faUserGroup, adminOnly: true },
     ...(isAdmin.value
       ? [
@@ -501,5 +547,14 @@ aside::-webkit-scrollbar-thumb {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(4px);
+}
+
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
 }
 </style>
